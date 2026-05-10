@@ -46,6 +46,9 @@ struct ContentView: View {
                 .tag(RootTab.profile)
         }
         .tint(.blue)
+        .onChange(of: selectedTab) { _ in
+            UIApplication.dismissKeyboard()
+        }
         .task {
             if store.agents.isEmpty {
                 await store.refreshDashboard()
@@ -77,6 +80,7 @@ private struct ProfileView: View {
     @State private var draftURL: String = ""
     @State private var testStatus: String = "尚未测试"
     @State private var isTesting = false
+    @FocusState private var urlFocused: Bool
 
     var body: some View {
         NavigationStack {
@@ -86,12 +90,17 @@ private struct ProfileView: View {
                         .textInputAutocapitalization(.never)
                         .keyboardType(.URL)
                         .autocorrectionDisabled()
+                        .focused($urlFocused)
 
                     Button("保存并使用") {
+                        urlFocused = false
+                        UIApplication.dismissKeyboard()
                         settings.baseURLString = draftURL.trimmingCharacters(in: .whitespacesAndNewlines)
                     }
 
                     Button(isTesting ? "测试中..." : "测试连接") {
+                        urlFocused = false
+                        UIApplication.dismissKeyboard()
                         testConnection()
                     }
                     .disabled(isTesting)
@@ -116,6 +125,12 @@ private struct ProfileView: View {
                 }
             }
             .navigationTitle("我的")
+            .scrollDismissesKeyboard(.interactively)
+            .dismissKeyboardOnTap()
+            .onDisappear {
+                urlFocused = false
+                UIApplication.dismissKeyboard()
+            }
             .onAppear {
                 draftURL = settings.baseURLString
             }

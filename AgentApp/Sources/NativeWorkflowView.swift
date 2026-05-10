@@ -16,6 +16,19 @@ struct NativeWorkflowView: View {
 
     @State private var isSubmitting = false
     @State private var reviewerSheetMode: ReviewerSheetMode?
+    @FocusState private var focusedField: WorkflowField?
+
+    private enum WorkflowField {
+        case codeTask
+        case coderTask(UUID)
+        case projectDir
+        case projectTask
+        case projectTest
+        case contentTopic
+        case pptTopic
+        case pptAudience
+        case pptGoal
+    }
 
     var body: some View {
         ScrollView {
@@ -53,9 +66,22 @@ struct NativeWorkflowView: View {
             }
             .padding(.top, 16)
         }
+        .scrollDismissesKeyboard(.interactively)
         .background(Color(.systemGroupedBackground))
         .navigationTitle("工作流")
         .navigationBarTitleDisplayMode(.inline)
+        .ignoresSafeArea(.keyboard, edges: .bottom)
+        .dismissKeyboardOnTap()
+        .simultaneousGesture(
+            DragGesture(minimumDistance: 18).onChanged { _ in
+                focusedField = nil
+                UIApplication.dismissKeyboard()
+            }
+        )
+        .onDisappear {
+            focusedField = nil
+            UIApplication.dismissKeyboard()
+        }
         .sheet(item: $reviewerSheetMode) { mode in
             reviewerPicker(mode: mode)
         }
@@ -71,6 +97,8 @@ struct NativeWorkflowView: View {
             HStack(spacing: 10) {
                 ForEach(WorkflowTemplate.allCases) { template in
                     Button {
+                        focusedField = nil
+                        UIApplication.dismissKeyboard()
                         selectedTemplate = template
                     } label: {
                         VStack(alignment: .leading, spacing: 6) {
@@ -110,27 +138,29 @@ struct NativeWorkflowView: View {
     private var codeTemplate: some View {
         card {
             headerBlock(
-                title: "Code Review Pipeline",
-                subtitle: "Describe the task, assign coders, then choose reviewers and a summarizer."
+                title: "代码审查工作流",
+                subtitle: "描述任务，选择执行智能体，再指定评审和总结人。"
             )
 
-            TextField("Describe the project or feature", text: $codeTask, axis: .vertical)
+            TextField("描述项目或需求", text: $codeTask, axis: .vertical)
                 .textFieldStyle(.roundedBorder)
                 .lineLimit(4 ... 8)
+                .focused($focusedField, equals: .codeTask)
 
             VStack(spacing: 12) {
                 ForEach($codeCoders) { $coder in
                     VStack(alignment: .leading, spacing: 8) {
-                        Picker("Coder", selection: $coder.agentId) {
-                            Text("Select agent").tag("")
+                        Picker("执行智能体", selection: $coder.agentId) {
+                            Text("请选择").tag("")
                             ForEach(onlineAgents) { agent in
                                 Text("\(agent.displayIcon) \(agent.name)").tag(agent.id)
                             }
                         }
 
-                        TextField("Sub task", text: $coder.task, axis: .vertical)
+                        TextField("子任务", text: $coder.task, axis: .vertical)
                             .textFieldStyle(.roundedBorder)
                             .lineLimit(2 ... 4)
+                            .focused($focusedField, equals: .coderTask(coder.id))
                     }
                     .padding(12)
                     .background(Color(.tertiarySystemBackground))
@@ -139,15 +169,15 @@ struct NativeWorkflowView: View {
             }
 
             HStack {
-                Button("Add coder") {
+                Button("新增执行位") {
                     codeCoders.append(WorkflowCoderDraft())
                 }
                 .buttonStyle(.bordered)
 
                 Spacer()
 
-                Picker("Summarizer", selection: $codeSummarizerId) {
-                    Text("None").tag("")
+                Picker("总结人", selection: $codeSummarizerId) {
+                    Text("无").tag("")
                     ForEach(onlineAgents) { agent in
                         Text(agent.name).tag(agent.id)
                     }
@@ -155,7 +185,9 @@ struct NativeWorkflowView: View {
                 .pickerStyle(.menu)
             }
 
-            Button(codeReviewerIds.isEmpty ? "Choose reviewers" : "\(codeReviewerIds.count) reviewers selected") {
+            Button(codeReviewerIds.isEmpty ? "选择评审" : "已选 \(codeReviewerIds.count) 位评审") {
+                focusedField = nil
+                UIApplication.dismissKeyboard()
                 reviewerSheetMode = .codeReviewers
             }
             .buttonStyle(.bordered)
@@ -174,6 +206,8 @@ struct NativeWorkflowView: View {
                 codeCoders = [WorkflowCoderDraft()]
                 codeReviewerIds.removeAll()
                 codeSummarizerId = ""
+                focusedField = nil
+                UIApplication.dismissKeyboard()
             }
         }
     }
@@ -181,31 +215,36 @@ struct NativeWorkflowView: View {
     private var projectTemplate: some View {
         card {
             headerBlock(
-                title: "Project Upgrade",
-                subtitle: "Use this for a real directory upgrade with executor, reviewers and optional PM."
+                title: "项目改造工作流",
+                subtitle: "适合真实目录改造，包含执行者、评审者和测试命令。"
             )
 
-            TextField("Project directory", text: $projectDraft.projectDir)
+            TextField("项目目录", text: $projectDraft.projectDir)
                 .textFieldStyle(.roundedBorder)
+                .focused($focusedField, equals: .projectDir)
 
-            TextField("Upgrade task", text: $projectDraft.task, axis: .vertical)
+            TextField("改造需求", text: $projectDraft.task, axis: .vertical)
                 .textFieldStyle(.roundedBorder)
                 .lineLimit(3 ... 6)
+                .focused($focusedField, equals: .projectTask)
 
-            pickerRow("PM Agent", selection: $projectDraft.pmId, allowEmpty: true)
-            pickerRow("Executor", selection: $projectDraft.executorId)
+            pickerRow("项目经理", selection: $projectDraft.pmId, allowEmpty: true)
+            pickerRow("执行者", selection: $projectDraft.executorId)
 
-            Button(projectDraft.reviewerIds.isEmpty ? "Choose reviewers" : "\(projectDraft.reviewerIds.count) reviewers selected") {
+            Button(projectDraft.reviewerIds.isEmpty ? "选择评审" : "已选 \(projectDraft.reviewerIds.count) 位评审") {
+                focusedField = nil
+                UIApplication.dismissKeyboard()
                 reviewerSheetMode = .projectReviewers
             }
             .buttonStyle(.bordered)
 
-            TextField("Test command", text: $projectDraft.testCommand)
+            TextField("测试命令", text: $projectDraft.testCommand)
                 .textFieldStyle(.roundedBorder)
+                .focused($focusedField, equals: .projectTest)
 
-            stepperRow(title: "Pass score", value: $projectDraft.passScore, range: 60 ... 100)
-            stepperRow(title: "Max retries", value: $projectDraft.maxRetries, range: 0 ... 5)
-            Toggle("Feishu notify", isOn: $projectDraft.feishuNotify)
+            stepperRow(title: "通过分数", value: $projectDraft.passScore, range: 60 ... 100)
+            stepperRow(title: "最大重试", value: $projectDraft.maxRetries, range: 0 ... 5)
+            Toggle("飞书通知", isOn: $projectDraft.feishuNotify)
 
             submitButton(title: "启动项目改造工作流", enabled: canSubmitProject) {
                 try await store.startProjectWorkflow(projectDraft)
@@ -214,6 +253,8 @@ struct NativeWorkflowView: View {
                 projectDraft.executorId = ""
                 projectDraft.reviewerIds.removeAll()
                 projectDraft.testCommand = ""
+                focusedField = nil
+                UIApplication.dismissKeyboard()
             }
         }
     }
@@ -221,39 +262,42 @@ struct NativeWorkflowView: View {
     private var contentTemplate: some View {
         card {
             headerBlock(
-                title: "Content Publish",
-                subtitle: "Package a topic into copy, visuals, integration and optional review."
+                title: "内容发布工作流",
+                subtitle: "把选题拆成文案、配图、整合和审核。"
             )
 
-            Picker("Platform", selection: $contentDraft.platform) {
-                Text("Xiaohongshu").tag("xiaohongshu")
-                Text("WeChat OA").tag("wechat")
-                Text("Moments").tag("moments")
-                Text("Generic").tag("generic")
+            Picker("平台", selection: $contentDraft.platform) {
+                Text("小红书").tag("xiaohongshu")
+                Text("公众号").tag("wechat")
+                Text("朋友圈").tag("moments")
+                Text("通用").tag("generic")
             }
             .pickerStyle(.segmented)
 
-            TextField("Topic", text: $contentDraft.topic, axis: .vertical)
+            TextField("发布主题", text: $contentDraft.topic, axis: .vertical)
                 .textFieldStyle(.roundedBorder)
                 .lineLimit(3 ... 6)
+                .focused($focusedField, equals: .contentTopic)
 
-            pickerRow("Copy Agent", selection: $contentDraft.copyAgentId)
-            pickerRow("Image Agent", selection: $contentDraft.imageAgentId)
-            pickerRow("Integrator", selection: $contentDraft.integratorAgentId)
-            pickerRow("Reviewer", selection: $contentDraft.reviewerAgentId, allowEmpty: true)
+            pickerRow("文案智能体", selection: $contentDraft.copyAgentId)
+            pickerRow("图片智能体", selection: $contentDraft.imageAgentId)
+            pickerRow("整合智能体", selection: $contentDraft.integratorAgentId)
+            pickerRow("审核智能体", selection: $contentDraft.reviewerAgentId, allowEmpty: true)
 
-            Picker("Publish Mode", selection: $contentDraft.publishMode) {
-                Text("draft").tag("draft")
-                Text("manual").tag("manual")
-                Text("auto").tag("auto")
+            Picker("发布模式", selection: $contentDraft.publishMode) {
+                Text("草稿").tag("draft")
+                Text("人工").tag("manual")
+                Text("自动").tag("auto")
             }
             .pickerStyle(.segmented)
 
-            Toggle("Feishu notify", isOn: $contentDraft.feishuNotify)
+            Toggle("飞书通知", isOn: $contentDraft.feishuNotify)
 
             submitButton(title: "启动内容发布工作流", enabled: canSubmitContent) {
                 try await store.startContentWorkflow(contentDraft)
                 contentDraft = ContentWorkflowDraft()
+                focusedField = nil
+                UIApplication.dismissKeyboard()
             }
         }
     }
@@ -261,48 +305,53 @@ struct NativeWorkflowView: View {
     private var pptTemplate: some View {
         card {
             headerBlock(
-                title: "PPT Review",
-                subtitle: "Outline, build, review and finalize a slide deck in one native form."
+                title: "PPT工作流",
+                subtitle: "策划、制作、审核、交付一体化。"
             )
 
-            TextField("Topic", text: $pptDraft.topic, axis: .vertical)
+            TextField("主题", text: $pptDraft.topic, axis: .vertical)
                 .textFieldStyle(.roundedBorder)
                 .lineLimit(3 ... 6)
+                .focused($focusedField, equals: .pptTopic)
 
-            TextField("Audience", text: $pptDraft.audience)
+            TextField("受众", text: $pptDraft.audience)
                 .textFieldStyle(.roundedBorder)
+                .focused($focusedField, equals: .pptAudience)
 
-            TextField("Goal", text: $pptDraft.goal)
+            TextField("目标", text: $pptDraft.goal)
                 .textFieldStyle(.roundedBorder)
+                .focused($focusedField, equals: .pptGoal)
 
-            stepperRow(title: "Slides", value: $pptDraft.slideCount, range: 3 ... 30)
+            stepperRow(title: "页数", value: $pptDraft.slideCount, range: 3 ... 30)
 
-            Picker("Style", selection: $pptDraft.style) {
-                Text("Business").tag("business")
-                Text("Tech").tag("tech")
-                Text("Pitch").tag("pitch")
-                Text("Training").tag("training")
-                Text("Minimal").tag("minimal")
+            Picker("风格", selection: $pptDraft.style) {
+                Text("商务").tag("business")
+                Text("科技").tag("tech")
+                Text("路演").tag("pitch")
+                Text("培训").tag("training")
+                Text("极简").tag("minimal")
             }
 
-            Picker("Output", selection: $pptDraft.outputFormat) {
+            Picker("输出", selection: $pptDraft.outputFormat) {
                 Text("markdown").tag("markdown")
                 Text("pptx").tag("pptx")
                 Text("md+pptx").tag("md+pptx")
             }
 
-            pickerRow("Outline Agent", selection: $pptDraft.outlineAgentId)
-            pickerRow("Maker Agent", selection: $pptDraft.makerAgentId)
-            pickerRow("Reviewer Agent", selection: $pptDraft.reviewerAgentId)
-            pickerRow("Finalizer", selection: $pptDraft.finalizerAgentId, allowEmpty: true)
+            pickerRow("策划智能体", selection: $pptDraft.outlineAgentId)
+            pickerRow("制作智能体", selection: $pptDraft.makerAgentId)
+            pickerRow("审核智能体", selection: $pptDraft.reviewerAgentId)
+            pickerRow("终稿智能体", selection: $pptDraft.finalizerAgentId, allowEmpty: true)
 
-            stepperRow(title: "Pass score", value: $pptDraft.passScore, range: 60 ... 100)
-            stepperRow(title: "Max retries", value: $pptDraft.maxRetries, range: 0 ... 5)
-            Toggle("Feishu notify", isOn: $pptDraft.feishuNotify)
+            stepperRow(title: "通过分数", value: $pptDraft.passScore, range: 60 ... 100)
+            stepperRow(title: "最大重试", value: $pptDraft.maxRetries, range: 0 ... 5)
+            Toggle("飞书通知", isOn: $pptDraft.feishuNotify)
 
             submitButton(title: "启动PPT工作流", enabled: canSubmitPpt) {
                 try await store.startPptWorkflow(pptDraft)
                 pptDraft = PptWorkflowDraft()
+                focusedField = nil
+                UIApplication.dismissKeyboard()
             }
         }
     }
@@ -310,15 +359,15 @@ struct NativeWorkflowView: View {
     private var devProgressCard: some View {
         card {
             headerBlock(
-                title: "Recent Progress",
-                subtitle: "Latest development or workflow tasks reported by the dashboard."
+                title: "最近研发进度",
+                subtitle: "展示仪表盘里最新的研发或工作流任务。"
             )
 
             ForEach(store.devProgress.prefix(6)) { item in
                 VStack(alignment: .leading, spacing: 4) {
                     Text(item.title ?? item.requirement ?? item.id)
                         .font(.subheadline.weight(.semibold))
-                    Text(item.status ?? "unknown")
+                    Text(item.status ?? "未知状态")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
@@ -365,7 +414,7 @@ struct NativeWorkflowView: View {
 
     private func pickerRow(_ title: String, selection: Binding<String>, allowEmpty: Bool = false) -> some View {
         Picker(title, selection: selection) {
-            Text(allowEmpty ? "Optional" : "Select").tag("")
+            Text(allowEmpty ? "可选" : "请选择").tag("")
             ForEach(onlineAgents) { agent in
                 Text("\(agent.displayIcon) \(agent.name)").tag(agent.id)
             }
@@ -373,7 +422,7 @@ struct NativeWorkflowView: View {
     }
 
     private func stepperRow(title: String, value: Binding<Int>, range: ClosedRange<Int>) -> some View {
-        Stepper("\(title): \(value.wrappedValue)", value: value, in: range)
+        Stepper("\(title)：\(value.wrappedValue)", value: value, in: range)
     }
 
     private func headerBlock(title: String, subtitle: String) -> some View {
@@ -413,7 +462,7 @@ struct NativeWorkflowView: View {
                     ProgressView()
                         .tint(.white)
                 }
-                Text(isSubmitting ? "Submitting..." : title)
+                Text(isSubmitting ? "提交中..." : title)
                 Spacer()
             }
             .padding(.vertical, 12)
@@ -446,10 +495,11 @@ struct NativeWorkflowView: View {
                 }
                 .buttonStyle(.plain)
             }
+            .scrollDismissesKeyboard(.interactively)
             .navigationTitle(mode.title)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button("Done") {
+                    Button("完成") {
                         reviewerSheetMode = nil
                     }
                 }
@@ -497,8 +547,8 @@ private enum ReviewerSheetMode: Identifiable {
 
     var title: String {
         switch self {
-        case .codeReviewers: return "Code Reviewers"
-        case .projectReviewers: return "Project Reviewers"
+        case .codeReviewers: return "代码评审"
+        case .projectReviewers: return "项目评审"
         }
     }
 }

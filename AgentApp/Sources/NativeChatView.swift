@@ -8,6 +8,12 @@ struct NativeChatView: View {
     @State private var draft = ""
     @State private var isSending = false
     @State private var showAgentPicker = false
+    @FocusState private var focusedField: ChatField?
+
+    private enum ChatField {
+        case topic
+        case draft
+    }
 
     private var selectedAgents: [AgentSummary] {
         store.agents.filter { selectedAgentIds.contains($0.id) }
@@ -27,6 +33,18 @@ struct NativeChatView: View {
         .background(Color(.systemGroupedBackground))
         .navigationTitle("协作")
         .navigationBarTitleDisplayMode(.inline)
+        .ignoresSafeArea(.keyboard, edges: .bottom)
+        .dismissKeyboardOnTap()
+        .simultaneousGesture(
+            DragGesture(minimumDistance: 18).onChanged { _ in
+                focusedField = nil
+                UIApplication.dismissKeyboard()
+            }
+        )
+        .onDisappear {
+            focusedField = nil
+            UIApplication.dismissKeyboard()
+        }
         .task {
             if store.agents.isEmpty {
                 await store.refreshDashboard()
@@ -55,6 +73,8 @@ struct NativeChatView: View {
                 }
                 Spacer()
                 Button {
+                    focusedField = nil
+                    UIApplication.dismissKeyboard()
                     showAgentPicker = true
                 } label: {
                     Image(systemName: "plus.bubble.fill")
@@ -71,6 +91,8 @@ struct NativeChatView: View {
                 HStack(spacing: 8) {
                     if selectedAgents.isEmpty {
                         Button("选择智能体") {
+                            focusedField = nil
+                            UIApplication.dismissKeyboard()
                             showAgentPicker = true
                         }
                         .buttonStyle(.borderedProminent)
@@ -112,6 +134,8 @@ struct NativeChatView: View {
         VStack(alignment: .leading, spacing: 10) {
             TextField("话题（可选）", text: $topic)
                 .textFieldStyle(.roundedBorder)
+                .focused($focusedField, equals: .topic)
+                .submitLabel(.done)
 
             if !store.topics.isEmpty {
                 ScrollView(.horizontal, showsIndicators: false) {
@@ -119,6 +143,8 @@ struct NativeChatView: View {
                         ForEach(store.topics.prefix(10), id: \.self) { item in
                             Button(item.text) {
                                 topic = item.text
+                                focusedField = nil
+                                UIApplication.dismissKeyboard()
                             }
                             .font(.caption)
                             .padding(.horizontal, 10)
@@ -148,8 +174,11 @@ struct NativeChatView: View {
                 .padding(.horizontal, 14)
                 .padding(.vertical, 18)
             }
+            .scrollDismissesKeyboard(.interactively)
             .background(Color(.systemGroupedBackground))
             .refreshable {
+                focusedField = nil
+                UIApplication.dismissKeyboard()
                 await store.refreshChat()
             }
             .onAppear {
@@ -167,6 +196,7 @@ struct NativeChatView: View {
                 TextField("输入消息", text: $draft, axis: .vertical)
                     .textFieldStyle(.roundedBorder)
                     .lineLimit(2 ... 6)
+                    .focused($focusedField, equals: .draft)
 
                 Button {
                     Task { await send() }
@@ -259,6 +289,7 @@ struct NativeChatView: View {
                 }
                 .buttonStyle(.plain)
             }
+            .scrollDismissesKeyboard(.interactively)
             .navigationTitle("选择智能体")
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
@@ -300,6 +331,8 @@ struct NativeChatView: View {
                 topic: topic.trimmingCharacters(in: .whitespacesAndNewlines)
             )
             draft = ""
+            focusedField = nil
+            UIApplication.dismissKeyboard()
         } catch {
             store.lastError = error.localizedDescription
         }
