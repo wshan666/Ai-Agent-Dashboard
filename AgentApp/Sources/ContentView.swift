@@ -4,7 +4,7 @@ import WebKit
 struct ContentView: View {
     @State private var serverURL: String = UserDefaults.standard.string(forKey: "agentServerURL") ?? "http://192.168.50.32:3456"
     @State private var isLoading = true
-    @State private var needsReload = false
+    @State private var reloadTrigger = 0
 
     var body: some View {
         VStack(spacing: 0) {
@@ -17,9 +17,8 @@ struct ContentView: View {
 
                 Button {
                     UserDefaults.standard.set(serverURL, forKey: "agentServerURL")
-                    needsReload = true
                     isLoading = true
-                    NotificationCenter.default.post(name: .reloadWebView, object: serverURL)
+                    reloadTrigger += 1
                 } label: {
                     Text("连接")
                         .font(.caption)
@@ -32,7 +31,7 @@ struct ContentView: View {
             .background(Color(.systemGray6))
 
             ZStack {
-                WebViewWrapper(serverURL: serverURL, isLoading: $isLoading, needsReload: $needsReload)
+                WebViewWrapper(serverURL: serverURL, reloadTrigger: reloadTrigger, isLoading: $isLoading)
                     .edgesIgnoringSafeArea(.bottom)
 
                 if isLoading {
@@ -53,48 +52,29 @@ struct ContentView: View {
 
 struct WebViewWrapper: UIViewRepresentable {
     let serverURL: String
+    let reloadTrigger: Int
     @Binding var isLoading: Bool
-    @Binding var needsReload: Bool
 
     func makeCoordinator() -> Coordinator {
-        Coordinator(self)
+        Coordinator()
     }
 
     func makeUIView(context: Context) -> WKWebView {
         let config = WKWebViewConfiguration()
         config.preferences.setValue(true, forKey: "developerExtrasEnabled")
-
         let webView = WKWebView(frame: .zero, configuration: config)
         webView.navigationDelegate = context.coordinator
         webView.isOpaque = false
         webView.backgroundColor = UIColor.systemBackground
-
-        loadContent(in: webView)
-
-        NotificationCenter.default.addObserver(
-            forName: .reloadWebView,
-            object: nil,
-            queue: .main
-        ) { notif in
-            if let url = notif.object as? String {
-                context.coordinator.parent.serverURL = url
-            }
-            loadContent(in: webView)
-        }
-
+        loadContent(in: webView, context: context)
         return webView
     }
 
     func updateUIView(_ webView: WKWebView, context: Context) {
-        if needsReload {
-            loadContent(in: webView)
-            DispatchQueue.main.async {
-                needsReload = false
-            }
-        }
+        loadContent(in: webView, context: context)
     }
 
-    private func loadContent(in webView: WKWebView) {
+    private func loadContent(in webView: WKWebView, context: Context) {
         guard let htmlPath = Bundle.main.path(forResource: "www/index", ofType: "html"),
               let htmlContent = try? String(contentsOfFile: htmlPath, encoding: .utf8) else {
             webView.loadHTMLString("<h2>Dashboard load failed</h2>", baseURL: nil)
@@ -105,28 +85,21 @@ struct WebViewWrapper: UIViewRepresentable {
     }
 
     class Coordinator: NSObject, WKNavigationDelegate {
-        var parent: WebViewWrapper
-
-        init(_ parent: WebViewWrapper) {
-            self.parent = parent
-        }
-
         func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
-            DispatchQueue.main.async {
-                parent.isLoading = false
+            if let parent = webView.superview?.superview?.superview {
+                // Find the SwiftUI view through the view hierarchy - we use NotificationCenter instead
             }
+            NotificationCenter.default.post(name: .webViewDidLoad, object: nil)
         }
 
         func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {
-            DispatchQueue.main.async {
-                parent.isLoading = false
-            }
+            NotificationCenter.default.post(name: .webViewDidLoad, object: nil)
         }
     }
 }
 
 extension Notification.Name {
-    static let reloadWebView = Notification.Name("reloadWebView")
+    static let webViewDidLoad = Notification.Name("webViewDidLoad")
 }
 
 #Preview {
