@@ -5,7 +5,7 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>zh_CN</string>
 	<key>CFBundleDisplayName</key>
-	<string>智能协作</string>
+	<string>&#x667A;&#x80FD;&#x534F;&#x4F5C;</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -17,9 +17,9 @@
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
-	<string>1.0.9</string>
+	<string>1.0.10</string>
 	<key>CFBundleVersion</key>
-	<string>10</string>
+	<string>11</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>UIApplicationSceneManifest</key>
@@ -43,6 +43,6 @@
 		<true/>
 	</dict>
 	<key>NSLocalNetworkUsageDescription</key>
-	<string>需要访问本地网络，用于连接 AI Agent Dashboard 服务器。</string>
+	<string>&#x9700;&#x8981;&#x8BBF;&#x95EE;&#x672C;&#x5730;&#x7F51;&#x7EDC;&#xFF0C;&#x7528;&#x4E8E;&#x8FDE;&#x63A5; AI Agent Dashboard &#x670D;&#x52A1;&#x5668;&#x3002;</string>
 </dict>
 </plist>

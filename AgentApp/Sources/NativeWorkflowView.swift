@@ -13,6 +13,7 @@ struct NativeWorkflowView: View {
     @State private var pptDraft = PptWorkflowDraft()
     @State private var musicDraft = MusicWorkflowDraft()
     @State private var musicResult: MusicResult?
+    @State private var musicSearchText = ""
 
     @State private var isSubmitting = false
     @State private var reviewerSheetMode: ReviewerSheetMode?
@@ -66,6 +67,7 @@ struct NativeWorkflowView: View {
         .sheet(item: $reviewerSheetMode) { mode in reviewerPicker(mode: mode) }
         .task {
             if store.agents.isEmpty { await store.refreshDashboard() }
+            if store.musicFavorites.isEmpty && store.musicRecent.isEmpty { await store.loadMusicLibrary() }
         }
     }
 
@@ -250,7 +252,60 @@ struct NativeWorkflowView: View {
             Toggle("\u{751f}\u{6210}\u{540e}\u{81ea}\u{52a8}\u{64ad}\u{653e}", isOn: $musicDraft.autoPlay)
             submitButton("\u{542f}\u{52a8}\u{97f3}\u{4e50}\u{5de5}\u{4f5c}\u{6d41}", !musicDraft.song.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty) {
                 musicResult = try await store.startMusicWorkflow(musicDraft)
+                if musicDraft.autoPlay, let result = musicResult {
+                    let generated = MusicTrack(
+                        id: result.title.isEmpty ? UUID().uuidString : result.title,
+                        title: result.title,
+                        channel: result.artist,
+                        duration: "",
+                        source: "generated",
+                        sourceLabel: "\u{8bed}\u{97f3}\u{8bd5}\u{5531}",
+                        previewUrl: result.audioUrl,
+                        url: result.audioUrl,
+                        rawId: "",
+                        artwork: "",
+                        lyrics: result.lyrics,
+                        local: false
+                    )
+                    store.playMusic(track: generated, queue: [generated])
+                }
             }
+
+            Divider()
+            headerBlock("\u{539f}\u{751f}\u{641c}\u{6b4c}\u{4e0e}\u{64ad}\u{653e}", "\u{76f4}\u{63a5}\u{5728} App \u{91cc}\u{641c}\u{7d22}\u{3001}\u{64ad}\u{653e}\u{3001}\u{6536}\u{85cf}\u{548c}\u{7ba1}\u{7406}\u{6700}\u{8fd1}\u{64ad}\u{653e}\u{3002}")
+
+            HStack(spacing: 10) {
+                TextField("\u{641c}\u{7d22}\u{6b4c}\u{66f2}\u{6216} YouTube \u{94fe}\u{63a5}", text: $musicSearchText)
+                    .textFieldStyle(.roundedBorder)
+                Button {
+                    Task { await store.searchMusic(musicSearchText) }
+                } label: {
+                    if store.isSearchingMusic {
+                        ProgressView().controlSize(.small)
+                    } else {
+                        Image(systemName: "magnifyingglass")
+                    }
+                }
+                .buttonStyle(.borderedProminent)
+                .disabled(musicSearchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || store.isSearchingMusic)
+            }
+
+            if let current = store.currentMusicTrack {
+                nativePlayerCard(current)
+            }
+
+            if let hint = store.musicSearchHint, !hint.isEmpty {
+                Text(hint)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            if !store.musicSearchResults.isEmpty {
+                musicListBlock("\u{641c}\u{7d22}\u{7ed3}\u{679c}", tracks: store.musicSearchResults, showDelete: false)
+            }
+
+            musicListBlock("\u{6700}\u{8fd1}\u{64ad}\u{653e}", tracks: store.musicRecent, showDelete: false)
+            musicListBlock("\u{6536}\u{85cf}\u{5217}\u{8868}", tracks: store.musicFavorites, showDelete: true)
 
             if let result = musicResult {
                 VStack(alignment: .leading, spacing: 10) {
@@ -340,6 +395,170 @@ struct NativeWorkflowView: View {
             .padding(16)
             .background(Color(.secondarySystemBackground))
             .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+    }
+
+    private func nativePlayerCard(_ track: MusicTrack) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 10) {
+                artworkThumbnail(track, size: 54)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(track.title.isEmpty ? "\u{672a}\u{77e5}\u{6b4c}\u{66f2}" : track.title)
+                        .font(.subheadline.weight(.semibold))
+                        .lineLimit(1)
+                    Text(track.artistText.isEmpty ? track.sourceLabel : track.artistText)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                }
+                Spacer()
+                Button {
+                    Task { await store.toggleFavorite(track: track) }
+                } label: {
+                    Image(systemName: store.isFavorite(track: track) ? "star.fill" : "star")
+                }
+                .buttonStyle(.bordered)
+            }
+
+            if !track.lyrics.isEmpty {
+                Text(track.lyrics)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(4)
+            }
+
+            VStack(spacing: 6) {
+                Slider(value: Binding(
+                    get: { store.musicCurrentTime },
+                    set: { store.seekMusic(to: $0) }
+                ), in: 0 ... max(store.musicDuration, 1))
+                HStack {
+                    Text(formatSeconds(store.musicCurrentTime))
+                    Spacer()
+                    Text(formatSeconds(store.musicDuration))
+                }
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+            }
+
+            HStack(spacing: 12) {
+                Button { store.playPreviousTrack() } label: {
+                    Image(systemName: "backward.fill")
+                }
+                .buttonStyle(.bordered)
+
+                Button { store.toggleMusicPlayback() } label: {
+                    Image(systemName: store.isMusicPlaying ? "pause.fill" : "play.fill")
+                        .frame(minWidth: 28)
+                }
+                .buttonStyle(.borderedProminent)
+
+                Button { store.playNextTrack() } label: {
+                    Image(systemName: "forward.fill")
+                }
+                .buttonStyle(.bordered)
+            }
+        }
+        .padding(14)
+        .background(Color(.tertiarySystemBackground))
+        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+    }
+
+    private func musicListBlock(_ title: String, tracks: [MusicTrack], showDelete: Bool) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(title).font(.subheadline.weight(.semibold))
+            if tracks.isEmpty {
+                Text("\u{6682}\u{65e0}\u{5185}\u{5bb9}")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            } else {
+                ForEach(tracks) { track in
+                    HStack(spacing: 10) {
+                        Button {
+                            store.playMusic(track: track, queue: tracks)
+                        } label: {
+                            artworkThumbnail(track, size: 42)
+                                .overlay(alignment: .bottomTrailing) {
+                                    Image(systemName: store.currentMusicTrack == track && store.isMusicPlaying ? "speaker.wave.2.fill" : "play.fill")
+                                        .font(.caption2.weight(.bold))
+                                        .foregroundStyle(.white)
+                                        .frame(width: 18, height: 18)
+                                        .background(Color.blue)
+                                        .clipShape(Circle())
+                                        .offset(x: 2, y: 2)
+                                }
+                        }
+                        .buttonStyle(.plain)
+
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text(track.title.isEmpty ? "\u{672a}\u{77e5}\u{6b4c}\u{66f2}" : track.title)
+                                .font(.subheadline)
+                                .lineLimit(1)
+                            Text(track.artistText.isEmpty ? track.sourceLabel : track.artistText)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .lineLimit(1)
+                        }
+                        Spacer()
+                        if !track.duration.isEmpty {
+                            Text(track.duration)
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
+                        }
+                        if showDelete {
+                            Button(role: .destructive) {
+                                Task { await store.toggleFavorite(track: track) }
+                            } label: {
+                                Image(systemName: "trash")
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                    .padding(.vertical, 4)
+                    if track.stableKey != tracks.last?.stableKey { Divider() }
+                }
+            }
+        }
+    }
+
+    private func artworkThumbnail(_ track: MusicTrack, size: CGFloat) -> some View {
+        Group {
+            if let url = artworkURL(for: track) {
+                AsyncImage(url: url) { phase in
+                    switch phase {
+                    case .success(let image):
+                        image
+                            .resizable()
+                            .scaledToFill()
+                    default:
+                        placeholderArtwork
+                    }
+                }
+            } else {
+                placeholderArtwork
+            }
+        }
+        .frame(width: size, height: size)
+        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+    }
+
+    private var placeholderArtwork: some View {
+        RoundedRectangle(cornerRadius: 12, style: .continuous)
+            .fill(Color.blue.opacity(0.14))
+            .overlay(Text("\u{266A}").font(.title3))
+    }
+
+    private func artworkURL(for track: MusicTrack) -> URL? {
+        let trimmed = track.artwork.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return nil }
+        return URL(string: trimmed, relativeTo: nil)
+    }
+
+    private func formatSeconds(_ value: Double) -> String {
+        guard value.isFinite, value > 0 else { return "0:00" }
+        let total = Int(value.rounded(.down))
+        let minute = total / 60
+        let second = total % 60
+        return String(format: "%d:%02d", minute, second)
     }
 
     private func submitButton(_ title: String, _ enabled: Bool, action: @escaping () async throws -> Void) -> some View {

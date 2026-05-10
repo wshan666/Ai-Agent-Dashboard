@@ -119,6 +119,131 @@ struct MusicWorkflowResponse: Codable {
     let autoPlay: Bool?
 }
 
+struct MusicTrack: Codable, Identifiable, Hashable {
+    let id: String
+    let title: String
+    let channel: String
+    let duration: String
+    let source: String
+    let sourceLabel: String
+    let previewUrl: String
+    let url: String
+    let rawId: String
+    let artwork: String
+    let lyrics: String
+    let local: Bool
+
+    private enum CodingKeys: String, CodingKey {
+        case id
+        case title
+        case channel
+        case duration
+        case source
+        case sourceLabel
+        case previewUrl
+        case url
+        case rawId
+        case artwork
+        case lyrics
+        case local
+    }
+
+    init(
+        id: String,
+        title: String,
+        channel: String,
+        duration: String,
+        source: String,
+        sourceLabel: String,
+        previewUrl: String,
+        url: String,
+        rawId: String,
+        artwork: String,
+        lyrics: String,
+        local: Bool
+    ) {
+        self.id = id
+        self.title = title
+        self.channel = channel
+        self.duration = duration
+        self.source = source
+        self.sourceLabel = sourceLabel
+        self.previewUrl = previewUrl
+        self.url = url
+        self.rawId = rawId
+        self.artwork = artwork
+        self.lyrics = lyrics
+        self.local = local
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        let source = container.decodeIfPresent(String.self, forKey: .source) ?? ""
+        let title = container.decodeIfPresent(String.self, forKey: .title) ?? ""
+        let rawId = container.decodeIfPresent(String.self, forKey: .rawId) ?? ""
+        let decodedId = container.decodeIfPresent(String.self, forKey: .id) ?? ""
+
+        self.id = decodedId.isEmpty ? (rawId.isEmpty ? title : rawId) : decodedId
+        self.title = title
+        self.channel = container.decodeIfPresent(String.self, forKey: .channel) ?? ""
+        self.duration = container.decodeIfPresent(String.self, forKey: .duration) ?? ""
+        self.source = source
+        self.sourceLabel = container.decodeIfPresent(String.self, forKey: .sourceLabel) ?? source
+        self.previewUrl = container.decodeIfPresent(String.self, forKey: .previewUrl) ?? ""
+        self.url = container.decodeIfPresent(String.self, forKey: .url) ?? ""
+        self.rawId = rawId
+        self.artwork = container.decodeIfPresent(String.self, forKey: .artwork) ?? ""
+        self.lyrics = container.decodeIfPresent(String.self, forKey: .lyrics) ?? ""
+        self.local = container.decodeIfPresent(Bool.self, forKey: .local) ?? false
+    }
+
+    var artistText: String {
+        channel.isEmpty ? sourceLabel : channel
+    }
+
+    var streamType: String {
+        if local { return "local" }
+        if !previewUrl.isEmpty { return "preview" }
+        return "stream"
+    }
+
+    var stableKey: String {
+        let base = [source, rawId, id, title, channel]
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() }
+            .filter { !$0.isEmpty }
+            .joined(separator: "|")
+        return base.isEmpty ? "music-track" : base
+    }
+
+    static func == (lhs: MusicTrack, rhs: MusicTrack) -> Bool {
+        lhs.stableKey == rhs.stableKey
+    }
+
+    func hash(into hasher: inout Hasher) {
+        hasher.combine(stableKey)
+    }
+}
+
+struct MusicSearchResponse: Codable {
+    let ok: Bool?
+    let results: [MusicTrack]?
+    let hint: String?
+    let searchError: String?
+}
+
+struct MusicLibraryResponse: Codable {
+    let ok: Bool?
+    let favorites: [MusicTrack]?
+    let recent: [MusicTrack]?
+}
+
+struct MusicLibraryUpdateResponse: Codable {
+    let ok: Bool?
+    let active: Bool?
+    let favorites: [MusicTrack]?
+    let recent: [MusicTrack]?
+}
+
 struct WorkflowCoderDraft: Identifiable, Hashable {
     let id = UUID()
     var agentId: String = ""
