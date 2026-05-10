@@ -47,7 +47,7 @@ struct AgentWebContainer: View {
                 if isLoading {
                     VStack(spacing: 10) {
                         ProgressView()
-                        Text("\u{6b63}\u{5728}\u{6253}\u{5f00}\uff1a\(route.title)")
+                        Text("\u{6b63}\u{5728}\u{6253}\u{5f00}\u{ff1a}\(route.title)")
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }

@@ -80,7 +80,7 @@ struct NativeChatView: View {
                         .font(.title2.bold())
                     Text(mode == .group
                          ? (selectedAgents.isEmpty ? "\u{5148}\u{9009}\u{62e9}\u{7fa4}\u{804a}\u{667a}\u{80fd}\u{4f53}" : "\u{5df2}\u{9009}\u{62e9} \(selectedAgents.count) \u{4e2a}\u{667a}\u{80fd}\u{4f53}")
-                         : (privateAgent == nil ? "\u{5148}\u{9009}\u{62e9}\u{79c1}\u{804a}\u{5bf9}\u{8c61}" : "\u{5f53}\u{524d}\u{79c1}\u{804a}\uff1a\(privateAgent!.name)"))
+                         : (privateAgent == nil ? "\u{5148}\u{9009}\u{62e9}\u{79c1}\u{804a}\u{5bf9}\u{8c61}" : "\u{5f53}\u{524d}\u{79c1}\u{804a}\u{ff1a}\(privateAgent!.name)"))
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
@@ -152,7 +152,7 @@ struct NativeChatView: View {
 
     private var topicSection: some View {
         VStack(alignment: .leading, spacing: 10) {
-            TextField(mode == .group ? "\u{8bdd}\u{9898}\uff08\u{53ef}\u{9009}\uff09" : "\u{79c1}\u{804a}\u{8bdd}\u{9898}\uff08\u{53ef}\u{9009}\uff09", text: $topic)
+            TextField(mode == .group ? "\u{8bdd}\u{9898}\u{ff08}\u{53ef}\u{9009}\u{ff09}" : "\u{79c1}\u{804a}\u{8bdd}\u{9898}\u{ff08}\u{53ef}\u{9009}\u{ff09}", text: $topic)
                 .textFieldStyle(.roundedBorder)
                 .focused($focusedField, equals: .topic)
 

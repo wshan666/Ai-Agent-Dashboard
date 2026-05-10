@@ -125,9 +125,9 @@ private struct ProfileView: View {
             DispatchQueue.main.async {
                 isTesting = false
                 if let error {
-                    testStatus = "\u{8fde}\u{63a5}\u{5931}\u{8d25}\uff1a\(error.localizedDescription)"
+                    testStatus = "\u{8fde}\u{63a5}\u{5931}\u{8d25}\u{ff1a}\(error.localizedDescription)"
                 } else if let http = response as? HTTPURLResponse {
-                    testStatus = "\u{8fde}\u{63a5}\u{6210}\u{529f}\uff1aHTTP \(http.statusCode)"
+                    testStatus = "\u{8fde}\u{63a5}\u{6210}\u{529f}\u{ff1a}HTTP \(http.statusCode)"
                 } else {
                     testStatus = "\u{8fde}\u{63a5}\u{6210}\u{529f}"
                 }

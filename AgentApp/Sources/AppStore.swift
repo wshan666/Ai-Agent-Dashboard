@@ -42,14 +42,14 @@ final class AppStore: ObservableObject {
         do {
             agents = try await fetchAgents()
         } catch {
-            errors.append("\u{667a}\u{80fd}\u{4f53}\u{5217}\u{8868}\u{52a0}\u{8f7d}\u{5931}\u{8d25}\uff1a\(error.localizedDescription)")
+            errors.append("\u{667a}\u{80fd}\u{4f53}\u{5217}\u{8868}\u{52a0}\u{8f7d}\u{5931}\u{8d25}\u{ff1a}\(error.localizedDescription)")
         }
 
         do {
             let progress = try await fetchDevProgress()
             devProgress = progress.items ?? progress.active ?? []
         } catch {
-            errors.append("\u{7814}\u{53d1}\u{8fdb}\u{5ea6}\u{52a0}\u{8f7d}\u{5931}\u{8d25}\uff1a\(error.localizedDescription)")
+            errors.append("\u{7814}\u{53d1}\u{8fdb}\u{5ea6}\u{52a0}\u{8f7d}\u{5931}\u{8d25}\u{ff1a}\(error.localizedDescription)")
         }
 
         do {
@@ -57,7 +57,7 @@ final class AppStore: ObservableObject {
             messages = sortedMessages(history.messages)
             topics = history.topics
         } catch {
-            errors.append("\u{804a}\u{5929}\u{8bb0}\u{5f55}\u{52a0}\u{8f7d}\u{5931}\u{8d25}\uff1a\(error.localizedDescription)")
+            errors.append("\u{804a}\u{5929}\u{8bb0}\u{5f55}\u{52a0}\u{8f7d}\u{5931}\u{8d25}\u{ff1a}\(error.localizedDescription)")
         }
 
         lastError = errors.isEmpty ? nil : errors.joined(separator: "\n")
@@ -73,7 +73,7 @@ final class AppStore: ObservableObject {
             topics = history.topics
             lastError = nil
         } catch {
-            lastError = "\u{804a}\u{5929}\u{8bb0}\u{5f55}\u{52a0}\u{8f7d}\u{5931}\u{8d25}\uff1a\(error.localizedDescription)"
+            lastError = "\u{804a}\u{5929}\u{8bb0}\u{5f55}\u{52a0}\u{8f7d}\u{5931}\u{8d25}\u{ff1a}\(error.localizedDescription)"
         }
     }
 
@@ -203,7 +203,7 @@ final class AppStore: ObservableObject {
         } catch {
             musicSearchResults = []
             musicSearchHint = error.localizedDescription
-            lastError = "\u{97f3}\u{4e50}\u{641c}\u{7d22}\u{5931}\u{8d25}\uff1a\(error.localizedDescription)"
+            lastError = "\u{97f3}\u{4e50}\u{641c}\u{7d22}\u{5931}\u{8d25}\u{ff1a}\(error.localizedDescription)"
         }
     }
 
@@ -213,7 +213,7 @@ final class AppStore: ObservableObject {
             musicFavorites = library.favorites ?? []
             musicRecent = library.recent ?? []
         } catch {
-            lastError = "\u{97f3}\u{4e50}\u{5217}\u{8868}\u{52a0}\u{8f7d}\u{5931}\u{8d25}\uff1a\(error.localizedDescription)"
+            lastError = "\u{97f3}\u{4e50}\u{5217}\u{8868}\u{52a0}\u{8f7d}\u{5931}\u{8d25}\u{ff1a}\(error.localizedDescription)"
         }
     }
 
@@ -224,7 +224,7 @@ final class AppStore: ObservableObject {
             ])
             musicFavorites = response.favorites ?? []
         } catch {
-            lastError = "\u{6536}\u{85cf}\u{66f4}\u{65b0}\u{5931}\u{8d25}\uff1a\(error.localizedDescription)"
+            lastError = "\u{6536}\u{85cf}\u{66f4}\u{65b0}\u{5931}\u{8d25}\u{ff1a}\(error.localizedDescription)"
         }
     }
 
@@ -479,10 +479,12 @@ final class AppStore: ObservableObject {
         guard let player = musicPlayer else { return }
         timeObserverToken = player.addPeriodicTimeObserver(forInterval: CMTime(seconds: 0.25, preferredTimescale: 600), queue: .main) { [weak self] time in
             guard let self else { return }
-            self.musicCurrentTime = time.seconds.isFinite ? time.seconds : 0
-            let duration = player.currentItem?.duration.seconds ?? 0
-            self.musicDuration = duration.isFinite ? duration : 0
-            self.isMusicPlaying = player.timeControlStatus == .playing
+            Task { @MainActor in
+                self.musicCurrentTime = time.seconds.isFinite ? time.seconds : 0
+                let duration = player.currentItem?.duration.seconds ?? 0
+                self.musicDuration = duration.isFinite ? duration : 0
+                self.isMusicPlaying = player.timeControlStatus == .playing
+            }
         }
     }
 

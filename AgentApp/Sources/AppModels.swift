@@ -178,23 +178,23 @@ struct MusicTrack: Codable, Identifiable, Hashable {
 
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
-        let source = container.decodeIfPresent(String.self, forKey: .source) ?? ""
-        let title = container.decodeIfPresent(String.self, forKey: .title) ?? ""
-        let rawId = container.decodeIfPresent(String.self, forKey: .rawId) ?? ""
-        let decodedId = container.decodeIfPresent(String.self, forKey: .id) ?? ""
+        let source = try container.decodeIfPresent(String.self, forKey: .source) ?? ""
+        let title = try container.decodeIfPresent(String.self, forKey: .title) ?? ""
+        let rawId = try container.decodeIfPresent(String.self, forKey: .rawId) ?? ""
+        let decodedId = try container.decodeIfPresent(String.self, forKey: .id) ?? ""
 
         self.id = decodedId.isEmpty ? (rawId.isEmpty ? title : rawId) : decodedId
         self.title = title
-        self.channel = container.decodeIfPresent(String.self, forKey: .channel) ?? ""
-        self.duration = container.decodeIfPresent(String.self, forKey: .duration) ?? ""
+        self.channel = try container.decodeIfPresent(String.self, forKey: .channel) ?? ""
+        self.duration = try container.decodeIfPresent(String.self, forKey: .duration) ?? ""
         self.source = source
-        self.sourceLabel = container.decodeIfPresent(String.self, forKey: .sourceLabel) ?? source
-        self.previewUrl = container.decodeIfPresent(String.self, forKey: .previewUrl) ?? ""
-        self.url = container.decodeIfPresent(String.self, forKey: .url) ?? ""
+        self.sourceLabel = try container.decodeIfPresent(String.self, forKey: .sourceLabel) ?? source
+        self.previewUrl = try container.decodeIfPresent(String.self, forKey: .previewUrl) ?? ""
+        self.url = try container.decodeIfPresent(String.self, forKey: .url) ?? ""
         self.rawId = rawId
-        self.artwork = container.decodeIfPresent(String.self, forKey: .artwork) ?? ""
-        self.lyrics = container.decodeIfPresent(String.self, forKey: .lyrics) ?? ""
-        self.local = container.decodeIfPresent(Bool.self, forKey: .local) ?? false
+        self.artwork = try container.decodeIfPresent(String.self, forKey: .artwork) ?? ""
+        self.lyrics = try container.decodeIfPresent(String.self, forKey: .lyrics) ?? ""
+        self.local = try container.decodeIfPresent(Bool.self, forKey: .local) ?? false
     }
 
     var artistText: String {

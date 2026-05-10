@@ -111,7 +111,7 @@ struct NativeWorkflowView: View {
 
     private var codeTemplate: some View {
         card {
-            headerBlock("\u{4ee3}\u{7801}\u{5ba1}\u{67e5}\u{5de5}\u{4f5c}\u{6d41}", "\u{63cf}\u{8ff0}\u{4efb}\u{52a1}\uff0c\u{9009}\u{62e9}\u{6267}\u{884c}\u{667a}\u{80fd}\u{4f53}\uff0c\u{518d}\u{6307}\u{5b9a}\u{8bc4}\u{5ba1}\u{548c}\u{603b}\u{7ed3}\u{4eba}\u{3002}")
+            headerBlock("\u{4ee3}\u{7801}\u{5ba1}\u{67e5}\u{5de5}\u{4f5c}\u{6d41}", "\u{63cf}\u{8ff0}\u{4efb}\u{52a1}\u{ff0c}\u{9009}\u{62e9}\u{6267}\u{884c}\u{667a}\u{80fd}\u{4f53}\u{ff0c}\u{518d}\u{6307}\u{5b9a}\u{8bc4}\u{5ba1}\u{548c}\u{603b}\u{7ed3}\u{4eba}\u{3002}")
             TextField("\u{63cf}\u{8ff0}\u{9879}\u{76ee}\u{6216}\u{9700}\u{6c42}", text: $codeTask, axis: .vertical)
                 .textFieldStyle(.roundedBorder)
                 .lineLimit(4 ... 8)
@@ -165,7 +165,7 @@ struct NativeWorkflowView: View {
 
     private var projectTemplate: some View {
         card {
-            headerBlock("\u{9879}\u{76ee}\u{6539}\u{9020}\u{5de5}\u{4f5c}\u{6d41}", "\u{9002}\u{5408}\u{771f}\u{5b9e}\u{76ee}\u{5f55}\u{6539}\u{9020}\uff0c\u{5305}\u{542b}\u{6267}\u{884c}\u{8005}\u{3001}\u{8bc4}\u{5ba1}\u{8005}\u{548c}\u{6d4b}\u{8bd5}\u{547d}\u{4ee4}\u{3002}")
+            headerBlock("\u{9879}\u{76ee}\u{6539}\u{9020}\u{5de5}\u{4f5c}\u{6d41}", "\u{9002}\u{5408}\u{771f}\u{5b9e}\u{76ee}\u{5f55}\u{6539}\u{9020}\u{ff0c}\u{5305}\u{542b}\u{6267}\u{884c}\u{8005}\u{3001}\u{8bc4}\u{5ba1}\u{8005}\u{548c}\u{6d4b}\u{8bd5}\u{547d}\u{4ee4}\u{3002}")
             TextField("\u{9879}\u{76ee}\u{76ee}\u{5f55}", text: $projectDraft.projectDir).textFieldStyle(.roundedBorder).focused($focusedField, equals: .projectDir)
             TextField("\u{6539}\u{9020}\u{9700}\u{6c42}", text: $projectDraft.task, axis: .vertical).textFieldStyle(.roundedBorder).lineLimit(3 ... 6).focused($focusedField, equals: .projectTask)
             pickerRow("\u{9879}\u{76ee}\u{7ecf}\u{7406}", selection: $projectDraft.pmId, allowEmpty: true)
@@ -244,7 +244,7 @@ struct NativeWorkflowView: View {
 
     private var musicTemplate: some View {
         card {
-            headerBlock("\u{97f3}\u{4e50}\u{5de5}\u{4f5c}\u{6d41}", "\u{8f93}\u{5165}\u{6b4c}\u{66f2}\u{540d}\uff0c\u{751f}\u{6210}\u{6b4c}\u{8bcd}\u{3001}\u{8bd5}\u{542c}\u{97f3}\u{9891}\u{548c}\u{8bf4}\u{660e}\u{6587}\u{6863}\u{3002}")
+            headerBlock("\u{97f3}\u{4e50}\u{5de5}\u{4f5c}\u{6d41}", "\u{8f93}\u{5165}\u{6b4c}\u{66f2}\u{540d}\u{ff0c}\u{751f}\u{6210}\u{6b4c}\u{8bcd}\u{3001}\u{8bd5}\u{542c}\u{97f3}\u{9891}\u{548c}\u{8bf4}\u{660e}\u{6587}\u{6863}\u{3002}")
             TextField("\u{6b4c}\u{66f2}\u{540d}\u{79f0}", text: $musicDraft.song).textFieldStyle(.roundedBorder).focused($focusedField, equals: .musicSong)
             TextField("\u{53c2}\u{8003}\u{6b4c}\u{624b}\u{6216}\u{98ce}\u{683c}", text: $musicDraft.artist).textFieldStyle(.roundedBorder).focused($focusedField, equals: .musicArtist)
             TextField("\u{6b4c}\u{8bcd}\u{98ce}\u{683c}", text: $musicDraft.lyricsStyle).textFieldStyle(.roundedBorder).focused($focusedField, equals: .musicStyle)
@@ -380,7 +380,7 @@ struct NativeWorkflowView: View {
     }
 
     private func stepperRow(_ title: String, _ value: Binding<Int>, _ range: ClosedRange<Int>) -> some View {
-        Stepper("\(title)\uff1a\(value.wrappedValue)", value: value, in: range)
+        Stepper("\(title)\u{ff1a}\(value.wrappedValue)", value: value, in: range)
     }
 
     private func headerBlock(_ title: String, _ subtitle: String) -> some View {
