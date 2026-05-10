@@ -10,16 +10,16 @@ struct ContentView: View {
             NavigationStack {
                 NativeDashboardView()
             }
-                .tabItem {
-                    Label("Home", systemImage: "house")
-                }
-                .tag(RootTab.home)
+            .tabItem {
+                Label("首页", systemImage: "house")
+            }
+            .tag(RootTab.home)
 
             NavigationStack {
                 NativeChatView()
             }
             .tabItem {
-                Label("Collab", systemImage: "person.3.fill")
+                Label("协作", systemImage: "person.3.fill")
             }
             .tag(RootTab.chat)
 
@@ -27,7 +27,7 @@ struct ContentView: View {
                 NativeWorkflowView()
             }
             .tabItem {
-                Label("Workflow", systemImage: "point.3.connected.trianglepath.dotted")
+                Label("工作流", systemImage: "point.3.connected.trianglepath.dotted")
             }
             .tag(RootTab.workflow)
 
@@ -35,13 +35,13 @@ struct ContentView: View {
                 AgentWebContainer(route: .bigscreen)
             }
             .tabItem {
-                Label("Big Screen", systemImage: "display.2")
+                Label("大屏", systemImage: "display.2")
             }
             .tag(RootTab.bigscreen)
 
             ProfileView()
                 .tabItem {
-                    Label("Me", systemImage: "person.crop.circle")
+                    Label("我的", systemImage: "person.crop.circle")
                 }
                 .tag(RootTab.profile)
         }
@@ -51,11 +51,13 @@ struct ContentView: View {
                 await store.refreshDashboard()
             }
         }
-        .alert("Request Error", isPresented: Binding(
+        .alert("请求错误", isPresented: Binding(
             get: { store.lastError != nil },
             set: { if !$0 { store.lastError = nil } }
         )) {
-            Button("OK", role: .cancel) { store.lastError = nil }
+            Button("知道了", role: .cancel) {
+                store.lastError = nil
+            }
         } message: {
             Text(store.lastError ?? "")
         }
@@ -73,23 +75,23 @@ private enum RootTab {
 private struct ProfileView: View {
     @EnvironmentObject private var settings: ServerSettings
     @State private var draftURL: String = ""
-    @State private var testStatus: String = "Not tested"
+    @State private var testStatus: String = "尚未测试"
     @State private var isTesting = false
 
     var body: some View {
         NavigationStack {
             Form {
-                Section("Server URL") {
+                Section("服务器地址") {
                     TextField("http://192.168.50.32:3456", text: $draftURL)
                         .textInputAutocapitalization(.never)
                         .keyboardType(.URL)
                         .autocorrectionDisabled()
 
-                    Button("Save and Use") {
+                    Button("保存并使用") {
                         settings.baseURLString = draftURL.trimmingCharacters(in: .whitespacesAndNewlines)
                     }
 
-                    Button(isTesting ? "Testing..." : "Test Connection") {
+                    Button(isTesting ? "测试中..." : "测试连接") {
                         testConnection()
                     }
                     .disabled(isTesting)
@@ -99,21 +101,21 @@ private struct ProfileView: View {
                         .foregroundStyle(.secondary)
                 }
 
-                Section("Quick Access") {
+                Section("快捷入口") {
                     NavigationLink {
                         AgentWebContainer(route: .dashboard)
                     } label: {
-                        Label("Dashboard", systemImage: AgentRoute.dashboard.systemImage)
+                        Label("仪表盘", systemImage: AgentRoute.dashboard.systemImage)
                     }
 
                     NavigationLink {
                         AgentWebContainer(route: .upgrade)
                     } label: {
-                        Label("Upgrade", systemImage: AgentRoute.upgrade.systemImage)
+                        Label("系统升级", systemImage: AgentRoute.upgrade.systemImage)
                     }
                 }
             }
-            .navigationTitle("Me")
+            .navigationTitle("我的")
             .onAppear {
                 draftURL = settings.baseURLString
             }
@@ -123,12 +125,12 @@ private struct ProfileView: View {
     private func testConnection() {
         let target = draftURL.trimmingCharacters(in: .whitespacesAndNewlines)
         guard let url = URL(string: target), url.scheme != nil else {
-            testStatus = "Invalid URL format"
+            testStatus = "地址格式不正确"
             return
         }
 
         isTesting = true
-        testStatus = "Testing..."
+        testStatus = "测试中..."
 
         var request = URLRequest(url: url)
         request.timeoutInterval = 8
@@ -137,11 +139,11 @@ private struct ProfileView: View {
             DispatchQueue.main.async {
                 isTesting = false
                 if let error {
-                    testStatus = "Connection failed: \(error.localizedDescription)"
+                    testStatus = "连接失败：\(error.localizedDescription)"
                 } else if let http = response as? HTTPURLResponse {
-                    testStatus = "Connected: HTTP \(http.statusCode)"
+                    testStatus = "连接成功：HTTP \(http.statusCode)"
                 } else {
-                    testStatus = "Connected"
+                    testStatus = "连接成功"
                 }
             }
         }.resume()

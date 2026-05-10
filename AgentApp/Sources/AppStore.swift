@@ -21,23 +21,30 @@ final class AppStore: ObservableObject {
         isLoadingDashboard = true
         defer { isLoadingDashboard = false }
 
+        var errors: [String] = []
+
         do {
-            async let agentsTask = fetchAgents()
-            async let progressTask = fetchDevProgress()
-            async let historyTask = fetchChatHistory()
+            self.agents = try await fetchAgents()
+        } catch {
+            errors.append("智能体列表加载失败：\(error.localizedDescription)")
+        }
 
-            let agents = try await agentsTask
-            let progress = try await progressTask
-            let history = try await historyTask
+        do {
+            let progress = try await fetchDevProgress()
+            self.devProgress = progress.items ?? progress.active ?? []
+        } catch {
+            errors.append("研发进度加载失败：\(error.localizedDescription)")
+        }
 
-            self.agents = agents
-            self.devProgress = progress.items ?? []
+        do {
+            let history = try await fetchChatHistory()
             self.messages = sortedMessages(history.messages)
             self.topics = history.topics
-            self.lastError = nil
         } catch {
-            self.lastError = error.localizedDescription
+            errors.append("聊天记录加载失败：\(error.localizedDescription)")
         }
+
+        self.lastError = errors.isEmpty ? nil : errors.joined(separator: "\n")
     }
 
     func refreshChat() async {
@@ -50,7 +57,7 @@ final class AppStore: ObservableObject {
             self.topics = history.topics
             self.lastError = nil
         } catch {
-            self.lastError = error.localizedDescription
+            self.lastError = "聊天记录加载失败：\(error.localizedDescription)"
         }
     }
 

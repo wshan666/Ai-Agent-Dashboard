@@ -10,7 +10,7 @@ struct NativeDashboardView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 18) {
                 HStack {
-                    Text("Overview")
+                    Text("概览")
                         .font(.largeTitle.bold())
                     Spacer()
                     if store.isLoadingDashboard {
@@ -19,17 +19,17 @@ struct NativeDashboardView: View {
                 }
 
                 LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
-                    statCard("Agents", value: "\(store.agents.count)", tint: .blue)
-                    statCard("Online", value: "\(onlineCount)", tint: .green)
-                    statCard("Offline", value: "\(offlineCount)", tint: .orange)
-                    statCard("Dev Tasks", value: "\(store.devProgress.count)", tint: .purple)
+                    statCard("智能体", value: "\(store.agents.count)", tint: .blue)
+                    statCard("在线", value: "\(onlineCount)", tint: .green)
+                    statCard("离线", value: "\(offlineCount)", tint: .orange)
+                    statCard("研发任务", value: "\(store.devProgress.count)", tint: .purple)
                 }
 
-                sectionCard(title: "Quick Actions") {
+                sectionCard(title: "快捷操作") {
                     NavigationLink {
                         NativeChatView()
                     } label: {
-                        quickRow("Open Native Chat", systemImage: "bubble.left.and.bubble.right")
+                        quickRow("打开原生协作", systemImage: "bubble.left.and.bubble.right")
                     }
                     .buttonStyle(.plain)
 
@@ -38,19 +38,19 @@ struct NativeDashboardView: View {
                     NavigationLink {
                         NativeWorkflowView()
                     } label: {
-                        quickRow("Open Native Workflow", systemImage: "point.3.connected.trianglepath.dotted")
+                        quickRow("打开原生工作流", systemImage: "point.3.connected.trianglepath.dotted")
                     }
                     .buttonStyle(.plain)
                 }
 
                 if !store.devProgress.isEmpty {
-                    sectionCard(title: "Current Dev Progress") {
+                    sectionCard(title: "当前研发进度") {
                         ForEach(store.devProgress.prefix(4)) { item in
                             HStack(alignment: .top) {
                                 VStack(alignment: .leading, spacing: 4) {
                                     Text(item.title ?? item.requirement ?? item.id)
                                         .font(.headline)
-                                    Text(item.status ?? "unknown")
+                                    Text(item.status ?? "未知状态")
                                         .font(.caption)
                                         .foregroundStyle(.secondary)
                                 }
@@ -63,7 +63,7 @@ struct NativeDashboardView: View {
                     }
                 }
 
-                sectionCard(title: "Agents") {
+                sectionCard(title: "智能体") {
                     ForEach(store.agents.prefix(10)) { agent in
                         HStack(spacing: 12) {
                             Text(agent.displayIcon)

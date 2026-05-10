@@ -17,11 +17,11 @@ struct AgentSummary: Identifiable, Hashable {
 
     var statusText: String {
         switch status {
-        case "available": return "Online"
-        case "running": return "Busy"
-        case "checking": return "Checking"
-        case "disabled": return "Disabled"
-        default: return "Offline"
+        case "available": return "在线"
+        case "running": return "忙碌"
+        case "checking": return "检测中"
+        case "disabled": return "已禁用"
+        default: return "离线"
         }
     }
 
@@ -32,7 +32,7 @@ struct AgentSummary: Identifiable, Hashable {
     var primaryModelText: String {
         if !modelLabel.isEmpty { return modelLabel }
         if !engineLabel.isEmpty { return engineLabel }
-        return "Unknown model"
+        return "未知模型"
     }
 }
 
@@ -81,7 +81,7 @@ struct DevProgressItem: Codable, Identifiable, Hashable {
 }
 
 struct DevProgressResponse: Codable {
-    let active: [String]?
+    let active: [DevProgressItem]?
     let items: [DevProgressItem]?
 }
 
@@ -124,19 +124,19 @@ enum WorkflowTemplate: String, CaseIterable, Identifiable {
 
     var title: String {
         switch self {
-        case .code: return "Code Review"
-        case .project: return "Project Upgrade"
-        case .content: return "Content Publish"
-        case .ppt: return "PPT Review"
+        case .code: return "代码审查"
+        case .project: return "项目改造"
+        case .content: return "内容发布"
+        case .ppt: return "PPT制作"
         }
     }
 
     var subtitle: String {
         switch self {
-        case .code: return "Coder + reviewer pipeline"
-        case .project: return "Executor, reviewers and test command"
-        case .content: return "Copy, image, integrator and reviewer"
-        case .ppt: return "Outline, maker, reviewer and delivery"
+        case .code: return "程序员 + 评审协作流水线"
+        case .project: return "执行者、评审与测试命令"
+        case .content: return "文案、图片、整合与审核"
+        case .ppt: return "策划、制作、审核与交付"
         }
     }
 

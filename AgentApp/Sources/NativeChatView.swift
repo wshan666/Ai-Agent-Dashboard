@@ -25,9 +25,12 @@ struct NativeChatView: View {
             composer
         }
         .background(Color(.systemGroupedBackground))
-        .navigationTitle("Collab")
+        .navigationTitle("协作")
         .navigationBarTitleDisplayMode(.inline)
         .task {
+            if store.agents.isEmpty {
+                await store.refreshDashboard()
+            }
             if store.messages.isEmpty {
                 await store.refreshChat()
             }
@@ -44,9 +47,9 @@ struct NativeChatView: View {
         VStack(spacing: 12) {
             HStack(alignment: .top) {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("Team Chat")
+                    Text("群聊协作")
                         .font(.title2.bold())
-                    Text(selectedAgents.isEmpty ? "Select one or more agents to start" : "\(selectedAgents.count) agent(s) selected")
+                    Text(selectedAgents.isEmpty ? "先选择一个或多个智能体" : "已选择 \(selectedAgents.count) 个智能体")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
@@ -67,7 +70,7 @@ struct NativeChatView: View {
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 8) {
                     if selectedAgents.isEmpty {
-                        Button("Choose Agents") {
+                        Button("选择智能体") {
                             showAgentPicker = true
                         }
                         .buttonStyle(.borderedProminent)
@@ -107,7 +110,7 @@ struct NativeChatView: View {
 
     private var topicSection: some View {
         VStack(alignment: .leading, spacing: 10) {
-            TextField("Topic (optional)", text: $topic)
+            TextField("话题（可选）", text: $topic)
                 .textFieldStyle(.roundedBorder)
 
             if !store.topics.isEmpty {
@@ -161,7 +164,7 @@ struct NativeChatView: View {
     private var composer: some View {
         VStack(spacing: 12) {
             HStack(alignment: .bottom, spacing: 10) {
-                TextField("Type a message", text: $draft, axis: .vertical)
+                TextField("输入消息", text: $draft, axis: .vertical)
                     .textFieldStyle(.roundedBorder)
                     .lineLimit(2 ... 6)
 
@@ -256,15 +259,15 @@ struct NativeChatView: View {
                 }
                 .buttonStyle(.plain)
             }
-            .navigationTitle("Choose Agents")
+            .navigationTitle("选择智能体")
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
-                    Button("Clear") {
+                    Button("清空") {
                         selectedAgentIds.removeAll()
                     }
                 }
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button("Done") {
+                    Button("完成") {
                         showAgentPicker = false
                     }
                 }

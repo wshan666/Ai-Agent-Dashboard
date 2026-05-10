@@ -21,9 +21,9 @@ struct NativeWorkflowView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 18) {
                 VStack(alignment: .leading, spacing: 6) {
-                    Text("Workflow Center")
+                    Text("工作流中心")
                         .font(.largeTitle.bold())
-                    Text("Launch different native workflow templates without leaving the app.")
+                    Text("在手机里直接发起不同类型的原生工作流。")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                 }
@@ -40,7 +40,7 @@ struct NativeWorkflowView: View {
                 NavigationLink {
                     AgentWebContainer(route: .workflow)
                 } label: {
-                    Label("Open web workflow center", systemImage: "safari")
+                    Label("打开网页工作流中心", systemImage: "safari")
                         .font(.subheadline.weight(.semibold))
                         .padding(.horizontal, 16)
                         .padding(.vertical, 12)
@@ -54,7 +54,7 @@ struct NativeWorkflowView: View {
             .padding(.top, 16)
         }
         .background(Color(.systemGroupedBackground))
-        .navigationTitle("Workflow")
+        .navigationTitle("工作流")
         .navigationBarTitleDisplayMode(.inline)
         .sheet(item: $reviewerSheetMode) { mode in
             reviewerPicker(mode: mode)
@@ -160,7 +160,7 @@ struct NativeWorkflowView: View {
             }
             .buttonStyle(.bordered)
 
-            submitButton(title: "Start Code Workflow", enabled: canSubmitCode) {
+            submitButton(title: "启动代码审查工作流", enabled: canSubmitCode) {
                 let coders = codeCoders.filter {
                     !$0.agentId.isEmpty && !$0.task.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
                 }
@@ -207,7 +207,7 @@ struct NativeWorkflowView: View {
             stepperRow(title: "Max retries", value: $projectDraft.maxRetries, range: 0 ... 5)
             Toggle("Feishu notify", isOn: $projectDraft.feishuNotify)
 
-            submitButton(title: "Start Project Upgrade", enabled: canSubmitProject) {
+            submitButton(title: "启动项目改造工作流", enabled: canSubmitProject) {
                 try await store.startProjectWorkflow(projectDraft)
                 projectDraft.task = ""
                 projectDraft.pmId = ""
@@ -251,7 +251,7 @@ struct NativeWorkflowView: View {
 
             Toggle("Feishu notify", isOn: $contentDraft.feishuNotify)
 
-            submitButton(title: "Start Content Publish", enabled: canSubmitContent) {
+            submitButton(title: "启动内容发布工作流", enabled: canSubmitContent) {
                 try await store.startContentWorkflow(contentDraft)
                 contentDraft = ContentWorkflowDraft()
             }
@@ -300,7 +300,7 @@ struct NativeWorkflowView: View {
             stepperRow(title: "Max retries", value: $pptDraft.maxRetries, range: 0 ... 5)
             Toggle("Feishu notify", isOn: $pptDraft.feishuNotify)
 
-            submitButton(title: "Start PPT Workflow", enabled: canSubmitPpt) {
+            submitButton(title: "启动PPT工作流", enabled: canSubmitPpt) {
                 try await store.startPptWorkflow(pptDraft)
                 pptDraft = PptWorkflowDraft()
             }
