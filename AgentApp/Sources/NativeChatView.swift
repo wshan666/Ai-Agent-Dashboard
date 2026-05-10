@@ -341,31 +341,35 @@ struct NativeChatView: View {
         let text = draft.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !text.isEmpty else { return }
 
+        let trimmedTopic = topic.trimmingCharacters(in: .whitespacesAndNewlines)
+        let roomId = mode == .direct ? privateAgentId : nil
+        let optimisticMessage = ChatMessage(
+            id: UUID().uuidString,
+            from: "user",
+            fromName: "\u{4f60}",
+            content: text,
+            timestamp: ISO8601DateFormatter().string(from: Date()),
+            type: "chat",
+            topic: trimmedTopic.isEmpty ? nil : trimmedTopic,
+            room: roomId
+        )
+
         isSending = true
         defer { isSending = false }
 
         let targetIds = mode == .group ? Array(selectedAgentIds) : [privateAgentId]
         guard !targetIds.isEmpty else { return }
 
+        store.messages.append(optimisticMessage)
+        store.messages.sort { ($0.timestamp?.asIsoDate ?? .distantPast) < ($1.timestamp?.asIsoDate ?? .distantPast) }
+        draft = ""
+        focusedField = nil
+        UIApplication.dismissKeyboard()
+
         do {
-            try await store.sendChat(agentIds: targetIds, message: text, topic: topic.trimmingCharacters(in: .whitespacesAndNewlines))
-            store.messages.append(
-                ChatMessage(
-                    id: UUID().uuidString,
-                    from: "user",
-                    fromName: "\u{4f60}",
-                    content: text,
-                    timestamp: ISO8601DateFormatter().string(from: Date()),
-                    type: "chat",
-                    topic: topic,
-                    room: mode == .direct ? "direct" : "group"
-                )
-            )
-            store.messages.sort { ($0.timestamp?.asIsoDate ?? .distantPast) < ($1.timestamp?.asIsoDate ?? .distantPast) }
-            draft = ""
-            focusedField = nil
-            UIApplication.dismissKeyboard()
+            try await store.sendChat(agentIds: targetIds, message: text, topic: trimmedTopic, room: roomId)
         } catch {
+            store.messages.removeAll { $0.id == optimisticMessage.id }
             store.lastError = error.localizedDescription
         }
     }

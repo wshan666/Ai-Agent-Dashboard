@@ -77,13 +77,16 @@ final class AppStore: ObservableObject {
         }
     }
 
-    func sendChat(agentIds: [String], message: String, topic: String) async throws {
-        let payload: [String: Any] = [
+    func sendChat(agentIds: [String], message: String, topic: String, room: String? = nil) async throws {
+        var payload: [String: Any] = [
             "agentIds": agentIds,
             "message": message,
             "mode": "chat",
             "topic": topic.isEmpty ? NSNull() : topic
         ]
+        if let room, !room.isEmpty {
+            payload["room"] = room
+        }
 
         _ = try await postJSON(path: "/api/chat/send", payload: payload) as ChatSendResponse
         lastError = nil
