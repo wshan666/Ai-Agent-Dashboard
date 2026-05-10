@@ -1,5 +1,6 @@
 import SwiftUI
 import WebKit
+import AVFoundation
 
 struct AgentWebContainer: View {
     @EnvironmentObject private var settings: ServerSettings
@@ -72,6 +73,18 @@ struct RouteWebView: UIViewRepresentable {
 
     func makeUIView(context: Context) -> WKWebView {
         let configuration = WKWebViewConfiguration()
+        configuration.allowsInlineMediaPlayback = true
+        configuration.mediaTypesRequiringUserActionForPlayback = []
+        configuration.defaultWebpagePreferences.allowsContentJavaScript = true
+
+        do {
+            let audioSession = AVAudioSession.sharedInstance()
+            try audioSession.setCategory(.playback, mode: .default, options: [.allowAirPlay, .allowBluetooth])
+            try audioSession.setActive(true)
+        } catch {
+            print("Audio session setup failed: \(error.localizedDescription)")
+        }
+
         let webView = WKWebView(frame: .zero, configuration: configuration)
         webView.navigationDelegate = context.coordinator
         webView.scrollView.contentInsetAdjustmentBehavior = .never
