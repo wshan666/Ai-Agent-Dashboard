@@ -73,8 +73,7 @@ jobs:
           echo "Deploying v${{ steps.version.outputs.version }} to OTA..."
           pip3 install --break-system-packages paramiko
           python3 << 'PYEOF'
-          import paramiko, os, json, plistlib
-          import datetime
+          import paramiko, os, json, plistlib, datetime
           from io import BytesIO
 
           host = os.environ["OTA_HOST"]
@@ -83,31 +82,27 @@ jobs:
           password = os.environ["OTA_PASSWORD"]
           version = os.environ["VERSION"]
           ipa_file = "agent_db.ipa"
-          remote_dir = "/opt/phonefinder-server/ota/agent"
+          remote_dir = "/opt/phonefinder-server/ota"
+          http_base = f"http://{host}:{os.environ.get('OTA_HTTP_PORT','8000')}/ota"
 
           print(f"Connecting to {host}:{port}...")
           ssh = paramiko.SSHClient()
           ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
           ssh.connect(host, port=port, username=user, password=password, timeout=30)
-
           sftp = ssh.open_sftp()
-          try:
-              sftp.stat(remote_dir)
-          except FileNotFoundError:
-              sftp.mkdir(remote_dir)
 
           # Upload IPA
           remote_ipa = f"{remote_dir}/agent_db.ipa"
           sftp.put(ipa_file, remote_ipa)
           print(f"Uploaded {ipa_file} -> {remote_ipa}")
 
-          # install.plist
-          plist = {
+          # Generate agent_install.plist
+          install = {
               "items": [{
                   "assets": [
-                      {"kind": "software-package", "url": f"http://{host}:{os.environ.get('OTA_HTTP_PORT','8000')}/ota/agent/agent_db.ipa"},
-                      {"kind": "display-image", "url": f"http://{host}:{os.environ.get('OTA_HTTP_PORT','8000')}/ota/agent/icon-57.png"},
-                      {"kind": "full-size-image", "url": f"http://{host}:{os.environ.get('OTA_HTTP_PORT','8000')}/ota/agent/icon-512.png"}
+                      {"kind": "software-package", "url": f"{http_base}/agent_db.ipa"},
+                      {"kind": "display-image", "url": f"{http_base}/icon-57.png"},
+                      {"kind": "full-size-image", "url": f"{http_base}/icon-512.png"}
                   ],
                   "metadata": {
                       "bundle-identifier": "com.agent.dashboard",
@@ -117,64 +112,72 @@ jobs:
                   }
               }]
           }
-          sftp.putfo(BytesIO(plistlib.dumps(plist)), f"{remote_dir}/install.plist")
+          sftp.putfo(BytesIO(plistlib.dumps(install)), f"{remote_dir}/agent_install.plist")
+          print("Updated agent_install.plist")
 
-          # sign.json
+          # Generate agent_sign.json
           sign = {
               "name": f"AI Agent v{version}",
               "version": version,
-              "ipa": f"http://{host}:{os.environ.get('OTA_HTTP_PORT','8000')}/ota/agent/agent_db.ipa",
-              "plist": f"http://{host}:{os.environ.get('OTA_HTTP_PORT','8000')}/ota/agent/install.plist",
-              "icon": f"http://{host}:{os.environ.get('OTA_HTTP_PORT','8000')}/ota/agent/icon-57.png",
+              "ipa": f"{http_base}/agent_db.ipa",
+              "plist": f"{http_base}/agent_install.plist",
+              "icon": f"{http_base}/icon-57.png",
               "time": datetime.datetime.now().isoformat()
           }
-          sftp.putfo(BytesIO(json.dumps(sign, indent=2, ensure_ascii=False).encode()), f"{remote_dir}/sign.json")
+          sftp.putfo(BytesIO(json.dumps(sign, indent=2, ensure_ascii=False).encode()), f"{remote_dir}/agent_sign.json")
+          print("Updated agent_sign.json")
 
-          # repo.json
-          repo = {
-              "name": "AI Agent Dashboard",
-              "identifier": "com.agent.repo",
-              "sourceURL": f"http://{host}:{os.environ.get('OTA_HTTP_PORT','8000')}/ota/agent/repo.json",
-              "apps": [{
-                  "name": "AI Agent",
-                  "bundleIdentifier": "com.agent.dashboard",
-                  "version": version,
-                  "versionDate": datetime.datetime.now().strftime("%Y-%m-%d"),
-                  "size": os.path.getsize(ipa_file),
-                  "downloadURL": f"http://{host}:{os.environ.get('OTA_HTTP_PORT','8000')}/ota/agent/agent_db.ipa",
-                  "iconURL": f"http://{host}:{os.environ.get('OTA_HTTP_PORT','8000')}/ota/agent/icon-57.png",
-                  "localizedDescription": f"AI Agent Dashboard v{version}",
-                  "screenshotURLs": []
-              }]
-          }
+          # Merge repo.json (add/update agent entry, keep others)
+          repo = {"name": "AI Tools", "identifier": "com.agent.repo",
+                  "sourceURL": f"{http_base}/repo.json", "apps": []}
+          try:
+              with sftp.file(f"{remote_dir}/repo.json", "r") as f:
+                  existing = json.load(f)
+                  repo["apps"] = [a for a in existing.get("apps", []) if a.get("bundleIdentifier") != "com.agent.dashboard"]
+          except:
+              pass
+          repo["apps"].append({
+              "name": "AI Agent",
+              "bundleIdentifier": "com.agent.dashboard",
+              "version": version,
+              "versionDate": datetime.datetime.now().strftime("%Y-%m-%d"),
+              "size": os.path.getsize(ipa_file),
+              "downloadURL": f"{http_base}/agent_db.ipa",
+              "iconURL": f"{http_base}/icon-57.png",
+              "localizedDescription": f"AI Agent Dashboard v{version}",
+              "screenshotURLs": []
+          })
           sftp.putfo(BytesIO(json.dumps(repo, indent=2, ensure_ascii=False).encode()), f"{remote_dir}/repo.json")
+          print(f"repo.json now has {len(repo['apps'])} app(s)")
 
-          # apps.plist
-          apps = {
-              "items": [{
-                  "name": "AI Agent",
-                  "bundleID": "com.agent.dashboard",
-                  "version": version,
-                  "url": f"http://{host}:{os.environ.get('OTA_HTTP_PORT','8000')}/ota/agent/agent_db.ipa"
-              }]
-          }
+          # Merge apps.plist
+          apps = {"items": []}
+          try:
+              with sftp.file(f"{remote_dir}/apps.plist", "r") as f:
+                  old = plistlib.load(f)
+                  apps["items"] = [a for a in old.get("items", []) if a.get("bundleID") != "com.agent.dashboard"]
+          except:
+              pass
+          apps["items"].append({
+              "name": "AI Agent",
+              "bundleID": "com.agent.dashboard",
+              "version": version,
+              "url": f"{http_base}/agent_db.ipa"
+          })
           sftp.putfo(BytesIO(plistlib.dumps(apps)), f"{remote_dir}/apps.plist")
+          print(f"apps.plist now has {len(apps['items'])} app(s)")
 
-          # Copy icons from main OTA
+          # Copy icons from main ota dir if missing
           for icon in ["icon-57.png", "icon-512.png"]:
-              try:
-                  sftp.stat(f"{remote_dir}/{icon}")
+              try: sftp.stat(f"{remote_dir}/{icon}")
               except FileNotFoundError:
                   try:
-                      with sftp.file(f"/opt/phonefinder-server/ota/{icon}", "rb") as src:
-                          data = src.read()
+                      with sftp.file(f"{remote_dir}/{icon}", "rb") as src: data = src.read()
                       sftp.putfo(BytesIO(data), f"{remote_dir}/{icon}")
                       print(f"Copied {icon}")
-                  except:
-                      print(f"Skip {icon}")
+                  except: pass
 
-          sftp.close()
-          ssh.close()
+          sftp.close(); ssh.close()
           print(f"v{version} deployed to OTA")
           PYEOF
         env:
