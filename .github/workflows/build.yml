@@ -1,0 +1,186 @@
+name: Build IPA
+
+on:
+  push:
+    branches: [master, main]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Generate Xcode Project
+        run: |
+          cd AgentApp
+          xcodegen generate
+
+      - name: Read Version
+        id: version
+        run: |
+          VER=$(python3 -c "
+          import plistlib
+          with open('AgentApp/Resources/Info.plist', 'rb') as f:
+              pl = plistlib.load(f)
+          print(pl['CFBundleShortVersionString'])
+          ")
+          echo "version=$VER" >> $GITHUB_OUTPUT
+
+      - name: Build App
+        run: |
+          set -o pipefail
+          cd AgentApp
+          xcodebuild build \
+            -project AgentApp.xcodeproj \
+            -scheme AgentApp \
+            -sdk iphoneos \
+            -configuration Release \
+            -derivedDataPath ../build \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO \
+            PROVISIONING_PROFILE="" \
+            ONLY_ACTIVE_ARCH=NO 2>&1 | tee ../build.log
+
+      - name: Package IPA
+        run: |
+          APP=$(find build -name "*.app" -type d 2>/dev/null | head -1)
+          if [ -n "$APP" ] && [ -d "$APP" ]; then
+            plutil -convert xml1 "$APP/Info.plist"
+            mkdir -p Payload
+            cp -R "$APP" Payload/
+            zip -r agent_db.ipa Payload
+            rm -rf Payload
+            ls -lh agent_db.ipa
+          else
+            echo "No .app found"
+            exit 1
+          fi
+
+      - name: Upload IPA
+        uses: actions/upload-artifact@v4
+        with:
+          name: agent_db
+          path: agent_db.ipa
+
+      - name: Deploy to OTA Server
+        if: vars.OTA_HOST != ''
+        run: |
+          echo "Deploying v${{ steps.version.outputs.version }} to OTA..."
+          pip3 install --break-system-packages paramiko
+          python3 << 'PYEOF'
+          import paramiko, os, json, plistlib
+          import datetime
+          from io import BytesIO
+
+          host = os.environ["OTA_HOST"]
+          port = int(os.environ.get("OTA_PORT", "22"))
+          user = os.environ.get("OTA_USER", "root")
+          password = os.environ["OTA_PASSWORD"]
+          version = os.environ["VERSION"]
+          ipa_file = "agent_db.ipa"
+          remote_dir = "/opt/phonefinder-server/ota/agent"
+
+          print(f"Connecting to {host}:{port}...")
+          ssh = paramiko.SSHClient()
+          ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+          ssh.connect(host, port=port, username=user, password=password, timeout=30)
+
+          sftp = ssh.open_sftp()
+          try:
+              sftp.stat(remote_dir)
+          except FileNotFoundError:
+              sftp.mkdir(remote_dir)
+
+          # Upload IPA
+          remote_ipa = f"{remote_dir}/agent_db.ipa"
+          sftp.put(ipa_file, remote_ipa)
+          print(f"Uploaded {ipa_file} -> {remote_ipa}")
+
+          # install.plist
+          plist = {
+              "items": [{
+                  "assets": [
+                      {"kind": "software-package", "url": f"http://{host}:{os.environ.get('OTA_HTTP_PORT','8000')}/ota/agent/agent_db.ipa"},
+                      {"kind": "display-image", "url": f"http://{host}:{os.environ.get('OTA_HTTP_PORT','8000')}/ota/agent/icon-57.png"},
+                      {"kind": "full-size-image", "url": f"http://{host}:{os.environ.get('OTA_HTTP_PORT','8000')}/ota/agent/icon-512.png"}
+                  ],
+                  "metadata": {
+                      "bundle-identifier": "com.agent.dashboard",
+                      "bundle-version": version,
+                      "kind": "software",
+                      "title": f"AI Agent v{version}"
+                  }
+              }]
+          }
+          sftp.putfo(BytesIO(plistlib.dumps(plist)), f"{remote_dir}/install.plist")
+
+          # sign.json
+          sign = {
+              "name": f"AI Agent v{version}",
+              "version": version,
+              "ipa": f"http://{host}:{os.environ.get('OTA_HTTP_PORT','8000')}/ota/agent/agent_db.ipa",
+              "plist": f"http://{host}:{os.environ.get('OTA_HTTP_PORT','8000')}/ota/agent/install.plist",
+              "icon": f"http://{host}:{os.environ.get('OTA_HTTP_PORT','8000')}/ota/agent/icon-57.png",
+              "time": datetime.datetime.now().isoformat()
+          }
+          sftp.putfo(BytesIO(json.dumps(sign, indent=2, ensure_ascii=False).encode()), f"{remote_dir}/sign.json")
+
+          # repo.json
+          repo = {
+              "name": "AI Agent Dashboard",
+              "identifier": "com.agent.repo",
+              "sourceURL": f"http://{host}:{os.environ.get('OTA_HTTP_PORT','8000')}/ota/agent/repo.json",
+              "apps": [{
+                  "name": "AI Agent",
+                  "bundleIdentifier": "com.agent.dashboard",
+                  "version": version,
+                  "versionDate": datetime.datetime.now().strftime("%Y-%m-%d"),
+                  "size": os.path.getsize(ipa_file),
+                  "downloadURL": f"http://{host}:{os.environ.get('OTA_HTTP_PORT','8000')}/ota/agent/agent_db.ipa",
+                  "iconURL": f"http://{host}:{os.environ.get('OTA_HTTP_PORT','8000')}/ota/agent/icon-57.png",
+                  "localizedDescription": f"AI Agent Dashboard v{version}",
+                  "screenshotURLs": []
+              }]
+          }
+          sftp.putfo(BytesIO(json.dumps(repo, indent=2, ensure_ascii=False).encode()), f"{remote_dir}/repo.json")
+
+          # apps.plist
+          apps = {
+              "items": [{
+                  "name": "AI Agent",
+                  "bundleID": "com.agent.dashboard",
+                  "version": version,
+                  "url": f"http://{host}:{os.environ.get('OTA_HTTP_PORT','8000')}/ota/agent/agent_db.ipa"
+              }]
+          }
+          sftp.putfo(BytesIO(plistlib.dumps(apps)), f"{remote_dir}/apps.plist")
+
+          # Copy icons from main OTA
+          for icon in ["icon-57.png", "icon-512.png"]:
+              try:
+                  sftp.stat(f"{remote_dir}/{icon}")
+              except FileNotFoundError:
+                  try:
+                      with sftp.file(f"/opt/phonefinder-server/ota/{icon}", "rb") as src:
+                          data = src.read()
+                      sftp.putfo(BytesIO(data), f"{remote_dir}/{icon}")
+                      print(f"Copied {icon}")
+                  except:
+                      print(f"Skip {icon}")
+
+          sftp.close()
+          ssh.close()
+          print(f"v{version} deployed to OTA")
+          PYEOF
+        env:
+          OTA_HOST: ${{ vars.OTA_HOST }}
+          OTA_PORT: ${{ vars.OTA_PORT }}
+          OTA_USER: ${{ vars.OTA_USER }}
+          OTA_HTTP_PORT: ${{ vars.OTA_HTTP_PORT }}
+          OTA_PASSWORD: ${{ secrets.OTA_PASSWORD }}
+          VERSION: ${{ steps.version.outputs.version }}
