@@ -66,11 +66,11 @@ struct NativeDashboardView: View {
                 sectionCard(title: "Agents") {
                     ForEach(store.agents.prefix(10)) { agent in
                         HStack(spacing: 12) {
-                            Text(agent.icon)
+                            Text(agent.displayIcon)
                             VStack(alignment: .leading, spacing: 2) {
                                 Text(agent.name)
                                     .font(.headline)
-                                Text(agent.modelLabel.isEmpty ? agent.engineLabel : agent.modelLabel)
+                                Text(agent.primaryModelText)
                                     .font(.caption)
                                     .foregroundStyle(.secondary)
                             }

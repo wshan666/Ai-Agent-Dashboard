@@ -3,7 +3,7 @@ import SwiftUI
 struct ContentView: View {
     @EnvironmentObject private var settings: ServerSettings
     @EnvironmentObject private var store: AppStore
-    @State private var selectedTab: RootTab = .collaboration
+    @State private var selectedTab: RootTab = .home
 
     var body: some View {
         TabView(selection: $selectedTab) {
@@ -13,7 +13,7 @@ struct ContentView: View {
                 .tabItem {
                     Label("Home", systemImage: "house")
                 }
-                .tag(RootTab.collaboration)
+                .tag(RootTab.home)
 
             NavigationStack {
                 NativeChatView()
@@ -63,7 +63,7 @@ struct ContentView: View {
 }
 
 private enum RootTab {
-    case collaboration
+    case home
     case chat
     case workflow
     case bigscreen
