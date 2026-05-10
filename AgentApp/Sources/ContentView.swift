@@ -56,7 +56,9 @@ struct WebViewWrapper: UIViewRepresentable {
     @Binding var isLoading: Bool
 
     func makeCoordinator() -> Coordinator {
-        Coordinator()
+        Coordinator {
+            DispatchQueue.main.async { self.isLoading = false }
+        }
     }
 
     func makeUIView(context: Context) -> WKWebView {
@@ -66,15 +68,15 @@ struct WebViewWrapper: UIViewRepresentable {
         webView.navigationDelegate = context.coordinator
         webView.isOpaque = false
         webView.backgroundColor = UIColor.systemBackground
-        loadContent(in: webView, context: context)
+        loadContent(in: webView)
         return webView
     }
 
     func updateUIView(_ webView: WKWebView, context: Context) {
-        loadContent(in: webView, context: context)
+        loadContent(in: webView)
     }
 
-    private func loadContent(in webView: WKWebView, context: Context) {
+    private func loadContent(in webView: WKWebView) {
         guard let htmlPath = Bundle.main.path(forResource: "www/index", ofType: "html"),
               let htmlContent = try? String(contentsOfFile: htmlPath, encoding: .utf8) else {
             webView.loadHTMLString("<h2>Dashboard load failed</h2>", baseURL: nil)
@@ -85,21 +87,20 @@ struct WebViewWrapper: UIViewRepresentable {
     }
 
     class Coordinator: NSObject, WKNavigationDelegate {
+        let onLoadFinish: () -> Void
+
+        init(onLoadFinish: @escaping () -> Void) {
+            self.onLoadFinish = onLoadFinish
+        }
+
         func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
-            if let parent = webView.superview?.superview?.superview {
-                // Find the SwiftUI view through the view hierarchy - we use NotificationCenter instead
-            }
-            NotificationCenter.default.post(name: .webViewDidLoad, object: nil)
+            onLoadFinish()
         }
 
         func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {
-            NotificationCenter.default.post(name: .webViewDidLoad, object: nil)
+            onLoadFinish()
         }
     }
-}
-
-extension Notification.Name {
-    static let webViewDidLoad = Notification.Name("webViewDidLoad")
 }
 
 #Preview {
