@@ -10,26 +10,24 @@ struct NativeDashboardView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 18) {
                 HStack {
-                    Text("概览")
+                    Text("\u{6982}\u{89c8}")
                         .font(.largeTitle.bold())
                     Spacer()
-                    if store.isLoadingDashboard {
-                        ProgressView()
-                    }
+                    if store.isLoadingDashboard { ProgressView() }
                 }
 
                 LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
-                    statCard("智能体", value: "\(store.agents.count)", tint: .blue)
-                    statCard("在线", value: "\(onlineCount)", tint: .green)
-                    statCard("离线", value: "\(offlineCount)", tint: .orange)
-                    statCard("研发任务", value: "\(store.devProgress.count)", tint: .purple)
+                    statCard("\u{667a}\u{80fd}\u{4f53}", value: "\(store.agents.count)", tint: .blue)
+                    statCard("\u{5728}\u{7ebf}", value: "\(onlineCount)", tint: .green)
+                    statCard("\u{79bb}\u{7ebf}", value: "\(offlineCount)", tint: .orange)
+                    statCard("\u{7814}\u{53d1}\u{4efb}\u{52a1}", value: "\(store.devProgress.count)", tint: .purple)
                 }
 
-                sectionCard(title: "快捷操作") {
+                sectionCard(title: "\u{5feb}\u{6377}\u{64cd}\u{4f5c}") {
                     NavigationLink {
                         NativeChatView()
                     } label: {
-                        quickRow("打开原生协作", systemImage: "bubble.left.and.bubble.right")
+                        quickRow("\u{6253}\u{5f00}\u{7fa4}\u{804a}\u{534f}\u{4f5c}", systemImage: "bubble.left.and.bubble.right")
                     }
                     .buttonStyle(.plain)
 
@@ -38,23 +36,20 @@ struct NativeDashboardView: View {
                     NavigationLink {
                         NativeWorkflowView()
                     } label: {
-                        quickRow("打开原生工作流", systemImage: "point.3.connected.trianglepath.dotted")
+                        quickRow("\u{6253}\u{5f00}\u{539f}\u{751f}\u{5de5}\u{4f5c}\u{6d41}", systemImage: "point.3.connected.trianglepath.dotted")
                     }
                     .buttonStyle(.plain)
                 }
 
                 if !store.devProgress.isEmpty {
-                    sectionCard(title: "当前研发进度") {
+                    sectionCard(title: "\u{5f53}\u{524d}\u{7814}\u{53d1}\u{8fdb}\u{5ea6}") {
                         ForEach(store.devProgress.prefix(4)) { item in
-                            HStack(alignment: .top) {
-                                VStack(alignment: .leading, spacing: 4) {
-                                    Text(item.title ?? item.requirement ?? item.id)
-                                        .font(.headline)
-                                    Text(item.status ?? "未知状态")
-                                        .font(.caption)
-                                        .foregroundStyle(.secondary)
-                                }
-                                Spacer()
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(item.title ?? item.requirement ?? item.id)
+                                    .font(.headline)
+                                Text(item.status ?? "\u{672a}\u{77e5}\u{72b6}\u{6001}")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
                             }
                             if item.id != store.devProgress.prefix(4).last?.id {
                                 Divider()
@@ -63,13 +58,12 @@ struct NativeDashboardView: View {
                     }
                 }
 
-                sectionCard(title: "智能体") {
-                    ForEach(store.agents.prefix(10)) { agent in
+                sectionCard(title: "\u{667a}\u{80fd}\u{4f53}") {
+                    ForEach(store.agents.prefix(12)) { agent in
                         HStack(spacing: 12) {
                             Text(agent.displayIcon)
                             VStack(alignment: .leading, spacing: 2) {
-                                Text(agent.name)
-                                    .font(.headline)
+                                Text(agent.name).font(.headline)
                                 Text(agent.primaryModelText)
                                     .font(.caption)
                                     .foregroundStyle(.secondary)
@@ -82,7 +76,7 @@ struct NativeDashboardView: View {
                                 .background(agent.isOnline ? Color.green.opacity(0.15) : Color.orange.opacity(0.15))
                                 .clipShape(Capsule())
                         }
-                        if agent.id != store.agents.prefix(10).last?.id {
+                        if agent.id != store.agents.prefix(12).last?.id {
                             Divider()
                         }
                     }
@@ -90,21 +84,14 @@ struct NativeDashboardView: View {
             }
             .padding(20)
         }
-        .refreshable {
-            await store.refreshDashboard()
-        }
+        .refreshable { await store.refreshDashboard() }
     }
 
     private func statCard(_ title: String, value: String, tint: Color) -> some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text(title)
-                .font(.caption)
-                .foregroundStyle(.secondary)
-            Text(value)
-                .font(.title.bold())
-            RoundedRectangle(cornerRadius: 4)
-                .fill(tint.opacity(0.8))
-                .frame(height: 4)
+            Text(title).font(.caption).foregroundStyle(.secondary)
+            Text(value).font(.title.bold())
+            RoundedRectangle(cornerRadius: 4).fill(tint.opacity(0.8)).frame(height: 4)
         }
         .padding(14)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -114,8 +101,7 @@ struct NativeDashboardView: View {
 
     private func sectionCard<Content: View>(title: String, @ViewBuilder content: () -> Content) -> some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text(title)
-                .font(.headline)
+            Text(title).font(.headline)
             content()
         }
         .padding(14)
@@ -125,11 +111,9 @@ struct NativeDashboardView: View {
 
     private func quickRow(_ title: String, systemImage: String) -> some View {
         HStack {
-            Label(title, systemImage: systemImage)
-                .foregroundStyle(.primary)
+            Label(title, systemImage: systemImage).foregroundStyle(.primary)
             Spacer()
-            Image(systemName: "chevron.right")
-                .foregroundStyle(.tertiary)
+            Image(systemName: "chevron.right").foregroundStyle(.tertiary)
         }
     }
 }

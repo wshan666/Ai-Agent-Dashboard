@@ -24,27 +24,27 @@ final class AppStore: ObservableObject {
         var errors: [String] = []
 
         do {
-            self.agents = try await fetchAgents()
+            agents = try await fetchAgents()
         } catch {
-            errors.append("智能体列表加载失败：\(error.localizedDescription)")
+            errors.append("\u{667a}\u{80fd}\u{4f53}\u{5217}\u{8868}\u{52a0}\u{8f7d}\u{5931}\u{8d25}\uff1a\(error.localizedDescription)")
         }
 
         do {
             let progress = try await fetchDevProgress()
-            self.devProgress = progress.items ?? progress.active ?? []
+            devProgress = progress.items ?? progress.active ?? []
         } catch {
-            errors.append("研发进度加载失败：\(error.localizedDescription)")
+            errors.append("\u{7814}\u{53d1}\u{8fdb}\u{5ea6}\u{52a0}\u{8f7d}\u{5931}\u{8d25}\uff1a\(error.localizedDescription)")
         }
 
         do {
             let history = try await fetchChatHistory()
-            self.messages = sortedMessages(history.messages)
-            self.topics = history.topics
+            messages = sortedMessages(history.messages)
+            topics = history.topics
         } catch {
-            errors.append("聊天记录加载失败：\(error.localizedDescription)")
+            errors.append("\u{804a}\u{5929}\u{8bb0}\u{5f55}\u{52a0}\u{8f7d}\u{5931}\u{8d25}\uff1a\(error.localizedDescription)")
         }
 
-        self.lastError = errors.isEmpty ? nil : errors.joined(separator: "\n")
+        lastError = errors.isEmpty ? nil : errors.joined(separator: "\n")
     }
 
     func refreshChat() async {
@@ -53,11 +53,11 @@ final class AppStore: ObservableObject {
 
         do {
             let history = try await fetchChatHistory()
-            self.messages = sortedMessages(history.messages)
-            self.topics = history.topics
-            self.lastError = nil
+            messages = sortedMessages(history.messages)
+            topics = history.topics
+            lastError = nil
         } catch {
-            self.lastError = "聊天记录加载失败：\(error.localizedDescription)"
+            lastError = "\u{804a}\u{5929}\u{8bb0}\u{5f55}\u{52a0}\u{8f7d}\u{5931}\u{8d25}\uff1a\(error.localizedDescription)"
         }
     }
 
@@ -70,8 +70,12 @@ final class AppStore: ObservableObject {
         ]
 
         _ = try await postJSON(path: "/api/chat/send", payload: payload) as ChatSendResponse
-        try await Task.sleep(nanoseconds: 350_000_000)
-        await refreshChat()
+        lastError = nil
+
+        Task {
+            try? await Task.sleep(nanoseconds: 300_000_000)
+            await self.refreshChat()
+        }
     }
 
     func startCodeWorkflow(task: String, coders: [WorkflowCoderDraft], reviewerIds: [String], summarizerId: String?) async throws {
@@ -85,8 +89,7 @@ final class AppStore: ObservableObject {
         ]
 
         _ = try await postJSON(path: "/api/workflow/start", payload: payload) as WorkflowStartResponse
-        try await Task.sleep(nanoseconds: 350_000_000)
-        await refreshDashboard()
+        Task { await self.refreshDashboard() }
     }
 
     func startProjectWorkflow(_ draft: ProjectWorkflowDraft) async throws {
@@ -103,8 +106,7 @@ final class AppStore: ObservableObject {
         ]
 
         _ = try await postJSON(path: "/api/workflow/project-pipeline", payload: payload) as WorkflowStartResponse
-        try await Task.sleep(nanoseconds: 350_000_000)
-        await refreshDashboard()
+        Task { await self.refreshDashboard() }
     }
 
     func startContentWorkflow(_ draft: ContentWorkflowDraft) async throws {
@@ -120,8 +122,7 @@ final class AppStore: ObservableObject {
         ]
 
         _ = try await postJSON(path: "/api/workflow/content-publish", payload: payload) as WorkflowStartResponse
-        try await Task.sleep(nanoseconds: 350_000_000)
-        await refreshDashboard()
+        Task { await self.refreshDashboard() }
     }
 
     func startPptWorkflow(_ draft: PptWorkflowDraft) async throws {
@@ -142,8 +143,29 @@ final class AppStore: ObservableObject {
         ]
 
         _ = try await postJSON(path: "/api/workflow/ppt-review", payload: payload) as WorkflowStartResponse
-        try await Task.sleep(nanoseconds: 350_000_000)
-        await refreshDashboard()
+        Task { await self.refreshDashboard() }
+    }
+
+    func startMusicWorkflow(_ draft: MusicWorkflowDraft) async throws -> MusicResult {
+        let payload: [String: Any] = [
+            "song": draft.song,
+            "artist": draft.artist,
+            "lyricsStyle": draft.lyricsStyle,
+            "agentId": draft.agentId.isEmpty ? NSNull() : draft.agentId,
+            "autoPlay": draft.autoPlay
+        ]
+
+        let response: MusicWorkflowResponse = try await postJSON(path: "/api/music/generate", payload: payload)
+        Task { await self.refreshDashboard() }
+
+        return MusicResult(
+            title: response.title ?? draft.song,
+            artist: response.artist ?? draft.artist,
+            audioUrl: response.audioUrl ?? "",
+            notesUrl: response.notesUrl ?? "",
+            lyrics: response.lyrics ?? "",
+            mode: response.mode ?? ""
+        )
     }
 
     private func fetchAgents() async throws -> [AgentSummary] {
@@ -197,7 +219,7 @@ final class AppStore: ObservableObject {
         let url = buildURL(path: path)
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
-        request.timeoutInterval = 45
+        request.timeoutInterval = 90
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.httpBody = try JSONSerialization.data(withJSONObject: payload)
 
@@ -207,7 +229,7 @@ final class AppStore: ObservableObject {
             throw NSError(
                 domain: "AppStore",
                 code: (response as? HTTPURLResponse)?.statusCode ?? -1,
-                userInfo: [NSLocalizedDescriptionKey: body.isEmpty ? "Request failed" : body]
+                userInfo: [NSLocalizedDescriptionKey: body.isEmpty ? "\u{8bf7}\u{6c42}\u{5931}\u{8d25}" : body]
             )
         }
 
@@ -217,7 +239,7 @@ final class AppStore: ObservableObject {
     private func getData(path: String) async throws -> Data {
         let url = buildURL(path: path)
         var request = URLRequest(url: url)
-        request.timeoutInterval = 20
+        request.timeoutInterval = 30
 
         let (data, response) = try await URLSession.shared.data(for: request)
         guard let http = response as? HTTPURLResponse, (200 ... 299).contains(http.statusCode) else {

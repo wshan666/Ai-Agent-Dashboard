@@ -47,7 +47,7 @@ struct AgentWebContainer: View {
                 if isLoading {
                     VStack(spacing: 10) {
                         ProgressView()
-                        Text("Opening \(route.title)")
+                        Text("\u{6b63}\u{5728}\u{6253}\u{5f00}\uff1a\(route.title)")
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
@@ -139,9 +139,9 @@ struct RouteWebView: UIViewRepresentable {
             isLoading = false
             let html = """
             <html><body style="font-family:-apple-system;padding:24px;background:#0f1117;color:#f3f4f6">
-            <h3>Page Load Failed</h3>
+            <h3>\u{9875}\u{9762}\u{52a0}\u{8f7d}\u{5931}\u{8d25}</h3>
             <p>\(error.localizedDescription)</p>
-            <p>Please verify the dashboard URL and LAN connectivity.</p>
+            <p>\u{8bf7}\u{68c0}\u{67e5}\u{4eea}\u{8868}\u{76d8}\u{5730}\u{5740}\u{548c}\u{5c40}\u{57df}\u{7f51}\u{8fde}\u{63a5}\u{662f}\u{5426}\u{6b63}\u{5e38}\u{3002}</p>
             </body></html>
             """
             webView.loadHTMLString(html, baseURL: nil)

@@ -4,23 +4,36 @@ struct NativeChatView: View {
     @EnvironmentObject private var store: AppStore
 
     @State private var selectedAgentIds: Set<String> = []
+    @State private var privateAgentId = ""
     @State private var topic = ""
     @State private var draft = ""
     @State private var isSending = false
     @State private var showAgentPicker = false
+    @State private var showPrivatePicker = false
+    @State private var mode: ChatMode = .group
     @FocusState private var focusedField: ChatField?
 
-    private enum ChatField {
-        case topic
-        case draft
+    private enum ChatField { case topic, draft }
+    private enum ChatMode: String, CaseIterable, Identifiable {
+        case group, direct
+        var id: String { rawValue }
+        var title: String {
+            self == .group ? "\u{7fa4}\u{804a}" : "\u{79c1}\u{804a}"
+        }
     }
 
     private var selectedAgents: [AgentSummary] {
         store.agents.filter { selectedAgentIds.contains($0.id) }
     }
 
+    private var privateAgent: AgentSummary? {
+        store.agents.first(where: { $0.id == privateAgentId })
+    }
+
     private var visibleMessages: [ChatMessage] {
-        Array(store.messages.suffix(160))
+        let base = Array(store.messages.suffix(220))
+        guard mode == .direct, let agent = privateAgent else { return base }
+        return base.filter { $0.isUser || $0.from == agent.id || $0.senderTitle.contains(agent.name) }
     }
 
     var body: some View {
@@ -31,7 +44,7 @@ struct NativeChatView: View {
             composer
         }
         .background(Color(.systemGroupedBackground))
-        .navigationTitle("协作")
+        .navigationTitle("\u{534f}\u{4f5c}")
         .navigationBarTitleDisplayMode(.inline)
         .ignoresSafeArea(.keyboard, edges: .bottom)
         .dismissKeyboardOnTap()
@@ -46,67 +59,53 @@ struct NativeChatView: View {
             UIApplication.dismissKeyboard()
         }
         .task {
-            if store.agents.isEmpty {
-                await store.refreshDashboard()
-            }
-            if store.messages.isEmpty {
-                await store.refreshChat()
-            }
+            if store.agents.isEmpty { await store.refreshDashboard() }
+            if store.messages.isEmpty { await store.refreshChat() }
             if selectedAgentIds.isEmpty {
-                selectedAgentIds = Set(store.agents.filter(\.isOnline).prefix(1).map(\.id))
+                selectedAgentIds = Set(store.agents.filter(\.isOnline).prefix(2).map(\.id))
+            }
+            if privateAgentId.isEmpty {
+                privateAgentId = store.agents.filter(\.isOnline).first?.id ?? ""
             }
         }
-        .sheet(isPresented: $showAgentPicker) {
-            agentPicker
-        }
+        .sheet(isPresented: $showAgentPicker) { groupAgentPicker }
+        .sheet(isPresented: $showPrivatePicker) { privateAgentPicker }
     }
 
     private var header: some View {
         VStack(spacing: 12) {
             HStack(alignment: .top) {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("群聊协作")
+                    Text("\u{7fa4}\u{804a}\u{534f}\u{4f5c}")
                         .font(.title2.bold())
-                    Text(selectedAgents.isEmpty ? "先选择一个或多个智能体" : "已选择 \(selectedAgents.count) 个智能体")
+                    Text(mode == .group
+                         ? (selectedAgents.isEmpty ? "\u{5148}\u{9009}\u{62e9}\u{7fa4}\u{804a}\u{667a}\u{80fd}\u{4f53}" : "\u{5df2}\u{9009}\u{62e9} \(selectedAgents.count) \u{4e2a}\u{667a}\u{80fd}\u{4f53}")
+                         : (privateAgent == nil ? "\u{5148}\u{9009}\u{62e9}\u{79c1}\u{804a}\u{5bf9}\u{8c61}" : "\u{5f53}\u{524d}\u{79c1}\u{804a}\uff1a\(privateAgent!.name)"))
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
                 Spacer()
-                Button {
-                    focusedField = nil
-                    UIApplication.dismissKeyboard()
-                    showAgentPicker = true
-                } label: {
-                    Image(systemName: "plus.bubble.fill")
-                        .font(.title3.weight(.semibold))
-                        .foregroundStyle(.blue)
-                        .frame(width: 42, height: 42)
-                        .background(Color.blue.opacity(0.12))
-                        .clipShape(Circle())
+                Picker("", selection: $mode) {
+                    ForEach(ChatMode.allCases) { item in
+                        Text(item.title).tag(item)
+                    }
                 }
-                .buttonStyle(.plain)
+                .pickerStyle(.segmented)
+                .frame(width: 148)
             }
 
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 8) {
-                    if selectedAgents.isEmpty {
-                        Button("选择智能体") {
-                            focusedField = nil
-                            UIApplication.dismissKeyboard()
+            if mode == .group {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 8) {
+                        Button(selectedAgents.isEmpty ? "\u{9009}\u{62e9}\u{667a}\u{80fd}\u{4f53}" : "\u{7f16}\u{8f91}\u{6210}\u{5458}") {
                             showAgentPicker = true
                         }
                         .buttonStyle(.borderedProminent)
-                    } else {
+
                         ForEach(selectedAgents) { agent in
                             HStack(spacing: 8) {
                                 Text(agent.displayIcon)
-                                VStack(alignment: .leading, spacing: 1) {
-                                    Text(agent.name)
-                                        .font(.caption.weight(.semibold))
-                                    Text(agent.primaryModelText)
-                                        .font(.caption2)
-                                        .foregroundStyle(.secondary)
-                                }
+                                Text(agent.name).font(.caption.weight(.semibold))
                                 Button {
                                     selectedAgentIds.remove(agent.id)
                                 } label: {
@@ -122,6 +121,27 @@ struct NativeChatView: View {
                         }
                     }
                 }
+            } else {
+                Button {
+                    showPrivatePicker = true
+                } label: {
+                    HStack(spacing: 10) {
+                        Text(privateAgent?.displayIcon ?? "\u{1F4AC}")
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(privateAgent?.name ?? "\u{9009}\u{62e9}\u{79c1}\u{804a}\u{5bf9}\u{8c61}")
+                                .font(.subheadline.weight(.semibold))
+                            Text(privateAgent?.primaryModelText ?? "\u{70b9}\u{51fb}\u{9009}\u{62e9}")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                        Spacer()
+                        Image(systemName: "chevron.right").foregroundStyle(.tertiary)
+                    }
+                    .padding(12)
+                    .background(Color(.secondarySystemBackground))
+                    .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                }
+                .buttonStyle(.plain)
             }
         }
         .padding(.horizontal, 16)
@@ -132,26 +152,21 @@ struct NativeChatView: View {
 
     private var topicSection: some View {
         VStack(alignment: .leading, spacing: 10) {
-            TextField("话题（可选）", text: $topic)
+            TextField(mode == .group ? "\u{8bdd}\u{9898}\uff08\u{53ef}\u{9009}\uff09" : "\u{79c1}\u{804a}\u{8bdd}\u{9898}\uff08\u{53ef}\u{9009}\uff09", text: $topic)
                 .textFieldStyle(.roundedBorder)
                 .focused($focusedField, equals: .topic)
-                .submitLabel(.done)
 
             if !store.topics.isEmpty {
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 8) {
                         ForEach(store.topics.prefix(10), id: \.self) { item in
-                            Button(item.text) {
-                                topic = item.text
-                                focusedField = nil
-                                UIApplication.dismissKeyboard()
-                            }
-                            .font(.caption)
-                            .padding(.horizontal, 10)
-                            .padding(.vertical, 7)
-                            .background(topic == item.text ? Color.blue.opacity(0.16) : Color(.secondarySystemBackground))
-                            .clipShape(Capsule())
-                            .buttonStyle(.plain)
+                            Button(item.text) { topic = item.text }
+                                .font(.caption)
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 7)
+                                .background(topic == item.text ? Color.blue.opacity(0.16) : Color(.secondarySystemBackground))
+                                .clipShape(Capsule())
+                                .buttonStyle(.plain)
                         }
                     }
                 }
@@ -167,33 +182,23 @@ struct NativeChatView: View {
             ScrollView {
                 LazyVStack(spacing: 14) {
                     ForEach(visibleMessages, id: \.stableId) { message in
-                        messageRow(message)
-                            .id(message.stableId)
+                        messageRow(message).id(message.stableId)
                     }
                 }
                 .padding(.horizontal, 14)
                 .padding(.vertical, 18)
             }
             .scrollDismissesKeyboard(.interactively)
-            .background(Color(.systemGroupedBackground))
-            .refreshable {
-                focusedField = nil
-                UIApplication.dismissKeyboard()
-                await store.refreshChat()
-            }
-            .onAppear {
-                scrollToBottom(proxy: proxy)
-            }
-            .onChange(of: store.messages.count) { _ in
-                scrollToBottom(proxy: proxy)
-            }
+            .refreshable { await store.refreshChat() }
+            .onAppear { scrollToBottom(proxy: proxy) }
+            .onChange(of: store.messages.count) { _ in scrollToBottom(proxy: proxy) }
         }
     }
 
     private var composer: some View {
         VStack(spacing: 12) {
             HStack(alignment: .bottom, spacing: 10) {
-                TextField("输入消息", text: $draft, axis: .vertical)
+                TextField(mode == .group ? "\u{8f93}\u{5165}\u{7fa4}\u{804a}\u{6d88}\u{606f}" : "\u{8f93}\u{5165}\u{79c1}\u{804a}\u{6d88}\u{606f}", text: $draft, axis: .vertical)
                     .textFieldStyle(.roundedBorder)
                     .lineLimit(2 ... 6)
                     .focused($focusedField, equals: .draft)
@@ -202,12 +207,9 @@ struct NativeChatView: View {
                     Task { await send() }
                 } label: {
                     if isSending {
-                        ProgressView()
-                            .tint(.white)
-                            .frame(width: 22, height: 22)
+                        ProgressView().tint(.white).frame(width: 22, height: 22)
                     } else {
-                        Image(systemName: "paperplane.fill")
-                            .font(.headline)
+                        Image(systemName: "paperplane.fill").font(.headline)
                     }
                 }
                 .frame(width: 44, height: 44)
@@ -216,6 +218,16 @@ struct NativeChatView: View {
                 .clipShape(Circle())
                 .disabled(!canSend || isSending)
             }
+
+            if mode == .direct, let agent = privateAgent {
+                HStack(spacing: 8) {
+                    Image(systemName: "lock.bubble")
+                    Text("\u{6b63}\u{5728}\u{4e0e} \(agent.name) \u{79c1}\u{804a}")
+                        .font(.caption)
+                }
+                .foregroundStyle(.secondary)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
         }
         .padding(16)
         .background(.ultraThinMaterial)
@@ -223,23 +235,14 @@ struct NativeChatView: View {
 
     private func messageRow(_ message: ChatMessage) -> some View {
         HStack(alignment: .bottom, spacing: 10) {
-            if message.isUser {
-                Spacer(minLength: 44)
-            } else {
-                avatarView(for: message.senderTitle)
-            }
+            if message.isUser { Spacer(minLength: 44) } else { avatarView(for: message.senderTitle) }
 
             VStack(alignment: message.isUser ? .trailing : .leading, spacing: 6) {
                 HStack(spacing: 6) {
                     if message.isUser { Spacer() }
-                    Text(message.senderTitle)
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(.secondary)
-                    Text(formatTime(message.timestamp))
-                        .font(.caption2)
-                        .foregroundStyle(.tertiary)
+                    Text(message.senderTitle).font(.caption.weight(.semibold)).foregroundStyle(.secondary)
+                    Text(formatTime(message.timestamp)).font(.caption2).foregroundStyle(.tertiary)
                 }
-
                 Text(message.content ?? "")
                     .font(.subheadline)
                     .foregroundStyle(message.isUser ? Color.white : Color.primary)
@@ -251,63 +254,77 @@ struct NativeChatView: View {
                     .textSelection(.enabled)
             }
 
-            if message.isUser {
-                avatarView(for: "You")
-            } else {
-                Spacer(minLength: 44)
-            }
+            if message.isUser { avatarView(for: "\u{4f60}") } else { Spacer(minLength: 44) }
         }
         .frame(maxWidth: .infinity, alignment: message.isUser ? .trailing : .leading)
     }
 
-    private var agentPicker: some View {
+    private var groupAgentPicker: some View {
         NavigationStack {
             List(store.agents) { agent in
                 Button {
-                    if selectedAgentIds.contains(agent.id) {
-                        selectedAgentIds.remove(agent.id)
-                    } else {
-                        selectedAgentIds.insert(agent.id)
-                    }
+                    if selectedAgentIds.contains(agent.id) { selectedAgentIds.remove(agent.id) } else { selectedAgentIds.insert(agent.id) }
                 } label: {
                     HStack(spacing: 12) {
-                        Text(agent.displayIcon)
-                            .font(.title3)
+                        Text(agent.displayIcon).font(.title3)
                         VStack(alignment: .leading, spacing: 2) {
-                            Text(agent.name)
-                                .foregroundStyle(.primary)
-                            Text("\(agent.hostGroup) · \(agent.statusText) · \(agent.primaryModelText)")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
+                            Text(agent.name).foregroundStyle(.primary)
+                            Text("\(agent.hostGroup) · \(agent.statusText)")
+                                .font(.caption).foregroundStyle(.secondary)
                         }
                         Spacer()
                         if selectedAgentIds.contains(agent.id) {
-                            Image(systemName: "checkmark.circle.fill")
-                                .foregroundStyle(.blue)
+                            Image(systemName: "checkmark.circle.fill").foregroundStyle(.blue)
                         }
                     }
                 }
                 .buttonStyle(.plain)
             }
-            .scrollDismissesKeyboard(.interactively)
-            .navigationTitle("选择智能体")
+            .navigationTitle("\u{9009}\u{62e9}\u{7fa4}\u{804a}\u{667a}\u{80fd}\u{4f53}")
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
-                    Button("清空") {
-                        selectedAgentIds.removeAll()
-                    }
+                    Button("\u{6e05}\u{7a7a}") { selectedAgentIds.removeAll() }
                 }
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button("完成") {
-                        showAgentPicker = false
+                    Button("\u{5b8c}\u{6210}") { showAgentPicker = false }
+                }
+            }
+        }
+    }
+
+    private var privateAgentPicker: some View {
+        NavigationStack {
+            List(store.agents.filter(\.isOnline)) { agent in
+                Button {
+                    privateAgentId = agent.id
+                    showPrivatePicker = false
+                } label: {
+                    HStack(spacing: 12) {
+                        Text(agent.displayIcon).font(.title3)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(agent.name).foregroundStyle(.primary)
+                            Text(agent.primaryModelText).font(.caption).foregroundStyle(.secondary)
+                        }
+                        Spacer()
+                        if privateAgentId == agent.id {
+                            Image(systemName: "checkmark.circle.fill").foregroundStyle(.blue)
+                        }
                     }
+                }
+                .buttonStyle(.plain)
+            }
+            .navigationTitle("\u{9009}\u{62e9}\u{79c1}\u{804a}\u{5bf9}\u{8c61}")
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("\u{5b8c}\u{6210}") { showPrivatePicker = false }
                 }
             }
         }
     }
 
     private var canSend: Bool {
-        !draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && !selectedAgentIds.isEmpty
+        let hasText = !draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        return mode == .group ? (hasText && !selectedAgentIds.isEmpty) : (hasText && !privateAgentId.isEmpty)
     }
 
     private func avatarView(for title: String) -> some View {
@@ -321,15 +338,30 @@ struct NativeChatView: View {
     }
 
     private func send() async {
+        let text = draft.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !text.isEmpty else { return }
+
         isSending = true
         defer { isSending = false }
 
+        let targetIds = mode == .group ? Array(selectedAgentIds) : [privateAgentId]
+        guard !targetIds.isEmpty else { return }
+
         do {
-            try await store.sendChat(
-                agentIds: Array(selectedAgentIds),
-                message: draft.trimmingCharacters(in: .whitespacesAndNewlines),
-                topic: topic.trimmingCharacters(in: .whitespacesAndNewlines)
+            try await store.sendChat(agentIds: targetIds, message: text, topic: topic.trimmingCharacters(in: .whitespacesAndNewlines))
+            store.messages.append(
+                ChatMessage(
+                    id: UUID().uuidString,
+                    from: "user",
+                    fromName: "\u{4f60}",
+                    content: text,
+                    timestamp: ISO8601DateFormatter().string(from: Date()),
+                    type: "chat",
+                    topic: topic,
+                    room: mode == .direct ? "direct" : "group"
+                )
             )
+            store.messages.sort { ($0.timestamp?.asIsoDate ?? .distantPast) < ($1.timestamp?.asIsoDate ?? .distantPast) }
             draft = ""
             focusedField = nil
             UIApplication.dismissKeyboard()

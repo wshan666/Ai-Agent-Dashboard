@@ -11,17 +11,15 @@ struct AgentSummary: Identifiable, Hashable {
     let engineLabel: String
     let disabled: Bool
 
-    var displayIcon: String {
-        icon.isEmpty ? "AI" : icon
-    }
+    var displayIcon: String { icon.isEmpty ? "AI" : icon }
 
     var statusText: String {
         switch status {
-        case "available": return "在线"
-        case "running": return "忙碌"
-        case "checking": return "检测中"
-        case "disabled": return "已禁用"
-        default: return "离线"
+        case "available": return "\u{5728}\u{7ebf}"
+        case "running": return "\u{5fd9}\u{788c}"
+        case "checking": return "\u{68c0}\u{6d4b}\u{4e2d}"
+        case "disabled": return "\u{5df2}\u{7981}\u{7528}"
+        default: return "\u{79bb}\u{7ebf}"
         }
     }
 
@@ -32,7 +30,7 @@ struct AgentSummary: Identifiable, Hashable {
     var primaryModelText: String {
         if !modelLabel.isEmpty { return modelLabel }
         if !engineLabel.isEmpty { return engineLabel }
-        return "未知模型"
+        return "\u{672a}\u{77e5}\u{6a21}\u{578b}"
     }
 }
 
@@ -56,11 +54,11 @@ struct ChatMessage: Codable, Identifiable, Hashable {
     }
 
     var isUser: Bool {
-        from == "user" || fromName == "You"
+        from == "user" || fromName == "You" || fromName == "\u{4f60}"
     }
 
     var senderTitle: String {
-        fromName ?? from ?? "Unknown"
+        fromName ?? from ?? "\u{672a}\u{77e5}"
     }
 }
 
@@ -108,6 +106,19 @@ struct WorkflowStartResponse: Codable {
     let previewUrl: String?
 }
 
+struct MusicWorkflowResponse: Codable {
+    let ok: Bool?
+    let error: String?
+    let id: String?
+    let title: String?
+    let artist: String?
+    let lyrics: String?
+    let audioUrl: String?
+    let notesUrl: String?
+    let mode: String?
+    let autoPlay: Bool?
+}
+
 struct WorkflowCoderDraft: Identifiable, Hashable {
     let id = UUID()
     var agentId: String = ""
@@ -119,24 +130,27 @@ enum WorkflowTemplate: String, CaseIterable, Identifiable {
     case project
     case content
     case ppt
+    case music
 
     var id: String { rawValue }
 
     var title: String {
         switch self {
-        case .code: return "代码审查"
-        case .project: return "项目改造"
-        case .content: return "内容发布"
-        case .ppt: return "PPT制作"
+        case .code: return "\u{4ee3}\u{7801}\u{5ba1}\u{67e5}"
+        case .project: return "\u{9879}\u{76ee}\u{6539}\u{9020}"
+        case .content: return "\u{5185}\u{5bb9}\u{53d1}\u{5e03}"
+        case .ppt: return "PPT\u{5236}\u{4f5c}"
+        case .music: return "\u{97f3}\u{4e50}\u{5de5}\u{4f5c}\u{6d41}"
         }
     }
 
     var subtitle: String {
         switch self {
-        case .code: return "程序员 + 评审协作流水线"
-        case .project: return "执行者、评审与测试命令"
-        case .content: return "文案、图片、整合与审核"
-        case .ppt: return "策划、制作、审核与交付"
+        case .code: return "\u{7a0b}\u{5e8f}\u{5458}\u{4e0e}\u{8bc4}\u{5ba1}\u{534f}\u{4f5c}\u{6d41}\u{6c34}\u{7ebf}"
+        case .project: return "\u{6267}\u{884c}\u{3001}\u{8bc4}\u{5ba1}\u{3001}\u{6d4b}\u{8bd5}\u{4e00}\u{4f53}\u{5316}"
+        case .content: return "\u{6587}\u{6848}\u{3001}\u{914d}\u{56fe}\u{3001}\u{6574}\u{5408}\u{3001}\u{5ba1}\u{6838}"
+        case .ppt: return "\u{7b56}\u{5212}\u{3001}\u{5236}\u{4f5c}\u{3001}\u{5ba1}\u{6838}\u{3001}\u{4ea4}\u{4ed8}"
+        case .music: return "\u{6b4c}\u{8bcd}\u{3001}\u{8bd5}\u{542c}\u{97f3}\u{9891}\u{3001}\u{8bf4}\u{660e}\u{6587}\u{6863}"
         }
     }
 
@@ -146,6 +160,7 @@ enum WorkflowTemplate: String, CaseIterable, Identifiable {
         case .project: return "shippingbox"
         case .content: return "megaphone"
         case .ppt: return "rectangle.on.rectangle"
+        case .music: return "music.note.list"
         }
     }
 }
@@ -187,6 +202,24 @@ struct PptWorkflowDraft {
     var passScore: Int = 85
     var maxRetries: Int = 2
     var feishuNotify: Bool = true
+}
+
+struct MusicWorkflowDraft {
+    var song: String = ""
+    var artist: String = ""
+    var lyricsStyle: String = "\u{6d41}\u{884c}\u{6292}\u{60c5}"
+    var agentId: String = ""
+    var autoPlay: Bool = true
+}
+
+struct MusicResult: Identifiable, Hashable {
+    let id = UUID()
+    let title: String
+    let artist: String
+    let audioUrl: String
+    let notesUrl: String
+    let lyrics: String
+    let mode: String
 }
 
 extension String {
