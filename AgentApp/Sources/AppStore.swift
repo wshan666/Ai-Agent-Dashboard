@@ -183,22 +183,11 @@ final class AppStore: ObservableObject {
         }
         lastError = nil
 
-        let output = run.output?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-        if !output.isEmpty {
-            messages.append(ChatMessage(
-                id: run.id,
-                from: "api-collaboration",
-                fromName: "\u{534f}\u{540c}\u{7ed3}\u{679c}",
-                content: output,
-                timestamp: run.completedAt ?? ISO8601DateFormatter().string(from: Date()),
-                type: "api",
-                topic: topic.isEmpty ? nil : topic,
-                room: nil
-            ))
-            messages.sort { ($0.timestamp?.asIsoDate ?? .distantPast) < ($1.timestamp?.asIsoDate ?? .distantPast) }
-        }
+        let collaborationMessages = collaborationChatMessages(for: run, topic: topic)
+        await refreshChat()
+        mergeMessages(collaborationMessages)
 
-        Task { await self.refreshDashboard() }
+        Task { await self.refreshRuns(limit: 20) }
         return run
     }
 
@@ -658,11 +647,63 @@ final class AppStore: ObservableObject {
         }
     }
 
+    private func collaborationChatMessages(for run: CollaborationRun, topic: String) -> [ChatMessage] {
+        let timestamp = run.completedAt ?? run.updatedAt ?? ISO8601DateFormatter().string(from: Date())
+        let trimmedTopic = topic.trimmingCharacters(in: .whitespacesAndNewlines)
+        let messageTopic = run.topic?.isEmpty == false ? run.topic : (trimmedTopic.isEmpty ? nil : trimmedTopic)
+        var items: [ChatMessage] = []
+
+        let responses = run.responses ?? []
+        for (index, response) in responses.enumerated() {
+            let text = response.displayText
+            guard !text.isEmpty || response.status == "failed" else { continue }
+
+            items.append(ChatMessage(
+                id: "ios-\(run.id)-\(response.agentId)-\(response.role ?? "member")-\(index)",
+                from: response.agentId,
+                fromName: response.agentName,
+                content: text.isEmpty ? response.status : text,
+                timestamp: timestamp,
+                type: response.status == "failed" ? "error" : "api",
+                topic: messageTopic,
+                room: nil
+            ))
+        }
+
+        let output = run.output?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        if responses.isEmpty, !output.isEmpty {
+            items.append(ChatMessage(
+                id: "ios-\(run.id)-summary",
+                from: "api-collaboration",
+                fromName: "\u{534f}\u{540c}\u{7ed3}\u{679c}",
+                content: output,
+                timestamp: timestamp,
+                type: "api",
+                topic: messageTopic,
+                room: nil
+            ))
+        }
+
+        return items
+    }
+
+    private func mergeMessages(_ incoming: [ChatMessage]) {
+        guard !incoming.isEmpty else { return }
+        var byId: [String: ChatMessage] = [:]
+        for message in messages {
+            byId[message.stableId] = message
+        }
+        for message in incoming {
+            byId[message.stableId] = message
+        }
+        messages = sortedMessages(Array(byId.values))
+    }
+
     private func sortedMessages(_ messages: [ChatMessage]) -> [ChatMessage] {
         messages.sorted { lhs, rhs in
             switch (lhs.timestamp?.asIsoDate, rhs.timestamp?.asIsoDate) {
             case let (l?, r?):
-                return l < r
+                return l == r ? lhs.stableId < rhs.stableId : l < r
             case (_?, nil):
                 return true
             case (nil, _?):
