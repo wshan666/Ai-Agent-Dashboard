@@ -217,10 +217,27 @@ struct NativeWorkflowView: View {
                 Text("pptx").tag("pptx")
                 Text("md+pptx").tag("md+pptx")
             }
-            pickerRow("\u{7b56}\u{5212}\u{667a}\u{80fd}\u{4f53}", selection: $pptDraft.outlineAgentId)
-            pickerRow("\u{5236}\u{4f5c}\u{667a}\u{80fd}\u{4f53}", selection: $pptDraft.makerAgentId)
-            pickerRow("\u{5ba1}\u{6838}\u{667a}\u{80fd}\u{4f53}", selection: $pptDraft.reviewerAgentId)
-            pickerRow("\u{7ec8}\u{7a3f}\u{667a}\u{80fd}\u{4f53}", selection: $pptDraft.finalizerAgentId, allowEmpty: true)
+            pptRolePicker(
+                "\u{7b56}\u{5212}\u{667a}\u{80fd}\u{4f53}",
+                "\u{8d1f}\u{8d23}\u{68b3}\u{7406}\u{903b}\u{8f91}\u{3001}\u{53d7}\u{4f17}\u{3001}\u{9875}\u{9762}\u{7ed3}\u{6784}\u{548c}\u{4fe1}\u{606f}\u{5c42}\u{7ea7}\u{3002}",
+                selection: $pptDraft.outlineAgentId
+            )
+            pptRolePicker(
+                "\u{5236}\u{4f5c}\u{667a}\u{80fd}\u{4f53}",
+                "\u{8d1f}\u{8d23}\u{6839}\u{636e}\u{5927}\u{7eb2}\u{751f}\u{6210}\u{5185}\u{5bb9}\u{3001}\u{7248}\u{5f0f}\u{548c} PPTX \u{811a}\u{672c}\u{6216}\u{4ea4}\u{4ed8}\u{7a3f}\u{3002}",
+                selection: $pptDraft.makerAgentId
+            )
+            pptRolePicker(
+                "\u{5ba1}\u{6838}\u{667a}\u{80fd}\u{4f53}",
+                "\u{8d1f}\u{8d23}\u{6253}\u{5206}\u{3001}\u{627e}\u{95ee}\u{9898}\u{3001}\u{63d0}\u{8fd4}\u{4fee}\u{610f}\u{89c1}\u{ff0c}\u{786e}\u{8ba4}\u{662f}\u{5426}\u{8fbe}\u{5230}\u{901a}\u{8fc7}\u{5206}\u{3002}",
+                selection: $pptDraft.reviewerAgentId
+            )
+            pptRolePicker(
+                "\u{7ec8}\u{7a3f}\u{667a}\u{80fd}\u{4f53}",
+                "\u{53ef}\u{9009}\u{3002}\u{8d1f}\u{8d23}\u{6839}\u{636e}\u{5ba1}\u{6838}\u{610f}\u{89c1}\u{505a}\u{6700}\u{540e}\u{6574}\u{7406}\u{548c}\u{5b9a}\u{7a3f}\u{3002}",
+                selection: $pptDraft.finalizerAgentId,
+                allowEmpty: true
+            )
             stepperRow("\u{901a}\u{8fc7}\u{5206}\u{6570}", $pptDraft.passScore, 60 ... 100)
             stepperRow("\u{6700}\u{5927}\u{91cd}\u{8bd5}", $pptDraft.maxRetries, 0 ... 5)
             Toggle("\u{98de}\u{4e66}\u{901a}\u{77e5}", isOn: $pptDraft.feishuNotify)
@@ -366,6 +383,23 @@ struct NativeWorkflowView: View {
                 Text("\(agent.displayIcon) \(agent.name)").tag(agent.id)
             }
         }
+    }
+
+    private func pptRolePicker(_ title: String, _ description: String, selection: Binding<String>, allowEmpty: Bool = false) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(title).font(.subheadline.weight(.semibold))
+            Text(description).font(.caption).foregroundStyle(.secondary)
+            Picker(title, selection: selection) {
+                Text(allowEmpty ? "\u{4f7f}\u{7528}\u{5236}\u{4f5c}\u{667a}\u{80fd}\u{4f53}" : "\u{8bf7}\u{9009}\u{62e9}").tag("")
+                ForEach(onlineAgents) { agent in
+                    Text("\(agent.displayIcon) \(agent.name)").tag(agent.id)
+                }
+            }
+            .labelsHidden()
+        }
+        .padding(12)
+        .background(Color(.tertiarySystemBackground))
+        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
     }
 
     private func stepperRow(_ title: String, _ value: Binding<Int>, _ range: ClosedRange<Int>) -> some View {

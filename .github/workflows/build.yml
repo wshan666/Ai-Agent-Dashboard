@@ -149,6 +149,17 @@ jobs:
           sftp.put(ipa_file, remote_ipa)
           print(f"Uploaded {ipa_file} -> {remote_ipa}")
 
+          # Upload OTA icons from the bundled AppIcon set so the install source
+          # matches the actual iOS app icon.
+          icon_map = {
+              "AgentApp/Resources/Assets.xcassets/AppIcon.appiconset/icon-57.png": "icon-57.png",
+              "AgentApp/Resources/Assets.xcassets/AppIcon.appiconset/icon-512.png": "icon-512.png",
+          }
+          for local_icon, remote_name in icon_map.items():
+              if os.path.exists(local_icon):
+                  sftp.put(local_icon, f"{remote_dir}/{remote_name}")
+                  print(f"Uploaded {remote_name}")
+
           # Generate agent_install.plist
           install = {
               "items": [{
@@ -219,16 +230,6 @@ jobs:
           })
           sftp.putfo(BytesIO(plistlib.dumps(apps)), f"{remote_dir}/apps.plist")
           print(f"apps.plist now has {len(apps['items'])} app(s)")
-
-          # Copy icons from main ota dir if missing
-          for icon in ["icon-57.png", "icon-512.png"]:
-              try: sftp.stat(f"{remote_dir}/{icon}")
-              except FileNotFoundError:
-                  try:
-                      with sftp.file(f"{remote_dir}/{icon}", "rb") as src: data = src.read()
-                      sftp.putfo(BytesIO(data), f"{remote_dir}/{icon}")
-                      print(f"Copied {icon}")
-                  except: pass
 
           sftp.close(); ssh.close()
           print(f"v{version} deployed to OTA")
