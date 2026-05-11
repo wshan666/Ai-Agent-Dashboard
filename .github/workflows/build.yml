@@ -104,6 +104,16 @@ jobs:
           APP=$(find build -name "*.app" -type d 2>/dev/null | head -1)
           if [ -n "$APP" ] && [ -d "$APP" ]; then
             plutil -convert xml1 "$APP/Info.plist"
+            if [ ! -f "$APP/Assets.car" ]; then
+              echo "Missing Assets.car; app icon assets were not bundled."
+              find "$APP" -maxdepth 2 -type f | sort
+              exit 1
+            fi
+            if ! /usr/libexec/PlistBuddy -c "Print :CFBundleIcons" "$APP/Info.plist" >/dev/null 2>&1; then
+              echo "Missing CFBundleIcons in built Info.plist."
+              cat "$APP/Info.plist"
+              exit 1
+            fi
             mkdir -p Payload
             cp -R "$APP" Payload/
             zip -r agent_db.ipa Payload

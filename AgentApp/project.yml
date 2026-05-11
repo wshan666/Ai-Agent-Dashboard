@@ -6,7 +6,7 @@ options:
 settings:
   base:
     MARKETING_VERSION: "1.1.0"
-    CURRENT_PROJECT_VERSION: "20"
+    CURRENT_PROJECT_VERSION: "21"
     SWIFT_VERSION: "5.0"
     TARGETED_DEVICE_FAMILY: "1"
     CODE_SIGN_IDENTITY: ""
@@ -18,8 +18,9 @@ targets:
     platform: iOS
     sources:
       - path: Sources
-    resources:
       - path: Resources
+        excludes:
+          - Info.plist
     settings:
       base:
         INFOPLIST_FILE: Resources/Info.plist
