@@ -11,6 +11,7 @@ Productization docs:
 
 - `docs/API.md`: stable integration API v1.
 - `docs/AGENT_ADAPTERS.md`: how to connect CLI, SSH, Docker, and HTTP agents.
+- `docs/CLOUD_DEPLOYMENT.md`: Docker Compose, reverse proxy, and cloud deployment checklist.
 - `docs/SECURITY.md`: security notes before deployment.
 - `docs/PRODUCT_ROADMAP.md`: path from private deploy to commercial product.
 
@@ -24,6 +25,17 @@ npm start
 ```
 
 Open `http://127.0.0.1:3456`.
+
+## Cloud Quick Start
+
+```powershell
+Copy-Item deploy\dashboard.env.example deploy\dashboard.env
+Copy-Item Dashboard\config.example.json deploy\data\config.json
+Copy-Item Dashboard\secrets.example.json deploy\data\secrets.json
+docker compose -f deploy\docker-compose.yml up -d --build
+```
+
+Before using this outside localhost, edit `deploy\dashboard.env` and replace auth values. See `docs/CLOUD_DEPLOYMENT.md`.
 
 For LAN/mobile access, set the server URL in the iOS app profile tab. The Dashboard also supports:
 
@@ -57,6 +69,18 @@ $body = @{
   async = $true
 } | ConvertTo-Json
 Invoke-RestMethod http://127.0.0.1:3456/api/v1/runs -Headers $headers -Method Post -ContentType "application/json" -Body $body
+```
+
+Create a multi-agent collaboration run:
+
+```powershell
+$body = @{
+  agent_ids = @("codex-cli", "http-demo")
+  input = "Compare deployment risks and produce a short action list."
+  mode = "parallel"
+  async = $true
+} | ConvertTo-Json
+Invoke-RestMethod http://127.0.0.1:3456/api/v1/collaborations -Headers $headers -Method Post -ContentType "application/json" -Body $body
 ```
 
 ## Local Configuration

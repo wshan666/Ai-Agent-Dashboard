@@ -25,6 +25,19 @@ Optional one-click launcher on Windows:
 .\one-click-start.bat
 ```
 
+## Docker
+
+From the repository root:
+
+```powershell
+Copy-Item deploy\dashboard.env.example deploy\dashboard.env
+Copy-Item Dashboard\config.example.json deploy\data\config.json
+Copy-Item Dashboard\secrets.example.json deploy\data\secrets.json
+docker compose -f deploy\docker-compose.yml up -d --build
+```
+
+Set strong auth values in `deploy\dashboard.env` before exposing the service beyond localhost.
+
 ## Important Files
 
 - `server.js`: Express API, agent execution, workflow orchestration, SSE stream, backups.
@@ -41,6 +54,7 @@ Optional one-click launcher on Windows:
 - `GET /api/v1/adapters`
 - `GET /api/v1/config/validate`
 - `POST /api/v1/runs`
+- `POST /api/v1/collaborations`
 - `GET /api/v1/runs`
 - `GET /api/v1/runs/:id`
 - `POST /api/v1/runs/:id/cancel`

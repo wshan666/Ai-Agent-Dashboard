@@ -117,6 +117,74 @@ When `async` is omitted or false, the API waits for the agent and returns the fi
 }
 ```
 
+## Create Collaboration
+
+```http
+POST /api/v1/collaborations
+Authorization: Bearer <DASHBOARD_API_TOKEN>
+Content-Type: application/json
+```
+
+Request:
+
+```json
+{
+  "agent_ids": ["research-http", "writer-http"],
+  "input": "Create a deployment plan for a customer agent workspace.",
+  "topic": "customer-deploy",
+  "mode": "parallel",
+  "summarizer_agent_id": "writer-http",
+  "async": true,
+  "metadata": {
+    "workspace_id": "demo"
+  }
+}
+```
+
+Fields:
+
+- `agent_ids`: required array with at least two enabled agents.
+- `input` or `message`: required user task.
+- `mode`: `parallel` or `sequential`; defaults to `parallel`.
+- `summarizer_agent_id`: optional enabled agent that receives all agent outputs and produces the final summary.
+- `async`: defaults to `true` for collaborations.
+
+Queued response:
+
+```json
+{
+  "id": "run-uuid",
+  "object": "run",
+  "kind": "collaboration",
+  "status": "queued",
+  "agent_ids": ["research-http", "writer-http"],
+  "topic": "customer-deploy",
+  "output": "",
+  "error": null,
+  "created_at": "2026-05-12T00:00:00.000Z"
+}
+```
+
+Completed runs include agent-level responses:
+
+```json
+{
+  "id": "run-uuid",
+  "object": "run",
+  "kind": "collaboration",
+  "status": "completed",
+  "responses": [
+    {
+      "agent_id": "research-http",
+      "agent_name": "Research Agent",
+      "status": "completed",
+      "output": "..."
+    }
+  ],
+  "output": "..."
+}
+```
+
 ## Get Run
 
 ```http
@@ -146,6 +214,6 @@ Queued runs are cancelled immediately. Running CLI/SSH work cannot always be int
 
 ## Notes
 
-Runs are stored in `DASHBOARD_SHARED_OUT/api_runs.json`; audit events are appended to `DASHBOARD_SHARED_OUT/api_audit.jsonl`.
+Runs and collaborations are stored in `DASHBOARD_SHARED_OUT/api_runs.json`; audit events are appended to `DASHBOARD_SHARED_OUT/api_audit.jsonl`.
 
 Future versions should add callbacks/webhooks, usage metering, team/workspace IDs, and billing identifiers.

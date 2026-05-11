@@ -10,9 +10,14 @@ const { pathToFileURL } = require('url');
 
 const app = express();
 app.disable('x-powered-by');
+app.set('trust proxy', envFlag(process.env.DASHBOARD_TRUST_PROXY));
 app.use(express.json({ limit: '20mb' }));
 const UPLOADS_DIR = path.join(__dirname, 'public', 'uploads');
 fs.mkdirSync(UPLOADS_DIR, { recursive: true });
+
+function envFlag(value) {
+  return /^(1|true|yes|on)$/i.test(String(value || '').trim());
+}
 
 function timingSafeEqualString(a, b) {
   const left = Buffer.from(String(a || ''), 'utf-8');
@@ -69,6 +74,32 @@ function requireDashboardAuth(req, res, next) {
   res.status(401).json({ error: 'Authentication required' });
 }
 
+function corsOrigins() {
+  return String(process.env.DASHBOARD_CORS_ORIGIN || '')
+    .split(',')
+    .map(s => s.trim())
+    .filter(Boolean);
+}
+
+function applyCors(req, res, next) {
+  const origins = corsOrigins();
+  if (origins.length > 0) {
+    const origin = String(req.headers.origin || '');
+    const allowOrigin = origins.includes('*') ? '*' : (origins.includes(origin) ? origin : '');
+    if (allowOrigin) {
+      res.setHeader('Access-Control-Allow-Origin', allowOrigin);
+      res.setHeader('Vary', 'Origin');
+      res.setHeader('Access-Control-Allow-Headers', 'Authorization, Content-Type, X-Dashboard-Token');
+      res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+      res.setHeader('Access-Control-Max-Age', '600');
+    }
+  }
+  if (req.method === 'OPTIONS') return res.status(204).end();
+  next();
+}
+
+app.use(applyCors);
+
 app.get(['/api/health', '/healthz'], (req, res) => {
   res.json({
     ok: true,
@@ -76,6 +107,8 @@ app.get(['/api/health', '/healthz'], (req, res) => {
     time: new Date().toISOString(),
     uptimeSeconds: Math.round(process.uptime()),
     authEnabled: dashboardAuthEnabled(),
+    authRequired: envFlag(process.env.DASHBOARD_REQUIRE_AUTH),
+    corsEnabled: corsOrigins().length > 0,
     runs: typeof apiRuns === 'undefined' ? undefined : {
       total: apiRuns.length,
       queued: apiRuns.filter(run => run.status === 'queued').length,
@@ -4092,11 +4125,15 @@ function publicRun(run, { includeInput = false } = {}) {
   const out = {
     id: run.id,
     object: 'run',
+    kind: run.kind || 'agent',
     status: run.status,
     agent_id: run.agent_id,
     agent_name: run.agent_name,
+    agent_ids: run.agent_ids || undefined,
+    summarizer_agent_id: run.summarizer_agent_id || undefined,
     topic: run.topic,
     output: run.output || '',
+    responses: run.responses || undefined,
     error: run.error || null,
     metadata: run.metadata || {},
     latency_ms: run.latency_ms || null,
@@ -4157,6 +4194,7 @@ function processApiRunQueue() {
 async function executeApiRun(id) {
   const run = findApiRun(id);
   if (!run || run.status !== 'queued') return null;
+  if (run.kind === 'collaboration') return executeApiCollaborationRun(run);
 
   const config = loadConfig();
   const agent = findAgent(run.agent_id);
@@ -4218,6 +4256,129 @@ async function executeApiRun(id) {
     agent_id: agent.id,
     latency_ms: finalRun.latency_ms,
     error: finalRun.error ? compactAgentText(finalRun.error, 500) : null
+  });
+
+  return finalRun;
+}
+
+async function executeApiCollaborationRun(run) {
+  const config = loadConfig();
+  const ids = Array.isArray(run.agent_ids) ? run.agent_ids : [];
+  const agents = ids.map(id => findAgent(id)).filter(Boolean);
+  const missing = ids.filter(id => !agents.some(agent => agent.id === id));
+  const disabled = agents.filter(agent => agent.disabled).map(agent => agent.id);
+  const started = Date.now();
+  const startedAt = new Date(started).toISOString();
+
+  if (missing.length || disabled.length || agents.length === 0) {
+    const failed = {
+      ...run,
+      status: 'failed',
+      error: [
+        missing.length ? `missing agents: ${missing.join(', ')}` : '',
+        disabled.length ? `disabled agents: ${disabled.join(', ')}` : ''
+      ].filter(Boolean).join('; ') || 'no agents selected',
+      updated_at: startedAt,
+      completed_at: startedAt,
+      latency_ms: 0
+    };
+    upsertApiRun(failed);
+    auditApiEvent('collaboration.failed', { run_id: run.id, error: failed.error });
+    return failed;
+  }
+
+  upsertApiRun({
+    ...run,
+    status: 'running',
+    started_at: startedAt,
+    updated_at: startedAt
+  });
+  auditApiEvent('collaboration.started', { run_id: run.id, agent_ids: ids });
+
+  const executeOne = async (agent, previous = []) => {
+    const extraContext = previous.length
+      ? `\n【前序 agent 输出】\n${previous.map(r => `[${r.agent_name}] ${compactAgentText(r.output || r.error || '', 1200)}`).join('\n')}\n`
+      : '';
+    const prompt = buildChatPrompt(agent, run.topic, run.input, 'api-collaboration', chatHistory.messages, extraContext);
+    const t0 = Date.now();
+    const result = await runAgentChat(agent, prompt, config);
+    return {
+      agent_id: agent.id,
+      agent_name: agent.name,
+      status: result.ok ? 'completed' : 'failed',
+      output: result.ok ? (result.stdout || '') : '',
+      error: result.ok ? null : (result.stderr || result.stdout || 'agent failed'),
+      latency_ms: Date.now() - t0
+    };
+  };
+
+  const responses = [];
+  if (run.mode === 'sequential') {
+    for (const agent of agents) {
+      responses.push(await executeOne(agent, responses));
+    }
+  } else {
+    responses.push(...await Promise.all(agents.map(agent => executeOne(agent))));
+  }
+
+  let summary = responses.map(r => `## ${r.agent_name}\n${r.status === 'completed' ? r.output : `ERROR: ${r.error}`}`).join('\n\n');
+  let summarizerResponse = null;
+  if (run.summarizer_agent_id) {
+    const summarizer = findAgent(run.summarizer_agent_id);
+    if (summarizer && !summarizer.disabled) {
+      const summaryPrompt = buildChatPrompt(
+        summarizer,
+        run.topic,
+        `请汇总以下多 agent 协作结果，输出结论、分歧、建议下一步。\n\n用户输入：\n${run.input}\n\n协作结果：\n${summary}`,
+        'api-collaboration-summary',
+        chatHistory.messages
+      );
+      const t0 = Date.now();
+      const result = await runAgentChat(summarizer, summaryPrompt, config);
+      summarizerResponse = {
+        agent_id: summarizer.id,
+        agent_name: summarizer.name,
+        status: result.ok ? 'completed' : 'failed',
+        output: result.ok ? (result.stdout || '') : '',
+        error: result.ok ? null : (result.stderr || result.stdout || 'summary failed'),
+        latency_ms: Date.now() - t0
+      };
+      if (result.ok) summary = result.stdout || summary;
+      responses.push({ ...summarizerResponse, role: 'summarizer' });
+    }
+  }
+
+  const failedCount = responses.filter(r => r.status !== 'completed').length;
+  const completedAt = new Date().toISOString();
+  const finalRun = {
+    ...(findApiRun(run.id) || run),
+    status: failedCount === responses.length ? 'failed' : 'completed',
+    output: summary,
+    responses,
+    error: failedCount === responses.length ? 'all collaboration agents failed' : null,
+    latency_ms: Date.now() - started,
+    completed_at: completedAt,
+    updated_at: completedAt
+  };
+  upsertApiRun(finalRun);
+
+  addChatMessage({
+    id: run.id,
+    from: 'api-collaboration',
+    fromName: 'API Collaboration',
+    content: compactAgentText(summary, 5000),
+    timestamp: completedAt,
+    responseTime: finalRun.latency_ms,
+    type: 'api',
+    topic: run.topic
+  });
+
+  auditApiEvent(finalRun.status === 'completed' ? 'collaboration.completed' : 'collaboration.failed', {
+    run_id: run.id,
+    agent_ids: ids,
+    summarizer_agent_id: run.summarizer_agent_id || null,
+    latency_ms: finalRun.latency_ms,
+    failed_count: failedCount
   });
 
   return finalRun;
@@ -4327,6 +4488,57 @@ app.post('/api/v1/runs', async (req, res) => {
   };
   upsertApiRun(run);
   auditApiEvent('run.created', { run_id: run.id, agent_id: agent.id, async: wantsAsync });
+
+  if (wantsAsync) {
+    enqueueApiRun(run);
+    return res.status(202).json(publicRun(run, { includeInput: true }));
+  }
+
+  apiRunActive++;
+  try {
+    const finalRun = await executeApiRun(run.id);
+    res.status(finalRun?.status === 'completed' ? 200 : 502).json(publicRun(finalRun, { includeInput: true }));
+  } finally {
+    apiRunActive = Math.max(0, apiRunActive - 1);
+    processApiRunQueue();
+  }
+});
+
+app.post('/api/v1/collaborations', async (req, res) => {
+  const started = Date.now();
+  const agentIds = Array.isArray(req.body?.agent_ids) ? req.body.agent_ids.map(x => String(x).trim()).filter(Boolean) : [];
+  const input = String(req.body?.input || req.body?.message || '').trim();
+  const topic = String(req.body?.topic || 'API collaboration').trim();
+  const mode = String(req.body?.mode || 'parallel').trim().toLowerCase() === 'sequential' ? 'sequential' : 'parallel';
+  const summarizerAgentId = String(req.body?.summarizer_agent_id || req.body?.summarizerAgentId || '').trim();
+  const metadata = req.body?.metadata && typeof req.body.metadata === 'object' ? req.body.metadata : {};
+  const wantsAsync = req.body?.async !== false && String(req.query.async || 'true').toLowerCase() !== 'false';
+
+  if (agentIds.length < 2) return res.status(400).json({ error: { message: 'agent_ids must include at least two agents' } });
+  if (!input) return res.status(400).json({ error: { message: 'input is required' } });
+
+  const run = {
+    id: crypto.randomUUID(),
+    object: 'run',
+    kind: 'collaboration',
+    status: 'queued',
+    agent_id: null,
+    agent_name: 'Collaboration',
+    agent_ids: agentIds,
+    summarizer_agent_id: summarizerAgentId || null,
+    mode,
+    topic,
+    input,
+    output: '',
+    responses: [],
+    error: null,
+    metadata,
+    latency_ms: null,
+    created_at: new Date(started).toISOString(),
+    updated_at: new Date(started).toISOString()
+  };
+  upsertApiRun(run);
+  auditApiEvent('collaboration.created', { run_id: run.id, agent_ids: agentIds, async: wantsAsync });
 
   if (wantsAsync) {
     enqueueApiRun(run);
@@ -7612,6 +7824,11 @@ app.post('/api/hosts/:hostId/reconnect', async (req, res) => {
 
 const config = loadConfig();
 const PORT = Number(process.env.PORT || config.server.port || 3456);
+
+if (envFlag(process.env.DASHBOARD_REQUIRE_AUTH) && !dashboardAuthEnabled()) {
+  console.error('DASHBOARD_REQUIRE_AUTH is enabled, but no DASHBOARD_API_TOKEN or Basic Auth credentials were provided.');
+  process.exit(1);
+}
 
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`🤖 Agent Dashboard at http://localhost:${PORT} (LAN: ${publicBaseUrl(PORT)})`);

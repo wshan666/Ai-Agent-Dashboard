@@ -70,6 +70,14 @@ Response mapping:
 - If `responsePath` is set, Dashboard reads that dotted path, for example `data.answer`.
 - Otherwise Dashboard tries `output`, `text`, `message`, OpenAI-style `choices[0].message.content`, then falls back to raw JSON.
 
+## Collaboration
+
+Any enabled adapter can be used by `POST /api/v1/collaborations`. For cloud or commercial use, prefer HTTP agents because they isolate customer workloads and let each agent scale independently.
+
+The Dashboard sends the same compiled prompt contract to every selected agent. In `parallel` mode, all agents receive the original task. In `sequential` mode, each later agent receives the original task plus earlier outputs as context.
+
+If `summarizer_agent_id` is provided, that agent receives all responses and writes the final `output`. If no summarizer is provided, the final `output` is a joined transcript of the successful agent outputs.
+
 ## Adapter Contract
 
 All adapters should eventually normalize into:

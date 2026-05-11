@@ -1,0 +1,21 @@
+services:
+  dashboard:
+    build:
+      context: ../Dashboard
+    image: ai-agent-dashboard:latest
+    restart: unless-stopped
+    env_file:
+      - ./dashboard.env
+    ports:
+      - "3456:3456"
+    volumes:
+      - ./data/config.json:/app/config.json:ro
+      - ./data/secrets.json:/app/secrets.json:ro
+      - ./data/output:/app/output
+      - ./data/uploads:/app/public/uploads
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:'+(process.env.PORT||3456)+'/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
