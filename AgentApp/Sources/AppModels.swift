@@ -208,8 +208,14 @@ struct WorkflowStartResponse: Codable {
     let error: String?
     let passed: Bool?
     let status: String?
+    let score: Int?
     let packageUrl: String?
     let previewUrl: String?
+    let previewHtmlUrl: String?
+    let previewError: String?
+    let pdfUrl: String?
+    let pdfError: String?
+    let pyUrl: String?
 }
 
 struct MusicWorkflowResponse: Codable {

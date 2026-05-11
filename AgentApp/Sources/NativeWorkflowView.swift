@@ -11,6 +11,7 @@ struct NativeWorkflowView: View {
     @State private var projectDraft = ProjectWorkflowDraft()
     @State private var contentDraft = ContentWorkflowDraft()
     @State private var pptDraft = PptWorkflowDraft()
+    @State private var pptResult: WorkflowStartResponse?
     @State private var musicDraft = MusicWorkflowDraft()
     @State private var musicResult: MusicResult?
     @State private var musicSearchText = ""
@@ -242,8 +243,12 @@ struct NativeWorkflowView: View {
             stepperRow("\u{6700}\u{5927}\u{91cd}\u{8bd5}", $pptDraft.maxRetries, 0 ... 5)
             Toggle("\u{98de}\u{4e66}\u{901a}\u{77e5}", isOn: $pptDraft.feishuNotify)
             submitButton("\u{542f}\u{52a8} PPT \u{5de5}\u{4f5c}\u{6d41}", canSubmitPpt) {
-                try await store.startPptWorkflow(pptDraft)
+                pptResult = try await store.startPptWorkflow(pptDraft)
                 pptDraft = PptWorkflowDraft()
+            }
+
+            if let result = pptResult {
+                pptResultBlock(result)
             }
         }
     }
@@ -539,6 +544,65 @@ struct NativeWorkflowView: View {
                     .padding(.vertical, 4)
                     if track.stableKey != tracks.last?.stableKey { Divider() }
                 }
+            }
+        }
+    }
+
+    private func pptResultBlock(_ result: WorkflowStartResponse) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Divider()
+            HStack(alignment: .firstTextBaseline) {
+                Text("\u{6700}\u{8fd1} PPT \u{7ed3}\u{679c}").font(.headline)
+                Spacer()
+                Text(result.passed == true ? "\u{5ba1}\u{6838}\u{901a}\u{8fc7}" : "\u{9700}\u{4eba}\u{5de5}\u{786e}\u{8ba4}")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(result.passed == true ? Color.green : Color.orange)
+            }
+
+            if let score = result.score {
+                Text("\u{6700}\u{7ec8}\u{8bc4}\u{5206}\u{ff1a}\(score) / 100")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            }
+
+            VStack(alignment: .leading, spacing: 8) {
+                resultLink("\u{6253}\u{5f00}\u{4ea4}\u{4ed8}\u{5305}", systemImage: "shippingbox.fill", raw: result.packageUrl, prominent: true)
+                resultLink("\u{6253}\u{5f00} PPTX \u{811a}\u{672c}", systemImage: "curlybraces.square", raw: result.pyUrl)
+                resultLink("\u{6253}\u{5f00} PDF \u{4ea4}\u{4ed8}", systemImage: "doc.richtext", raw: result.pdfUrl)
+                resultLink("\u{6253}\u{5f00} HTML \u{9884}\u{89c8}", systemImage: "safari", raw: result.previewUrl)
+            }
+
+            if let pdfError = result.pdfError, !pdfError.isEmpty {
+                Text("\u{0050}\u{0044}\u{0046}\u{751f}\u{6210}\u{63d0}\u{793a}\u{ff1a}\(pdfError)")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            if let error = result.error, !error.isEmpty {
+                Text(error)
+                    .font(.caption)
+                    .foregroundStyle(.red)
+            }
+        }
+        .padding(12)
+        .background(Color(.tertiarySystemBackground))
+        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+    }
+
+    @ViewBuilder
+    private func resultLink(_ title: String, systemImage: String, raw: String?, prominent: Bool = false) -> some View {
+        if let url = store.downloadURL(for: raw) {
+            if prominent {
+                Link(destination: url) {
+                    Label(title, systemImage: systemImage)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+                .buttonStyle(.borderedProminent)
+            } else {
+                Link(destination: url) {
+                    Label(title, systemImage: systemImage)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+                .buttonStyle(.bordered)
             }
         }
     }

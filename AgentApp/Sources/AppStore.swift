@@ -238,7 +238,7 @@ final class AppStore: ObservableObject {
         Task { await self.refreshDashboard() }
     }
 
-    func startPptWorkflow(_ draft: PptWorkflowDraft) async throws {
+    func startPptWorkflow(_ draft: PptWorkflowDraft) async throws -> WorkflowStartResponse {
         let payload: [String: Any] = [
             "topic": draft.topic,
             "audience": draft.audience,
@@ -255,8 +255,10 @@ final class AppStore: ObservableObject {
             "feishuNotify": draft.feishuNotify
         ]
 
-        _ = try await postJSON(path: "/api/workflow/ppt-review", payload: payload) as WorkflowStartResponse
+        let response: WorkflowStartResponse = try await postJSON(path: "/api/workflow/ppt-review", payload: payload, timeout: 600)
+        lastError = nil
         Task { await self.refreshDashboard() }
+        return response
     }
 
     func startMusicWorkflow(_ draft: MusicWorkflowDraft) async throws -> MusicResult {
@@ -432,6 +434,15 @@ final class AppStore: ObservableObject {
             let legacyData = try await getData(path: "/api/agents")
             return try parseAgents(legacyData)
         }
+    }
+
+    func downloadURL(for raw: String?) -> URL? {
+        let trimmed = (raw ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return nil }
+        if let url = URL(string: trimmed), url.scheme != nil {
+            return url
+        }
+        return URL(string: trimmed, relativeTo: settings.normalizedBaseURL)?.absoluteURL
     }
 
     private func parseAgents(_ data: Data) throws -> [AgentSummary] {
