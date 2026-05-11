@@ -2,7 +2,7 @@ name: Build IPA
 
 on:
   push:
-    branches: [master, main]
+    branches: [master, main, "codex/**"]
   workflow_dispatch:
 
 jobs:
@@ -10,6 +10,17 @@ jobs:
     runs-on: macos-15
     steps:
       - uses: actions/checkout@v4
+
+      - name: Verify Native iOS App
+        run: |
+          if [ -d AgentApp/Sources/www ]; then
+            echo "AgentApp must not bundle Sources/www HTML assets."
+            exit 1
+          fi
+          if grep -R -E "WKWebView|WebKit|UIViewRepresentable|AgentWebContainer|WebContainerView" AgentApp/Sources; then
+            echo "AgentApp must stay native SwiftUI, not a web shell."
+            exit 1
+          fi
 
       - name: Install XcodeGen
         run: brew install xcodegen
