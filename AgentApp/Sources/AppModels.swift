@@ -67,6 +67,11 @@ struct ChatHistoryResponse: Codable {
     let messages: [ChatMessage]
 }
 
+struct PrivateChatHistoryResponse: Codable {
+    let agentId: String
+    let messages: [ChatMessage]
+}
+
 struct DevProgressItem: Codable, Identifiable, Hashable {
     let id: String
     let title: String?
@@ -85,6 +90,8 @@ struct DevProgressResponse: Codable {
 
 struct ChatSendResponse: Codable {
     let ok: Bool?
+    let accepted: Bool?
+    let queued: Bool?
     let responses: [AgentRunResponse]?
     let error: String?
 }

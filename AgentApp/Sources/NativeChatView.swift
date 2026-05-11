@@ -33,7 +33,11 @@ struct NativeChatView: View {
     private var visibleMessages: [ChatMessage] {
         let base = Array(store.messages.suffix(220))
         guard mode == .direct, let agent = privateAgent else { return base }
-        return base.filter { $0.isUser || $0.from == agent.id || $0.senderTitle.contains(agent.name) }
+        return base.filter { message in
+            if message.room == agent.id { return true }
+            if message.from == agent.id { return true }
+            return false
+        }
     }
 
     var body: some View {
@@ -60,13 +64,19 @@ struct NativeChatView: View {
         }
         .task {
             if store.agents.isEmpty { await store.refreshDashboard() }
-            if store.messages.isEmpty { await store.refreshChat() }
             if selectedAgentIds.isEmpty {
                 selectedAgentIds = Set(store.agents.filter(\.isOnline).prefix(2).map(\.id))
             }
             if privateAgentId.isEmpty {
                 privateAgentId = store.agents.filter(\.isOnline).first?.id ?? ""
             }
+            await syncCurrentChat()
+        }
+        .onChange(of: mode) { _ in
+            Task { await syncCurrentChat() }
+        }
+        .onChange(of: privateAgentId) { _ in
+            Task { await syncCurrentChat() }
         }
         .sheet(isPresented: $showAgentPicker) { groupAgentPicker }
         .sheet(isPresented: $showPrivatePicker) { privateAgentPicker }
@@ -189,7 +199,7 @@ struct NativeChatView: View {
                 .padding(.vertical, 18)
             }
             .scrollDismissesKeyboard(.interactively)
-            .refreshable { await store.refreshChat() }
+            .refreshable { await syncCurrentChat() }
             .onAppear { scrollToBottom(proxy: proxy) }
             .onChange(of: store.messages.count) { _ in scrollToBottom(proxy: proxy) }
         }
@@ -374,12 +384,20 @@ struct NativeChatView: View {
                 store.lastError = "\u{6d88}\u{606f}\u{5df2}\u{53d1}\u{51fa}\u{ff0c}\u{6b63}\u{5728}\u{7b49}\u{5f85} agent \u{56de}\u{590d}\u{3002}\u{82e5}\u{8fdc}\u{7a0b}\u{8f83}\u{6162}\u{ff0c}\u{8bf7}\u{7a0d}\u{7b49}\u{5e76}\u{4e0b}\u{62c9}\u{5237}\u{65b0}\u{3002}"
                 Task {
                     try? await Task.sleep(nanoseconds: 1_500_000_000)
-                    await store.refreshChat()
+                    await syncCurrentChat()
                 }
             } else {
                 store.messages.removeAll { $0.id == optimisticMessage.id }
                 store.lastError = error.localizedDescription
             }
+        }
+    }
+
+    private func syncCurrentChat() async {
+        if mode == .direct, !privateAgentId.isEmpty {
+            await store.refreshPrivateChat(agentId: privateAgentId)
+        } else {
+            await store.refreshChat()
         }
     }
 

@@ -77,6 +77,23 @@ final class AppStore: ObservableObject {
         }
     }
 
+    func refreshPrivateChat(agentId: String) async {
+        let trimmed = agentId.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+
+        isLoadingChat = true
+        defer { isLoadingChat = false }
+
+        do {
+            let encoded = trimmed.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? trimmed
+            let history: PrivateChatHistoryResponse = try await getJSON(path: "/api/chat/private/\(encoded)")
+            messages = sortedMessages(history.messages)
+            lastError = nil
+        } catch {
+            lastError = "\u{79c1}\u{804a}\u{8bb0}\u{5f55}\u{52a0}\u{8f7d}\u{5931}\u{8d25}\u{ff1a}\(error.localizedDescription)"
+        }
+    }
+
     func sendChat(agentIds: [String], message: String, topic: String, room: String? = nil) async throws {
         var payload: [String: Any] = [
             "agentIds": agentIds,
@@ -88,12 +105,20 @@ final class AppStore: ObservableObject {
             payload["room"] = room
         }
 
-        _ = try await postJSON(path: "/api/chat/send", payload: payload, timeout: 180) as ChatSendResponse
+        let response: ChatSendResponse = try await postJSON(path: "/api/chat/send", payload: payload, timeout: 180)
         lastError = nil
 
         Task {
             try? await Task.sleep(nanoseconds: 300_000_000)
-            await self.refreshChat()
+            if let room, !room.isEmpty {
+                await self.refreshPrivateChat(agentId: room)
+            } else {
+                await self.refreshChat()
+            }
+        }
+
+        if response.accepted == true && response.queued == true {
+            return
         }
     }
 
