@@ -39,6 +39,7 @@ struct NativeBigScreenView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 18) {
                 header
+                officeSection
                 liveGameSection
                 commandCard
                 agentBoard
@@ -72,6 +73,7 @@ struct NativeBigScreenView: View {
             if activeRun == nil {
                 activeRun = store.lastCollaborationRun
             }
+            await refreshLivePanelsLoop()
         }
     }
 
@@ -130,6 +132,53 @@ struct NativeBigScreenView: View {
                     icon: "suit.club.fill",
                     text: "\u{6682}\u{65e0}\u{724c}\u{5c40}\u{3002}\u{4e09}\u{4e2a} agent \u{542f}\u{52a8}\u{6597}\u{5730}\u{4e3b}\u{540e}\u{ff0c}\u{8fd9}\u{91cc}\u{4f1a}\u{663e}\u{793a}\u{5730}\u{4e3b}\u{3001}\u{5269}\u{4f59}\u{624b}\u{724c}\u{548c}\u{684c}\u{9762}\u{51fa}\u{724c}\u{3002}"
                 )
+            }
+        }
+    }
+
+    private var officeSection: some View {
+        card {
+            HStack {
+                Label("\u{529e}\u{516c}\u{5ba4}\u{5927}\u{5c4f}", systemImage: "building.2")
+                    .font(.headline)
+                Spacer()
+                Text("\u{539f}\u{751f}\u{7248}")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+            }
+
+            LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 10) {
+                ForEach(groupedAgents, id: \.0) { group, agents in
+                    VStack(alignment: .leading, spacing: 10) {
+                        HStack {
+                            Text(group)
+                                .font(.caption.weight(.bold))
+                                .lineLimit(1)
+                            Spacer()
+                            Text("\(agents.filter(\.isOnline).count)/\(agents.count)")
+                                .font(.caption2.weight(.semibold))
+                                .foregroundStyle(.secondary)
+                        }
+                        LazyVGrid(columns: [GridItem(.adaptive(minimum: 42), spacing: 8)], spacing: 8) {
+                            ForEach(agents) { agent in
+                                VStack(spacing: 4) {
+                                    Text(agent.displayIcon)
+                                        .font(.caption)
+                                        .frame(width: 34, height: 34)
+                                        .background(statusColor(agent).opacity(0.16))
+                                        .overlay(Circle().stroke(statusColor(agent).opacity(0.5), lineWidth: 1))
+                                        .clipShape(Circle())
+                                    Text(agent.name)
+                                        .font(.system(size: 9, weight: .semibold))
+                                        .lineLimit(1)
+                                }
+                            }
+                        }
+                    }
+                    .padding(10)
+                    .background(Color(.tertiarySystemBackground))
+                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                }
             }
         }
     }
@@ -590,6 +639,32 @@ struct NativeBigScreenView: View {
         } catch {
             store.lastError = error.localizedDescription
         }
+    }
+
+    private var groupedAgents: [(String, [AgentSummary])] {
+        Dictionary(grouping: store.agents, by: \.hostGroup)
+            .map { ($0.key, $0.value.sorted { $0.name.localizedCompare($1.name) == .orderedAscending }) }
+            .sorted { $0.0.localizedCompare($1.0) == .orderedAscending }
+    }
+
+    private func statusColor(_ agent: AgentSummary) -> Color {
+        if agent.isOnline { return .green }
+        if agent.isChecking { return .orange }
+        return .red
+    }
+
+    private func refreshLivePanelsLoop() async {
+        while !Task.isCancelled {
+            try? await Task.sleep(nanoseconds: 2_000_000_000)
+            guard hasRunningGame else { continue }
+            await store.refreshMessagesSilently(limit: 180)
+        }
+    }
+
+    private var hasRunningGame: Bool {
+        if let status = latestDoudizhuMessage?.doudizhu?.status, status != "finished" { return true }
+        if let status = latestGomokuMessage?.gomoku?.status, status != "finished" { return true }
+        return false
     }
 
     private func continueDoudizhuGame() async {

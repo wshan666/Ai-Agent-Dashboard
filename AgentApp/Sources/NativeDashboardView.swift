@@ -3,8 +3,9 @@ import SwiftUI
 struct NativeDashboardView: View {
     @EnvironmentObject private var store: AppStore
 
-    private var onlineCount: Int { store.agents.filter(\.isOnline).count }
-    private var offlineCount: Int { max(0, store.agents.count - onlineCount) }
+    private var onlineAgents: [AgentSummary] { store.agents.filter(\.isOnline) }
+    private var checkingAgents: [AgentSummary] { store.agents.filter(\.isChecking) }
+    private var offlineAgents: [AgentSummary] { store.agents.filter { !$0.isOnline && !$0.isChecking } }
     private var activeRunCount: Int { store.apiRuns.filter(\.isActive).count }
 
     var body: some View {
@@ -18,10 +19,33 @@ struct NativeDashboardView: View {
                 }
 
                 LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
-                    statCard("\u{667a}\u{80fd}\u{4f53}", value: "\(store.agents.count)", tint: .blue)
-                    statCard("\u{5728}\u{7ebf}", value: "\(onlineCount)", tint: .green)
-                    statCard("\u{79bb}\u{7ebf}", value: "\(offlineCount)", tint: .orange)
-                    statCard("\u{8fd0}\u{884c}\u{4e2d}", value: "\(activeRunCount)", tint: .purple)
+                    NavigationLink {
+                        NativeAgentListView(title: "\u{5168}\u{90e8}\u{667a}\u{80fd}\u{4f53}", agents: store.agents)
+                    } label: {
+                        statCard("\u{667a}\u{80fd}\u{4f53}", value: "\(store.agents.count)", tint: .blue)
+                    }
+                    .buttonStyle(.plain)
+
+                    NavigationLink {
+                        NativeAgentListView(title: "\u{5728}\u{7ebf}\u{667a}\u{80fd}\u{4f53}", agents: onlineAgents)
+                    } label: {
+                        statCard("\u{5728}\u{7ebf}", value: "\(onlineAgents.count)", tint: .green)
+                    }
+                    .buttonStyle(.plain)
+
+                    NavigationLink {
+                        NativeAgentListView(title: "\u{68c0}\u{6d4b}\u{4e2d}", agents: checkingAgents)
+                    } label: {
+                        statCard("\u{68c0}\u{6d4b}\u{4e2d}", value: "\(checkingAgents.count)", tint: .orange)
+                    }
+                    .buttonStyle(.plain)
+
+                    NavigationLink {
+                        NativeAgentListView(title: "\u{79bb}\u{7ebf}\u{667a}\u{80fd}\u{4f53}", agents: offlineAgents)
+                    } label: {
+                        statCard("\u{79bb}\u{7ebf}", value: "\(offlineAgents.count)", tint: .red)
+                    }
+                    .buttonStyle(.plain)
                 }
 
                 sectionCard(title: "\u{5feb}\u{6377}\u{64cd}\u{4f5c}") {
@@ -167,5 +191,63 @@ struct NativeDashboardView: View {
             Spacer()
             Image(systemName: "chevron.right").foregroundStyle(.tertiary)
         }
+    }
+}
+
+struct NativeAgentListView: View {
+    let title: String
+    let agents: [AgentSummary]
+
+    var body: some View {
+        List {
+            if agents.isEmpty {
+                VStack(alignment: .center, spacing: 10) {
+                    Image(systemName: "checkmark.circle")
+                        .font(.largeTitle)
+                        .foregroundStyle(Color.green)
+                    Text("\u{6ca1}\u{6709}\u{667a}\u{80fd}\u{4f53}")
+                        .font(.headline)
+                    Text("\u{5f53}\u{524d}\u{5206}\u{7c7b}\u{4e0b}\u{6ca1}\u{6709}\u{53ef}\u{663e}\u{793a}\u{7684}\u{667a}\u{80fd}\u{4f53}\u{3002}")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 40)
+            } else {
+                ForEach(agents) { agent in
+                    HStack(spacing: 12) {
+                        Text(agent.displayIcon)
+                            .font(.title3)
+                            .frame(width: 34, height: 34)
+                            .background(Color(.tertiarySystemBackground))
+                            .clipShape(Circle())
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text(agent.name)
+                                .font(.headline)
+                            Text("\(agent.hostGroup) · \(agent.primaryModelText)")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                        Spacer()
+                        Text(agent.statusText)
+                            .font(.caption.weight(.semibold))
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 5)
+                            .background(statusColor(agent).opacity(0.15))
+                            .foregroundStyle(statusColor(agent))
+                            .clipShape(Capsule())
+                    }
+                    .padding(.vertical, 4)
+                }
+            }
+        }
+        .navigationTitle(title)
+        .navigationBarTitleDisplayMode(.inline)
+    }
+
+    private func statusColor(_ agent: AgentSummary) -> Color {
+        if agent.isOnline { return .green }
+        if agent.isChecking { return .orange }
+        return .red
     }
 }

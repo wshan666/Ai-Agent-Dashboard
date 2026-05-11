@@ -48,19 +48,13 @@ final class AppStore: ObservableObject {
             errors.append("\u{667a}\u{80fd}\u{4f53}\u{5217}\u{8868}\u{52a0}\u{8f7d}\u{5931}\u{8d25}\u{ff1a}\(error.localizedDescription)")
         }
 
-        do {
-            let progress = try await fetchDevProgress()
+        if let progress = try? await fetchDevProgress() {
             devProgress = progress.items ?? progress.active ?? []
-        } catch {
-            errors.append("\u{7814}\u{53d1}\u{8fdb}\u{5ea6}\u{52a0}\u{8f7d}\u{5931}\u{8d25}\u{ff1a}\(error.localizedDescription)")
         }
 
-        do {
-            let history = try await fetchChatHistory(limit: 160)
+        if let history = try? await fetchChatHistory(limit: 160) {
             messages = sortedMessages(history.messages)
             topics = history.topics
-        } catch {
-            errors.append("\u{804a}\u{5929}\u{8bb0}\u{5f55}\u{52a0}\u{8f7d}\u{5931}\u{8d25}\u{ff1a}\(error.localizedDescription)")
         }
 
         apiRuns = (try? await fetchApiRuns(limit: 20)) ?? apiRuns
@@ -127,6 +121,12 @@ final class AppStore: ObservableObject {
         }
     }
 
+    func refreshMessagesSilently(limit: Int = 160) async {
+        guard let history = try? await fetchChatHistory(limit: limit) else { return }
+        messages = sortedMessages(history.messages)
+        topics = history.topics
+    }
+
     func refreshRuns(status: String? = nil, limit: Int = 50) async {
         isLoadingRuns = true
         defer { isLoadingRuns = false }
@@ -163,7 +163,7 @@ final class AppStore: ObservableObject {
     }
 
     func continueDoudizhu() async throws {
-        let response: BasicAPIResponse = try await postJSON(path: "/api/doudizhu/continue", payload: [:], timeout: 240)
+        let response: BasicAPIResponse = try await postJSON(path: "/api/doudizhu/continue", payload: ["async": true], timeout: 20)
         if response.ok == false {
             throw NSError(
                 domain: "AppStore",

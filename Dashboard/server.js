@@ -392,7 +392,7 @@ app.post('/api/doudizhu/continue', async (req, res) => {
       topic: '斗地主流程',
       doudizhu: ddzPublicState(resumeState.players, resumeState.landlordIndex, resumeState.nextTurnNo, resumeState.lastPlay, resumeState.players[resumeState.currentIndex])
     });
-    const result = await runDoudizhuFlow({
+    const run = async () => runDoudizhuFlow({
       plan: {
         participants: resumeState.players.map(p => p.agent),
         reporter,
@@ -405,6 +405,21 @@ app.post('/api/doudizhu/continue', async (req, res) => {
       mode: 'roundtable',
       config
     });
+    if (req.body?.async || req.query.async) {
+      run().catch(err => {
+        addChatMessage({
+          id: crypto.randomUUID(),
+          from: 'system',
+          fromName: '🔔 系统',
+          content: `❌ 继续斗地主失败：${err.message}`,
+          timestamp: new Date().toISOString(),
+          type: 'workflow',
+          topic: '斗地主流程'
+        });
+      });
+      return res.json({ ok: true, accepted: true, resumed: true });
+    }
+    const result = await run();
     res.json({ ...result, resumed: true });
   } catch (err) {
     addChatMessage({
