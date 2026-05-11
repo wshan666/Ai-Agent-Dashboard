@@ -227,10 +227,14 @@ struct NativeBigScreenView: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
             } else {
-                VStack(spacing: 10) {
-                    ForEach(recentLiveMessages, id: \.stableId) { message in
-                        liveMessageBubble(message)
-                            .transition(.asymmetric(insertion: .move(edge: .bottom).combined(with: .opacity), removal: .opacity))
+                TimelineView(.animation) { timeline in
+                    let time = timeline.date.timeIntervalSinceReferenceDate
+                    VStack(spacing: 10) {
+                        ForEach(Array(recentLiveMessages.enumerated()), id: \.element.stableId) { index, message in
+                            liveMessageBubble(message, index: index, time: time)
+                                .transition(.asymmetric(insertion: .move(edge: .bottom).combined(with: .opacity), removal: .opacity))
+                                .zIndex(Double(index))
+                        }
                     }
                 }
                 .animation(.spring(response: 0.35, dampingFraction: 0.82), value: recentLiveMessages.map(\.stableId))
@@ -639,11 +643,16 @@ struct NativeBigScreenView: View {
         .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
     }
 
-    private func liveMessageBubble(_ message: ChatMessage) -> some View {
+    private func liveMessageBubble(_ message: ChatMessage, index: Int, time: TimeInterval) -> some View {
         let isSystem = message.from == "system" || message.senderTitle.contains("\u{7cfb}\u{7edf}")
         let tint: Color = isSystem ? .orange : (message.type == "debate" ? .red : .blue)
+        let wave = sin(time * 1.7 + Double(index) * 0.72)
+        let drift = cos(time * 1.25 + Double(index) * 0.55)
+        let side: Double = index.isMultiple(of: 2) ? 1 : -1
         return HStack(alignment: .top, spacing: 10) {
             avatarPill(message.senderTitle, tint: tint)
+                .scaleEffect(1 + CGFloat(max(0, wave)) * 0.08)
+                .shadow(color: tint.opacity(0.24 + max(0, wave) * 0.18), radius: 7 + max(0, wave) * 5)
             VStack(alignment: .leading, spacing: 5) {
                 HStack(spacing: 6) {
                     Text(message.senderTitle)
@@ -668,7 +677,14 @@ struct NativeBigScreenView: View {
             .padding(10)
             .background(Color(.tertiarySystemBackground))
             .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .stroke(tint.opacity(0.18 + max(0, wave) * 0.18), lineWidth: 1)
+            )
         }
+        .offset(x: CGFloat(side * wave * 5), y: CGFloat(drift * 2))
+        .scaleEffect(1 + CGFloat(wave) * 0.01)
+        .opacity(0.92 + max(0, wave) * 0.08)
     }
 
     private func avatarPill(_ title: String, tint: Color) -> some View {
