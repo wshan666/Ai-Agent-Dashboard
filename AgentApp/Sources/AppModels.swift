@@ -48,6 +48,32 @@ struct ChatMessage: Codable, Identifiable, Hashable {
     let type: String?
     let topic: String?
     let room: String?
+    let gomoku: GomokuGameState?
+    let doudizhu: DoudizhuGameState?
+
+    init(
+        id: String?,
+        from: String?,
+        fromName: String?,
+        content: String?,
+        timestamp: String?,
+        type: String?,
+        topic: String?,
+        room: String?,
+        gomoku: GomokuGameState? = nil,
+        doudizhu: DoudizhuGameState? = nil
+    ) {
+        self.id = id
+        self.from = from
+        self.fromName = fromName
+        self.content = content
+        self.timestamp = timestamp
+        self.type = type
+        self.topic = topic
+        self.room = room
+        self.gomoku = gomoku
+        self.doudizhu = doudizhu
+    }
 
     var stableId: String {
         id ?? "\(fromName ?? from ?? "msg")-\(timestamp ?? UUID().uuidString)"
@@ -60,6 +86,97 @@ struct ChatMessage: Codable, Identifiable, Hashable {
     var senderTitle: String {
         fromName ?? from ?? "\u{672a}\u{77e5}"
     }
+}
+
+struct GomokuGameState: Codable, Hashable {
+    let status: String?
+    let blackAgentId: String?
+    let blackAgentName: String?
+    let whiteAgentId: String?
+    let whiteAgentName: String?
+    let reporterAgentId: String?
+    let reporterAgentName: String?
+    let winnerAgentId: String?
+    let winnerName: String?
+    let size: Int?
+    let maxMoves: Int?
+    let waiting: GomokuWaiting?
+    let move: GomokuMove?
+    let moves: [GomokuMove]?
+    let imageUrl: String?
+    let reason: String?
+}
+
+struct GomokuWaiting: Codable, Hashable {
+    let moveNo: Int?
+    let agentId: String?
+    let agentName: String?
+    let stone: String?
+}
+
+struct GomokuMove: Codable, Identifiable, Hashable {
+    let moveNo: Int?
+    let agentId: String?
+    let agentName: String?
+    let row: Int?
+    let col: Int?
+    let stone: String?
+    let source: String?
+
+    var id: String {
+        "\(moveNo ?? 0)-\(agentId ?? "")-\(row ?? 0)-\(col ?? 0)-\(stone ?? "")"
+    }
+}
+
+struct DoudizhuGameState: Codable, Hashable {
+    let status: String?
+    let players: [DoudizhuPlayer]?
+    let handCounts: [DoudizhuPlayer]?
+    let bottomCount: Int?
+    let landlordAgentId: String?
+    let landlordName: String?
+    let currentAgentId: String?
+    let currentAgentName: String?
+    let turnNo: Int?
+    let lastPlay: DoudizhuPlay?
+    let plays: [DoudizhuPlay]?
+    let winnerAgentId: String?
+    let winnerName: String?
+    let winnerTeam: String?
+    let reason: String?
+
+    var displayPlayers: [DoudizhuPlayer] {
+        handCounts?.isEmpty == false ? (handCounts ?? []) : (players ?? [])
+    }
+}
+
+struct DoudizhuPlayer: Codable, Identifiable, Hashable {
+    let agentId: String?
+    let agentName: String?
+    let role: String?
+    let count: Int?
+    let cards: [String]?
+
+    var id: String { agentId ?? agentName ?? role ?? "player-\(count ?? 0)" }
+}
+
+struct DoudizhuPlay: Codable, Identifiable, Hashable {
+    let turnNo: Int?
+    let agentId: String?
+    let agentName: String?
+    let role: String?
+    let cards: [String]?
+    let type: String?
+    let pass: Bool?
+
+    var id: String {
+        "\(turnNo ?? 0)-\(agentId ?? agentName ?? "")-\((cards ?? []).joined(separator: "-"))-\(pass == true ? "pass" : "play")"
+    }
+}
+
+struct BasicAPIResponse: Codable {
+    let ok: Bool?
+    let error: String?
 }
 
 struct ChatHistoryResponse: Codable {

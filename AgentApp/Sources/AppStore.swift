@@ -162,6 +162,19 @@ final class AppStore: ObservableObject {
         lastError = nil
     }
 
+    func continueDoudizhu() async throws {
+        let response: BasicAPIResponse = try await postJSON(path: "/api/doudizhu/continue", payload: [:], timeout: 240)
+        if response.ok == false {
+            throw NSError(
+                domain: "AppStore",
+                code: -1,
+                userInfo: [NSLocalizedDescriptionKey: response.error ?? "\u{7ee7}\u{7eed}\u{6597}\u{5730}\u{4e3b}\u{5931}\u{8d25}"]
+            )
+        }
+        lastError = nil
+        Task { await self.refreshDashboard() }
+    }
+
     func startCollaboration(agentIds: [String], message: String, topic: String, mode: String = "parallel", summarizerId: String? = nil) async throws -> CollaborationRun {
         var payload: [String: Any] = [
             "agent_ids": agentIds,
