@@ -88,7 +88,7 @@ final class AppStore: ObservableObject {
             payload["room"] = room
         }
 
-        _ = try await postJSON(path: "/api/chat/send", payload: payload) as ChatSendResponse
+        _ = try await postJSON(path: "/api/chat/send", payload: payload, timeout: 180) as ChatSendResponse
         lastError = nil
 
         Task {
@@ -377,11 +377,11 @@ final class AppStore: ObservableObject {
         return try JSONDecoder().decode(T.self, from: data)
     }
 
-    private func postJSON<T: Decodable>(path: String, payload: [String: Any]) async throws -> T {
+    private func postJSON<T: Decodable>(path: String, payload: [String: Any], timeout: TimeInterval = 90) async throws -> T {
         let url = buildURL(path: path)
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
-        request.timeoutInterval = 90
+        request.timeoutInterval = timeout
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.httpBody = try JSONSerialization.data(withJSONObject: payload)
 

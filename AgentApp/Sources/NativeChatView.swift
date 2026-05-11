@@ -369,8 +369,17 @@ struct NativeChatView: View {
         do {
             try await store.sendChat(agentIds: targetIds, message: text, topic: trimmedTopic, room: roomId)
         } catch {
-            store.messages.removeAll { $0.id == optimisticMessage.id }
-            store.lastError = error.localizedDescription
+            let text = error.localizedDescription.lowercased()
+            if text.contains("timed out") || text.contains("超时") {
+                store.lastError = "\u{6d88}\u{606f}\u{5df2}\u{53d1}\u{51fa}\u{ff0c}\u{6b63}\u{5728}\u{7b49}\u{5f85} agent \u{56de}\u{590d}\u{3002}\u{82e5}\u{8fdc}\u{7a0b}\u{8f83}\u{6162}\u{ff0c}\u{8bf7}\u{7a0d}\u{7b49}\u{5e76}\u{4e0b}\u{62c9}\u{5237}\u{65b0}\u{3002}"
+                Task {
+                    try? await Task.sleep(nanoseconds: 1_500_000_000)
+                    await store.refreshChat()
+                }
+            } else {
+                store.messages.removeAll { $0.id == optimisticMessage.id }
+                store.lastError = error.localizedDescription
+            }
         }
     }
 
