@@ -185,6 +185,12 @@ struct BasicAPIResponse: Codable {
     let error: String?
 }
 
+struct UploadResponse: Codable {
+    let ok: Bool?
+    let error: String?
+    let url: String?
+}
+
 struct ChatHistoryResponse: Codable {
     let topics: [ChatTopic]
     let messages: [ChatMessage]

@@ -121,6 +121,25 @@ final class AppStore: ObservableObject {
         }
     }
 
+    func uploadImage(data: Data, mime: String = "image/jpeg") async throws -> String {
+        let response: UploadResponse = try await postJSON(
+            path: "/api/upload",
+            payload: [
+                "data": data.base64EncodedString(),
+                "mime": mime
+            ],
+            timeout: 60
+        )
+        guard response.ok != false, let url = response.url, !url.isEmpty else {
+            throw NSError(
+                domain: "AppStore",
+                code: -1,
+                userInfo: [NSLocalizedDescriptionKey: response.error ?? "\u{56fe}\u{7247}\u{4e0a}\u{4f20}\u{5931}\u{8d25}"]
+            )
+        }
+        return normalizedUploadURL(url)
+    }
+
     func refreshMessagesSilently(limit: Int = 800) async {
         guard let history = try? await fetchChatHistory(limit: limit) else { return }
         messages = sortedMessages(history.messages)
@@ -479,6 +498,21 @@ final class AppStore: ObservableObject {
             return url
         }
         return URL(string: trimmed, relativeTo: settings.normalizedBaseURL)?.absoluteURL
+    }
+
+    private func normalizedUploadURL(_ raw: String) -> String {
+        guard let url = URL(string: raw),
+              let host = url.host?.lowercased(),
+              host == "127.0.0.1" || host == "localhost" else {
+            return raw
+        }
+        guard let base = settings.normalizedBaseURL,
+              var components = URLComponents(url: base, resolvingAgainstBaseURL: false) else {
+            return raw
+        }
+        components.path = url.path
+        components.query = url.query
+        return components.url?.absoluteString ?? raw
     }
 
     private func parseAgents(_ data: Data) throws -> [AgentSummary] {

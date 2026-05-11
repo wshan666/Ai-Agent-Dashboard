@@ -19,7 +19,7 @@
 	<key>CFBundleShortVersionString</key>
 	<string>1.1.0</string>
 	<key>CFBundleVersion</key>
-	<string>25</string>
+	<string>26</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>UIApplicationSceneManifest</key>
@@ -44,5 +44,9 @@
 	</dict>
 	<key>NSLocalNetworkUsageDescription</key>
 	<string>&#x9700;&#x8981;&#x8BBF;&#x95EE;&#x672C;&#x5730;&#x7F51;&#x7EDC;&#xFF0C;&#x7528;&#x4E8E;&#x8FDE;&#x63A5; AI Agent Dashboard &#x670D;&#x52A1;&#x5668;&#x3002;</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>&#x7528;&#x4E8E;&#x5728;&#x804A;&#x5929;&#x4E2D;&#x8FDB;&#x884C;&#x8BED;&#x97F3;&#x8F93;&#x5165;&#x3002;</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>&#x7528;&#x4E8E;&#x5C06;&#x8BED;&#x97F3;&#x8F6C;&#x6210;&#x804A;&#x5929;&#x6587;&#x5B57;&#x3002;</string>
 </dict>
 </plist>

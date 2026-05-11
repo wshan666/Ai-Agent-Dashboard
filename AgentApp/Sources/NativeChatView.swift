@@ -1,12 +1,19 @@
 import SwiftUI
+import PhotosUI
+import Speech
+import AVFoundation
 
 struct NativeChatView: View {
     @EnvironmentObject private var store: AppStore
+    @StateObject private var speechInput = SpeechInputController()
 
     @State private var selectedAgentIds: Set<String> = []
     @State private var privateAgentId = ""
     @State private var topic = ""
     @State private var draft = ""
+    @State private var selectedPhotoItem: PhotosPickerItem?
+    @State private var attachedImageData: Data?
+    @State private var attachedImagePreview: UIImage?
     @State private var isSending = false
     @State private var showAgentPicker = false
     @State private var showPrivatePicker = false
@@ -111,6 +118,13 @@ struct NativeChatView: View {
         .onChange(of: privateAgentId) { _ in
             guard mode == .direct else { return }
             Task { await syncCurrentChat() }
+        }
+        .onChange(of: selectedPhotoItem) { item in
+            Task { await loadSelectedImage(item) }
+        }
+        .onChange(of: speechInput.transcript) { text in
+            guard speechInput.isRecording else { return }
+            draft = text
         }
         .sheet(isPresented: $showAgentPicker) { groupAgentPicker }
         .sheet(isPresented: $showPrivatePicker) { privateAgentPicker }
@@ -249,6 +263,7 @@ struct NativeChatView: View {
     private var composer: some View {
         VStack(spacing: 12) {
             mentionSuggestionBar
+            attachmentPreview
 
             HStack(alignment: .bottom, spacing: 10) {
                 if mode == .group {
@@ -262,8 +277,31 @@ struct NativeChatView: View {
                     .foregroundStyle(Color.blue)
                     .background(Color.blue.opacity(0.12))
                     .clipShape(Circle())
-                    .buttonStyle(.plain)
+                        .buttonStyle(.plain)
                 }
+
+                PhotosPicker(selection: $selectedPhotoItem, matching: .images) {
+                    Image(systemName: "photo")
+                        .font(.headline)
+                        .frame(width: 38, height: 38)
+                        .foregroundStyle(Color.blue)
+                        .background(Color.blue.opacity(0.12))
+                        .clipShape(Circle())
+                }
+                .disabled(isSending)
+
+                Button {
+                    toggleVoiceInput()
+                } label: {
+                    Image(systemName: speechInput.isRecording ? "stop.fill" : "mic.fill")
+                        .font(.headline)
+                        .frame(width: 38, height: 38)
+                        .foregroundStyle(speechInput.isRecording ? Color.white : Color.blue)
+                        .background(speechInput.isRecording ? Color.red : Color.blue.opacity(0.12))
+                        .clipShape(Circle())
+                }
+                .buttonStyle(.plain)
+                .disabled(isSending)
 
                 TextField(mode == .group ? "\u{8f93}\u{5165}\u{7fa4}\u{804a}\u{6d88}\u{606f}" : "\u{8f93}\u{5165}\u{79c1}\u{804a}\u{6d88}\u{606f}", text: $draft, axis: .vertical)
                     .textFieldStyle(.roundedBorder)
@@ -298,6 +336,52 @@ struct NativeChatView: View {
         }
         .padding(16)
         .background(.ultraThinMaterial)
+    }
+
+    @ViewBuilder
+    private var attachmentPreview: some View {
+        if let attachedImagePreview {
+            HStack(spacing: 10) {
+                Image(uiImage: attachedImagePreview)
+                    .resizable()
+                    .scaledToFill()
+                    .frame(width: 62, height: 62)
+                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("\u{5df2}\u{9009}\u{62e9}\u{56fe}\u{7247}")
+                        .font(.caption.weight(.semibold))
+                    Text("\u{53d1}\u{9001}\u{65f6}\u{4f1a}\u{81ea}\u{52a8}\u{4e0a}\u{4f20}\u{5e76}\u{9644}\u{5230}\u{6d88}\u{606f}\u{91cc}")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                }
+                Spacer()
+                Button {
+                    clearAttachment()
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.title3)
+                        .foregroundStyle(.secondary)
+                }
+                .buttonStyle(.plain)
+            }
+            .padding(10)
+            .background(Color(.systemBackground))
+            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+        }
+
+        if speechInput.isRecording || !speechInput.statusText.isEmpty {
+            HStack(spacing: 8) {
+                Image(systemName: speechInput.isRecording ? "waveform" : "mic")
+                    .foregroundStyle(speechInput.isRecording ? Color.red : Color.secondary)
+                Text(speechInput.statusText)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                Spacer()
+            }
+            .padding(10)
+            .background(Color(.systemBackground))
+            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+        }
     }
 
     @ViewBuilder
@@ -364,6 +448,38 @@ struct NativeChatView: View {
                     .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
                     .frame(maxWidth: UIScreen.main.bounds.width * 0.72, alignment: message.isUser ? .trailing : .leading)
                     .textSelection(.enabled)
+
+                let urls = imageUrls(in: message.content)
+                if !urls.isEmpty {
+                    VStack(alignment: message.isUser ? .trailing : .leading, spacing: 8) {
+                        ForEach(urls, id: \.absoluteString) { url in
+                            AsyncImage(url: url) { phase in
+                                switch phase {
+                                case .empty:
+                                    ProgressView()
+                                        .frame(width: 180, height: 130)
+                                        .background(Color(.secondarySystemBackground))
+                                case .success(let image):
+                                    image
+                                        .resizable()
+                                        .scaledToFill()
+                                        .frame(width: 180, height: 130)
+                                        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                                case .failure:
+                                    Label("\u{56fe}\u{7247}\u{52a0}\u{8f7d}\u{5931}\u{8d25}", systemImage: "photo")
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                        .frame(width: 180, height: 70)
+                                        .background(Color(.secondarySystemBackground))
+                                        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                                @unknown default:
+                                    EmptyView()
+                                }
+                            }
+                        }
+                    }
+                    .frame(maxWidth: UIScreen.main.bounds.width * 0.72, alignment: message.isUser ? .trailing : .leading)
+                }
             }
 
             if message.isUser { avatarView(for: "\u{4f60}") } else { Spacer(minLength: 44) }
@@ -436,7 +552,8 @@ struct NativeChatView: View {
 
     private var canSend: Bool {
         let hasText = !draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-        return mode == .group ? (hasText && !selectedAgentIds.isEmpty) : (hasText && !privateAgentId.isEmpty)
+        let hasContent = hasText || attachedImageData != nil
+        return mode == .group ? (hasContent && !selectedAgentIds.isEmpty) : (hasContent && !privateAgentId.isEmpty)
     }
 
     private func avatarView(for title: String) -> some View {
@@ -504,15 +621,16 @@ struct NativeChatView: View {
 
     private func send() async {
         let text = draft.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !text.isEmpty else { return }
+        guard !text.isEmpty || attachedImageData != nil else { return }
 
         let trimmedTopic = topic.trimmingCharacters(in: .whitespacesAndNewlines)
         let roomId = mode == .direct ? privateAgentId : nil
+        let optimisticContent = text.isEmpty ? "\u{56fe}\u{7247}\u{6d88}\u{606f}\u{ff0c}\u{6b63}\u{5728}\u{4e0a}\u{4f20}..." : text
         let optimisticMessage = ChatMessage(
             id: UUID().uuidString,
             from: "user",
             fromName: "\u{4f60}",
-            content: text,
+            content: optimisticContent,
             timestamp: ISO8601DateFormatter().string(from: Date()),
             type: "chat",
             topic: trimmedTopic.isEmpty ? nil : trimmedTopic,
@@ -527,20 +645,23 @@ struct NativeChatView: View {
 
         store.messages.append(optimisticMessage)
         store.messages.sort { ($0.timestamp?.asIsoDate ?? .distantPast) < ($1.timestamp?.asIsoDate ?? .distantPast) }
+        let imageData = attachedImageData
         draft = ""
+        clearAttachment()
         focusedField = nil
         UIApplication.dismissKeyboard()
 
         do {
+            let finalText = try await messageWithUploadedImage(text: text, imageData: imageData)
             if mode == .group, targetIds.count >= 2 {
                 try await store.startRoundtable(
                     agentIds: targetIds,
-                    topic: trimmedTopic.isEmpty ? text : trimmedTopic,
+                    topic: trimmedTopic.isEmpty ? finalText : "\(trimmedTopic)\n\n\(finalText)",
                     rounds: 1,
                     mode: "roundtable"
                 )
             } else {
-                try await store.sendChat(agentIds: targetIds, message: text, topic: trimmedTopic, room: roomId)
+                try await store.sendChat(agentIds: targetIds, message: finalText, topic: trimmedTopic, room: roomId)
             }
         } catch {
             let text = error.localizedDescription.lowercased()
@@ -565,6 +686,69 @@ struct NativeChatView: View {
         }
     }
 
+    private func messageWithUploadedImage(text: String, imageData: Data?) async throws -> String {
+        guard let imageData else { return text }
+        let url = try await store.uploadImage(data: imageData)
+        let body = text.isEmpty ? "\u{8bf7}\u{5206}\u{6790}\u{8fd9}\u{5f20}\u{56fe}\u{7247}" : text
+        return "\(body)\n\n![\u{56fe}\u{7247}](\(url))"
+    }
+
+    private func imageUrls(in content: String?) -> [URL] {
+        let text = content ?? ""
+        let pattern = #"https?://[^\s\])]+/uploads/[^\s\])]+\.(?:jpg|jpeg|png|gif|webp|bmp)"#
+        guard let regex = try? NSRegularExpression(pattern: pattern, options: [.caseInsensitive]) else { return [] }
+        let range = NSRange(text.startIndex ..< text.endIndex, in: text)
+        return regex.matches(in: text, range: range).compactMap { match in
+            guard let swiftRange = Range(match.range, in: text) else { return nil }
+            return store.downloadURL(for: String(text[swiftRange]))
+        }
+    }
+
+    private func loadSelectedImage(_ item: PhotosPickerItem?) async {
+        guard let item else { return }
+        do {
+            guard let data = try await item.loadTransferable(type: Data.self),
+                  let image = UIImage(data: data),
+                  let compressed = compressedImageData(image) else {
+                store.lastError = "\u{56fe}\u{7247}\u{8bfb}\u{53d6}\u{5931}\u{8d25}"
+                return
+            }
+            attachedImageData = compressed
+            attachedImagePreview = UIImage(data: compressed) ?? image
+        } catch {
+            store.lastError = error.localizedDescription
+        }
+    }
+
+    private func compressedImageData(_ image: UIImage) -> Data? {
+        let maxSide: CGFloat = 1600
+        let size = image.size
+        let scale = min(1, maxSide / max(size.width, size.height))
+        let targetSize = CGSize(width: size.width * scale, height: size.height * scale)
+        let renderer = UIGraphicsImageRenderer(size: targetSize)
+        let rendered = renderer.image { _ in
+            image.draw(in: CGRect(origin: .zero, size: targetSize))
+        }
+        return rendered.jpegData(compressionQuality: 0.82)
+    }
+
+    private func clearAttachment() {
+        selectedPhotoItem = nil
+        attachedImageData = nil
+        attachedImagePreview = nil
+    }
+
+    private func toggleVoiceInput() {
+        if speechInput.isRecording {
+            speechInput.stop()
+        } else {
+            if !draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                speechInput.seedTranscript(draft)
+            }
+            speechInput.start(localeIdentifier: "zh-CN")
+        }
+    }
+
     private func liveChatLoop() async {
         while !Task.isCancelled {
             try? await Task.sleep(nanoseconds: 2_500_000_000)
@@ -581,6 +765,98 @@ struct NativeChatView: View {
         guard !visibleMessages.isEmpty else { return }
         DispatchQueue.main.async {
             proxy.scrollTo("chat-bottom", anchor: .bottom)
+        }
+    }
+}
+
+private final class SpeechInputController: ObservableObject {
+    @Published var transcript = ""
+    @Published var statusText = ""
+    @Published var isRecording = false
+
+    private let audioEngine = AVAudioEngine()
+    private var request: SFSpeechAudioBufferRecognitionRequest?
+    private var task: SFSpeechRecognitionTask?
+    private var recognizer: SFSpeechRecognizer?
+
+    func seedTranscript(_ text: String) {
+        transcript = text
+    }
+
+    func start(localeIdentifier: String) {
+        if isRecording { return }
+        recognizer = SFSpeechRecognizer(locale: Locale(identifier: localeIdentifier))
+        guard recognizer?.isAvailable != false else {
+            statusText = "\u{8bed}\u{97f3}\u{8bc6}\u{522b}\u{6682}\u{4e0d}\u{53ef}\u{7528}"
+            return
+        }
+
+        SFSpeechRecognizer.requestAuthorization { [weak self] speechStatus in
+            AVAudioSession.sharedInstance().requestRecordPermission { micGranted in
+                Task { @MainActor in
+                    guard let self else { return }
+                    guard speechStatus == .authorized, micGranted else {
+                        self.statusText = "\u{8bf7}\u{5728} iOS \u{8bbe}\u{7f6e}\u{91cc}\u{5141}\u{8bb8}\u{9ea6}\u{514b}\u{98ce}\u{548c}\u{8bed}\u{97f3}\u{8bc6}\u{522b}"
+                        return
+                    }
+                    self.startRecording()
+                }
+            }
+        }
+    }
+
+    func stop() {
+        guard isRecording else { return }
+        audioEngine.stop()
+        audioEngine.inputNode.removeTap(onBus: 0)
+        request?.endAudio()
+        task?.cancel()
+        task = nil
+        request = nil
+        isRecording = false
+        statusText = transcript.isEmpty ? "" : "\u{8bed}\u{97f3}\u{5df2}\u{8f6c}\u{6210}\u{6587}\u{5b57}"
+        try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
+    }
+
+    private func startRecording() {
+        task?.cancel()
+        task = nil
+
+        let audioSession = AVAudioSession.sharedInstance()
+        do {
+            try audioSession.setCategory(.record, mode: .measurement, options: .duckOthers)
+            try audioSession.setActive(true, options: .notifyOthersOnDeactivation)
+
+            let request = SFSpeechAudioBufferRecognitionRequest()
+            request.shouldReportPartialResults = true
+            self.request = request
+
+            let inputNode = audioEngine.inputNode
+            let recordingFormat = inputNode.outputFormat(forBus: 0)
+            inputNode.removeTap(onBus: 0)
+            inputNode.installTap(onBus: 0, bufferSize: 1024, format: recordingFormat) { [weak request] buffer, _ in
+                request?.append(buffer)
+            }
+
+            audioEngine.prepare()
+            try audioEngine.start()
+
+            isRecording = true
+            statusText = "\u{6b63}\u{5728}\u{542c}\u{5199}..."
+            task = recognizer?.recognitionTask(with: request) { [weak self] result, error in
+                Task { @MainActor in
+                    guard let self else { return }
+                    if let text = result?.bestTranscription.formattedString, !text.isEmpty {
+                        self.transcript = text
+                    }
+                    if error != nil || result?.isFinal == true {
+                        self.stop()
+                    }
+                }
+            }
+        } catch {
+            statusText = "\u{8bed}\u{97f3}\u{542f}\u{52a8}\u{5931}\u{8d25}\u{ff1a}\(error.localizedDescription)"
+            stop()
         }
     }
 }
