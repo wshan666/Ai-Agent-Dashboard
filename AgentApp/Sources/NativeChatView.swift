@@ -13,7 +13,7 @@ struct NativeChatView: View {
     @State private var mode: ChatMode = .group
     @FocusState private var focusedField: ChatField?
 
-    private enum ChatField { case topic, draft }
+    private enum ChatField: Hashable { case topic, draft }
     private enum ChatMode: String, CaseIterable, Identifiable {
         case group, direct
         var id: String { rawValue }
@@ -45,12 +45,13 @@ struct NativeChatView: View {
             header
             topicSection
             messageStream
-            composer
         }
         .background(Color(.systemGroupedBackground))
         .navigationTitle("\u{534f}\u{4f5c}")
         .navigationBarTitleDisplayMode(.inline)
-        .ignoresSafeArea(.keyboard, edges: .bottom)
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            composer
+        }
         .dismissKeyboardOnTap()
         .simultaneousGesture(
             DragGesture(minimumDistance: 18).onChanged { _ in
@@ -202,6 +203,9 @@ struct NativeChatView: View {
             .refreshable { await syncCurrentChat() }
             .onAppear { scrollToBottom(proxy: proxy) }
             .onChange(of: store.messages.count) { _ in scrollToBottom(proxy: proxy) }
+            .onChange(of: focusedField) { field in
+                if field == .draft { scrollToBottom(proxy: proxy) }
+            }
         }
     }
 
