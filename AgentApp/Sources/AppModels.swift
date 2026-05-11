@@ -109,21 +109,66 @@ struct CollaborationRun: Codable, Identifiable, Hashable {
     let object: String?
     let kind: String?
     let status: String
+    let agentId: String?
+    let agentName: String?
+    let agentIds: [String]?
+    let summarizerAgentId: String?
     let topic: String?
     let output: String?
+    let input: String?
+    let inputPreview: String?
     let error: String?
     let responses: [CollaborationAgentResponse]?
+    let latencyMs: Int?
     let createdAt: String?
+    let updatedAt: String?
+    let startedAt: String?
     let completedAt: String?
+    let cancellationRequested: Bool?
 
     private enum CodingKeys: String, CodingKey {
-        case id, object, kind, status, topic, output, error, responses
+        case id, object, kind, status, topic, output, input, error, responses
+        case agentId = "agent_id"
+        case agentName = "agent_name"
+        case agentIds = "agent_ids"
+        case summarizerAgentId = "summarizer_agent_id"
+        case inputPreview = "input_preview"
+        case latencyMs = "latency_ms"
         case createdAt = "created_at"
+        case updatedAt = "updated_at"
+        case startedAt = "started_at"
         case completedAt = "completed_at"
+        case cancellationRequested = "cancellation_requested"
     }
 
     var isCompleted: Bool {
         status == "completed"
+    }
+
+    var displayTitle: String {
+        if let topic, !topic.isEmpty { return topic }
+        if let agentName, !agentName.isEmpty { return agentName }
+        return kind == "collaboration" ? "Collaboration" : "Agent Run"
+    }
+
+    var previewText: String {
+        let value = output?.isEmpty == false ? output : (inputPreview?.isEmpty == false ? inputPreview : error)
+        return (value ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    var statusText: String {
+        switch status {
+        case "queued": return "\u{6392}\u{961f}\u{4e2d}"
+        case "running": return "\u{8fd0}\u{884c}\u{4e2d}"
+        case "completed": return "\u{5df2}\u{5b8c}\u{6210}"
+        case "failed": return "\u{5931}\u{8d25}"
+        case "cancelled": return "\u{5df2}\u{53d6}\u{6d88}"
+        default: return status
+        }
+    }
+
+    var isActive: Bool {
+        status == "queued" || status == "running"
     }
 }
 
@@ -151,6 +196,11 @@ struct CollaborationAgentResponse: Codable, Identifiable, Hashable {
         let text = (output?.isEmpty == false ? output : error) ?? ""
         return text.trimmingCharacters(in: .whitespacesAndNewlines)
     }
+}
+
+struct ApiRunListResponse: Codable {
+    let object: String?
+    let data: [CollaborationRun]
 }
 
 struct WorkflowStartResponse: Codable {

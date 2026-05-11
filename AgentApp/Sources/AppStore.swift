@@ -21,6 +21,8 @@ final class AppStore: ObservableObject {
     @Published var musicDuration: Double = 0
     @Published var lastError: String?
     @Published var lastCollaborationRun: CollaborationRun?
+    @Published var apiRuns: [CollaborationRun] = []
+    @Published var isLoadingRuns = false
 
     private let settings: ServerSettings
     private var musicPlayer: AVPlayer?
@@ -59,6 +61,12 @@ final class AppStore: ObservableObject {
             topics = history.topics
         } catch {
             errors.append("\u{804a}\u{5929}\u{8bb0}\u{5f55}\u{52a0}\u{8f7d}\u{5931}\u{8d25}\u{ff1a}\(error.localizedDescription)")
+        }
+
+        do {
+            apiRuns = try await fetchApiRuns(limit: 20)
+        } catch {
+            errors.append("\u{8fd0}\u{884c}\u{8bb0}\u{5f55}\u{52a0}\u{8f7d}\u{5931}\u{8d25}\u{ff1a}\(error.localizedDescription)")
         }
 
         lastError = errors.isEmpty ? nil : errors.joined(separator: "\n")
@@ -123,6 +131,41 @@ final class AppStore: ObservableObject {
         }
     }
 
+    func refreshRuns(status: String? = nil, limit: Int = 50) async {
+        isLoadingRuns = true
+        defer { isLoadingRuns = false }
+
+        do {
+            apiRuns = try await fetchApiRuns(status: status, limit: limit)
+            lastError = nil
+        } catch {
+            lastError = "\u{8fd0}\u{884c}\u{8bb0}\u{5f55}\u{52a0}\u{8f7d}\u{5931}\u{8d25}\u{ff1a}\(error.localizedDescription)"
+        }
+    }
+
+    func refreshRunDetail(id: String) async throws -> CollaborationRun {
+        let encoded = id.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? id
+        let run: CollaborationRun = try await getJSON(path: "/api/v1/runs/\(encoded)?include_input=1")
+        if let index = apiRuns.firstIndex(where: { $0.id == run.id }) {
+            apiRuns[index] = run
+        } else {
+            apiRuns.insert(run, at: 0)
+        }
+        if run.kind == "collaboration" {
+            lastCollaborationRun = run
+        }
+        return run
+    }
+
+    func cancelRun(id: String) async throws {
+        let encoded = id.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? id
+        let run: CollaborationRun = try await postJSON(path: "/api/v1/runs/\(encoded)/cancel", payload: [:])
+        if let index = apiRuns.firstIndex(where: { $0.id == run.id }) {
+            apiRuns[index] = run
+        }
+        lastError = nil
+    }
+
     func startCollaboration(agentIds: [String], message: String, topic: String, mode: String = "parallel", summarizerId: String? = nil) async throws -> CollaborationRun {
         var payload: [String: Any] = [
             "agent_ids": agentIds,
@@ -137,6 +180,11 @@ final class AppStore: ObservableObject {
 
         let run: CollaborationRun = try await postJSON(path: "/api/v1/collaborations", payload: payload, timeout: 240)
         lastCollaborationRun = run
+        if let index = apiRuns.firstIndex(where: { $0.id == run.id }) {
+            apiRuns[index] = run
+        } else {
+            apiRuns.insert(run, at: 0)
+        }
         lastError = nil
 
         let output = run.output?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
@@ -421,6 +469,15 @@ final class AppStore: ObservableObject {
 
     private func fetchDevProgress() async throws -> DevProgressResponse {
         try await getJSON(path: "/api/dev-progress")
+    }
+
+    private func fetchApiRuns(status: String? = nil, limit: Int = 50) async throws -> [CollaborationRun] {
+        var query = "?limit=\(max(1, min(100, limit)))"
+        if let status, !status.isEmpty, status != "all" {
+            query += "&status=\(status.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? status)"
+        }
+        let response: ApiRunListResponse = try await getJSON(path: "/api/v1/runs\(query)")
+        return response.data
     }
 
     private func getJSON<T: Decodable>(path: String) async throws -> T {

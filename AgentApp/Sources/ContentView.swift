@@ -114,6 +114,12 @@ private struct ProfileView: View {
                     } label: {
                         Label("\u{539f}\u{751f}\u{5de5}\u{4f5c}\u{6d41}", systemImage: "point.3.connected.trianglepath.dotted")
                     }
+
+                    NavigationLink {
+                        NativeRunsView()
+                    } label: {
+                        Label("\u{8fd0}\u{884c}\u{8bb0}\u{5f55}", systemImage: "list.bullet.rectangle")
+                    }
                 }
             }
             .navigationTitle("\u{6211}\u{7684}")

@@ -43,6 +43,15 @@ struct NativeBigScreenView: View {
         .background(Color(.systemGroupedBackground))
         .navigationTitle("指挥室")
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                NavigationLink {
+                    NativeRunsView()
+                } label: {
+                    Image(systemName: "list.bullet.rectangle")
+                }
+            }
+        }
         .refreshable { await store.refreshDashboard() }
         .dismissKeyboardOnTap()
         .task {

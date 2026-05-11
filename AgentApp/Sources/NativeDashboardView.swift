@@ -5,6 +5,7 @@ struct NativeDashboardView: View {
 
     private var onlineCount: Int { store.agents.filter(\.isOnline).count }
     private var offlineCount: Int { max(0, store.agents.count - onlineCount) }
+    private var activeRunCount: Int { store.apiRuns.filter(\.isActive).count }
 
     var body: some View {
         ScrollView {
@@ -20,7 +21,7 @@ struct NativeDashboardView: View {
                     statCard("\u{667a}\u{80fd}\u{4f53}", value: "\(store.agents.count)", tint: .blue)
                     statCard("\u{5728}\u{7ebf}", value: "\(onlineCount)", tint: .green)
                     statCard("\u{79bb}\u{7ebf}", value: "\(offlineCount)", tint: .orange)
-                    statCard("\u{7814}\u{53d1}\u{4efb}\u{52a1}", value: "\(store.devProgress.count)", tint: .purple)
+                    statCard("\u{8fd0}\u{884c}\u{4e2d}", value: "\(activeRunCount)", tint: .purple)
                 }
 
                 sectionCard(title: "\u{5feb}\u{6377}\u{64cd}\u{4f5c}") {
@@ -39,6 +40,45 @@ struct NativeDashboardView: View {
                         quickRow("\u{6253}\u{5f00}\u{539f}\u{751f}\u{5de5}\u{4f5c}\u{6d41}", systemImage: "point.3.connected.trianglepath.dotted")
                     }
                     .buttonStyle(.plain)
+
+                    Divider()
+
+                    NavigationLink {
+                        NativeRunsView()
+                    } label: {
+                        quickRow("\u{67e5}\u{770b}\u{8fd0}\u{884c}\u{8bb0}\u{5f55}", systemImage: "list.bullet.rectangle")
+                    }
+                    .buttonStyle(.plain)
+                }
+
+                if !store.apiRuns.isEmpty {
+                    sectionCard(title: "\u{6700}\u{65b0}\u{8fd0}\u{884c}") {
+                        ForEach(store.apiRuns.prefix(4)) { run in
+                            NavigationLink {
+                                NativeRunDetailView(run: run)
+                            } label: {
+                                HStack(spacing: 12) {
+                                    Image(systemName: run.kind == "collaboration" ? "person.3.sequence" : "bolt")
+                                        .foregroundStyle(.blue)
+                                    VStack(alignment: .leading, spacing: 3) {
+                                        Text(run.displayTitle).font(.subheadline.weight(.semibold))
+                                        Text(run.previewText.isEmpty ? run.id : run.previewText)
+                                            .font(.caption)
+                                            .foregroundStyle(.secondary)
+                                            .lineLimit(1)
+                                    }
+                                    Spacer()
+                                    Text(run.statusText)
+                                        .font(.caption.weight(.semibold))
+                                        .foregroundStyle(run.status == "completed" ? .green : .orange)
+                                }
+                            }
+                            .buttonStyle(.plain)
+                            if run.id != store.apiRuns.prefix(4).last?.id {
+                                Divider()
+                            }
+                        }
+                    }
                 }
 
                 if !store.devProgress.isEmpty {
