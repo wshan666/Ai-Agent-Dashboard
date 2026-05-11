@@ -10,6 +10,15 @@ npm install
 npm start
 ```
 
+For a protected deployment:
+
+```powershell
+$env:DASHBOARD_AUTH_USER = "admin"
+$env:DASHBOARD_AUTH_PASSWORD = "change-me"
+$env:DASHBOARD_API_TOKEN = "change-me-api-token"
+npm start
+```
+
 Optional one-click launcher on Windows:
 
 ```powershell
@@ -20,9 +29,18 @@ Optional one-click launcher on Windows:
 
 - `server.js`: Express API, agent execution, workflow orchestration, SSE stream, backups.
 - `public/index.html`: single-page web UI.
+- `.env.example`: environment variables for deploy-time configuration.
 - `config.example.json`: safe starter config.
 - `secrets.example.json`: shape of local host password storage.
 - `scripts/`: local CLI wrappers and optional helper scripts.
+
+## Integration API
+
+- `GET /api/health`
+- `GET /api/v1/agents`
+- `POST /api/v1/runs`
+
+See `../docs/API.md`.
 
 ## Private Runtime Files
 

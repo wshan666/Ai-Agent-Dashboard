@@ -9,9 +9,78 @@ const https = require('https');
 const { pathToFileURL } = require('url');
 
 const app = express();
+app.disable('x-powered-by');
 app.use(express.json({ limit: '20mb' }));
 const UPLOADS_DIR = path.join(__dirname, 'public', 'uploads');
 fs.mkdirSync(UPLOADS_DIR, { recursive: true });
+
+function timingSafeEqualString(a, b) {
+  const left = Buffer.from(String(a || ''), 'utf-8');
+  const right = Buffer.from(String(b || ''), 'utf-8');
+  if (left.length !== right.length) return false;
+  return crypto.timingSafeEqual(left, right);
+}
+
+function dashboardAuthEnabled() {
+  return !!(
+    process.env.DASHBOARD_API_TOKEN ||
+    (process.env.DASHBOARD_AUTH_USER && process.env.DASHBOARD_AUTH_PASSWORD)
+  );
+}
+
+function parseBasicAuth(req) {
+  const header = String(req.headers.authorization || '');
+  if (!header.toLowerCase().startsWith('basic ')) return null;
+  try {
+    const raw = Buffer.from(header.slice(6), 'base64').toString('utf-8');
+    const sep = raw.indexOf(':');
+    if (sep < 0) return null;
+    return { user: raw.slice(0, sep), password: raw.slice(sep + 1) };
+  } catch {
+    return null;
+  }
+}
+
+function hasValidDashboardAuth(req) {
+  const token = process.env.DASHBOARD_API_TOKEN || '';
+  if (token) {
+    const header = String(req.headers.authorization || '');
+    const bearer = header.toLowerCase().startsWith('bearer ') ? header.slice(7).trim() : '';
+    const explicit = String(req.headers['x-dashboard-token'] || req.query.token || '');
+    if (timingSafeEqualString(bearer, token) || timingSafeEqualString(explicit, token)) return true;
+  }
+
+  const user = process.env.DASHBOARD_AUTH_USER || '';
+  const password = process.env.DASHBOARD_AUTH_PASSWORD || '';
+  if (user && password) {
+    const basic = parseBasicAuth(req);
+    if (basic && timingSafeEqualString(basic.user, user) && timingSafeEqualString(basic.password, password)) return true;
+  }
+
+  return false;
+}
+
+function requireDashboardAuth(req, res, next) {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('Referrer-Policy', 'same-origin');
+  if (req.path === '/api/health' || req.path === '/healthz') return next();
+  if (!dashboardAuthEnabled() || hasValidDashboardAuth(req)) return next();
+  res.setHeader('WWW-Authenticate', 'Basic realm="AI Agent Dashboard", charset="UTF-8"');
+  res.status(401).json({ error: 'Authentication required' });
+}
+
+app.get(['/api/health', '/healthz'], (req, res) => {
+  res.json({
+    ok: true,
+    service: 'ai-agent-dashboard',
+    time: new Date().toISOString(),
+    uptimeSeconds: Math.round(process.uptime()),
+    authEnabled: dashboardAuthEnabled()
+  });
+});
+
+app.use(requireDashboardAuth);
+
 app.use('/uploads/:file', (req, res, next) => {
   try {
     const file = path.basename(req.params.file || '');
@@ -3721,6 +3790,85 @@ function withAgentRuntimeInfo(agent, group) {
   return { ...agent, ...inferAgentRuntimeInfo(agent, group) };
 }
 
+function publicAgentDescriptor(agent, group) {
+  const runtime = inferAgentRuntimeInfo(agent, group);
+  const cached = agentStatusCache[agent.id] || {};
+  return {
+    id: agent.id,
+    name: agent.name,
+    description: agent.description || '',
+    type: agent.type || 'cli',
+    hostGroup: group,
+    disabled: !!agent.disabled,
+    status: agent.disabled ? 'disabled' : (cached.status || 'unknown'),
+    engineLabel: runtime.engineLabel,
+    modelLabel: runtime.modelLabel,
+    modelSource: runtime.modelSource
+  };
+}
+
+function publicAgentCatalog(config = loadConfig()) {
+  return Object.entries(config.agents || {}).flatMap(([group, agents]) =>
+    (agents || []).map(agent => publicAgentDescriptor(agent, group))
+  );
+}
+
+// ── API v1: generic integration surface ─────────────────────────
+
+app.get('/api/v1/agents', (req, res) => {
+  const config = loadConfig();
+  res.json({
+    object: 'list',
+    data: publicAgentCatalog(config)
+  });
+});
+
+app.post('/api/v1/runs', async (req, res) => {
+  const started = Date.now();
+  const config = loadConfig();
+  const agentId = String(req.body?.agent_id || req.body?.agentId || '').trim();
+  const input = String(req.body?.input || req.body?.message || '').trim();
+  const topic = String(req.body?.topic || 'API request').trim();
+  const metadata = req.body?.metadata && typeof req.body.metadata === 'object' ? req.body.metadata : {};
+
+  if (!agentId) return res.status(400).json({ error: { message: 'agent_id is required' } });
+  if (!input) return res.status(400).json({ error: { message: 'input is required' } });
+
+  const agent = findAgent(agentId);
+  if (!agent) return res.status(404).json({ error: { message: `agent not found: ${agentId}` } });
+  if (agent.disabled) return res.status(409).json({ error: { message: `agent is disabled: ${agentId}` } });
+
+  const runId = crypto.randomUUID();
+  const prompt = buildChatPrompt(agent, topic, input, 'api', chatHistory.messages);
+  const result = await runAgentChat(agent, prompt, config);
+  const response = {
+    id: runId,
+    object: 'run',
+    status: result.ok ? 'completed' : 'failed',
+    agent_id: agent.id,
+    agent_name: agent.name,
+    topic,
+    output: result.ok ? (result.stdout || '') : '',
+    error: result.ok ? null : (result.stderr || result.stdout || 'agent failed'),
+    metadata,
+    latency_ms: Date.now() - started,
+    created_at: new Date(started).toISOString()
+  };
+
+  addChatMessage({
+    id: runId,
+    from: agent.id,
+    fromName: `${agent.icon || ''} ${agent.name}`.trim(),
+    content: result.ok ? compactAgentText(result.stdout || '', 5000) : `❌ ${compactAgentText(result.stderr || result.stdout || 'agent failed', 2000)}`,
+    timestamp: new Date().toISOString(),
+    responseTime: response.latency_ms,
+    type: 'api',
+    topic
+  });
+
+  res.status(result.ok ? 200 : 502).json(response);
+});
+
 // ── API: Agents ─────────────────────────────────────────────────
 
 app.get('/api/agents', async (req, res) => {
@@ -6988,7 +7136,7 @@ app.post('/api/hosts/:hostId/reconnect', async (req, res) => {
 // ── Start ───────────────────────────────────────────────────────
 
 const config = loadConfig();
-const PORT = config.server.port || 3456;
+const PORT = Number(process.env.PORT || config.server.port || 3456);
 
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`🤖 Agent Dashboard at http://localhost:${PORT} (LAN: ${publicBaseUrl(PORT)})`);

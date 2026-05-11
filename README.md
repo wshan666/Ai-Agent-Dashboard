@@ -7,6 +7,12 @@ This repository contains two parts:
 - `Dashboard/`: Node.js + Express web dashboard for agent status, chat, roundtable, workflow execution, backups, and large-screen visualization.
 - `AgentApp/`: iOS companion app built with SwiftUI and WKWebView/native screens. It connects to a running Dashboard server.
 
+Productization docs:
+
+- `docs/API.md`: stable integration API v1.
+- `docs/SECURITY.md`: security notes before deployment.
+- `docs/PRODUCT_ROADMAP.md`: path from private deploy to commercial product.
+
 ## Quick Start
 
 ```powershell
@@ -25,6 +31,21 @@ For LAN/mobile access, set the server URL in the iOS app profile tab. The Dashbo
 - `NETEASE_API_BASE`: optional local Netease API service for music search/lyrics.
 - `DASHSCOPE_API_KEY`: optional Qwen vision script key.
 - `DEEPSEEK_API_KEY`: optional DeepSeek script key.
+- `DASHBOARD_AUTH_USER` / `DASHBOARD_AUTH_PASSWORD`: optional Basic Auth.
+- `DASHBOARD_API_TOKEN`: optional Bearer/API token for API clients.
+
+Health check:
+
+```powershell
+Invoke-RestMethod http://127.0.0.1:3456/api/health
+```
+
+Generic API:
+
+```powershell
+$headers = @{ Authorization = "Bearer $env:DASHBOARD_API_TOKEN" }
+Invoke-RestMethod http://127.0.0.1:3456/api/v1/agents -Headers $headers
+```
 
 ## Local Configuration
 
