@@ -75,7 +75,14 @@ app.get(['/api/health', '/healthz'], (req, res) => {
     service: 'ai-agent-dashboard',
     time: new Date().toISOString(),
     uptimeSeconds: Math.round(process.uptime()),
-    authEnabled: dashboardAuthEnabled()
+    authEnabled: dashboardAuthEnabled(),
+    runs: typeof apiRuns === 'undefined' ? undefined : {
+      total: apiRuns.length,
+      queued: apiRuns.filter(run => run.status === 'queued').length,
+      running: apiRuns.filter(run => run.status === 'running').length,
+      activeWorkers: apiRunActive,
+      queueDepth: apiRunQueue.length
+    }
   });
 });
 
@@ -104,6 +111,8 @@ const LESSONS_PATH = path.join(__dirname, 'agent_lessons.json');
 const SHARED_OUT = process.env.DASHBOARD_SHARED_OUT || path.join(__dirname, 'output');
 fs.mkdirSync(SHARED_OUT, { recursive: true });
 const MUSIC_LIBRARY_PATH = path.join(SHARED_OUT, 'music_library.json');
+const API_RUNS_PATH = path.join(SHARED_OUT, 'api_runs.json');
+const API_AUDIT_LOG_PATH = path.join(SHARED_OUT, 'api_audit.jsonl');
 const VERSION_PATH = path.join(__dirname, 'version.json');
 const DEV_PROGRESS_PATH = path.join(__dirname, 'dev_progress.json');
 const CODEX_HANDOFF_PATH = path.join(__dirname, 'codex_handoff.md');
@@ -124,15 +133,20 @@ function publicBaseUrl(port) {
   return configured || `http://${firstLanAddress()}:${port}`;
 }
 
+function readJsonFile(filePath) {
+  const text = fs.readFileSync(filePath, 'utf-8').replace(/^\uFEFF/, '');
+  return JSON.parse(text);
+}
+
 function loadVersion() {
-  try { return JSON.parse(fs.readFileSync(VERSION_PATH, 'utf-8')); }
+  try { return readJsonFile(VERSION_PATH); }
   catch { return { version: '1.0.0', history: [] }; }
 }
 function saveVersion(v) { fs.writeFileSync(VERSION_PATH, JSON.stringify(v, null, 2), 'utf-8'); }
 
 function loadDevProgress() {
   try {
-    const data = JSON.parse(fs.readFileSync(DEV_PROGRESS_PATH, 'utf-8'));
+    const data = readJsonFile(DEV_PROGRESS_PATH);
     if (!Array.isArray(data.items)) data.items = [];
     return data;
   } catch {
@@ -229,7 +243,7 @@ app.post('/api/upload', (req, res) => {
 const SECRETS_PATH = path.join(__dirname, 'secrets.json');
 
 function loadSecrets() {
-  try { return JSON.parse(fs.readFileSync(SECRETS_PATH, 'utf-8')); }
+  try { return readJsonFile(SECRETS_PATH); }
   catch { return { hostPasswords: {} }; }
 }
 
@@ -242,7 +256,7 @@ function loadConfig() {
   if (!fs.existsSync(sourcePath)) {
     throw new Error('Missing config.json. Copy config.example.json to config.json and update local settings.');
   }
-  const config = JSON.parse(fs.readFileSync(sourcePath, 'utf-8'));
+  const config = readJsonFile(sourcePath);
   // Merge secrets (passwords) from separate file
   try {
     const secrets = loadSecrets();
@@ -264,7 +278,7 @@ function saveConfig(config) {
 }
 function loadChatHistory() {
   try {
-    const data = JSON.parse(fs.readFileSync(CHAT_LOG_PATH, 'utf-8'));
+    const data = readJsonFile(CHAT_LOG_PATH);
     if (!data.messages) data.messages = [];
     if (!data.topics) data.topics = [];
     return data;
@@ -3180,7 +3194,7 @@ function appendToMemory(topic, summaryContent) {
 // ── Agent Lessons ───────────────────────────────────────────────
 function loadLessons() {
   try {
-    const data = JSON.parse(fs.readFileSync(LESSONS_PATH, 'utf-8'));
+    const data = readJsonFile(LESSONS_PATH);
     if (!Array.isArray(data.lessons)) data.lessons = [];
     return data;
   } catch {
@@ -3813,6 +3827,194 @@ function publicAgentCatalog(config = loadConfig()) {
   );
 }
 
+// ── API run store / queue ───────────────────────────────────────
+
+const API_RUN_HISTORY_LIMIT = Math.max(100, Number(process.env.API_RUN_HISTORY_LIMIT || 1000));
+const API_RUN_CONCURRENCY = Math.max(1, Math.min(8, Number(process.env.API_RUN_CONCURRENCY || 1)));
+let apiRuns = loadApiRuns();
+let apiRunQueue = [];
+let apiRunActive = 0;
+
+function loadApiRuns() {
+  try {
+    const parsed = readJsonFile(API_RUNS_PATH);
+    const rows = Array.isArray(parsed) ? parsed : (Array.isArray(parsed.runs) ? parsed.runs : []);
+    const now = new Date().toISOString();
+    return rows.map(row => {
+      if (row.status === 'running' || row.status === 'queued') {
+        return {
+          ...row,
+          status: 'failed',
+          error: row.error || 'Server restarted before the run completed.',
+          updated_at: now,
+          completed_at: now
+        };
+      }
+      return row;
+    });
+  } catch {
+    return [];
+  }
+}
+
+function saveApiRuns() {
+  const trimmed = apiRuns
+    .slice()
+    .sort((a, b) => String(b.created_at || '').localeCompare(String(a.created_at || '')))
+    .slice(0, API_RUN_HISTORY_LIMIT);
+  apiRuns = trimmed;
+  const tmp = API_RUNS_PATH + '.tmp';
+  fs.writeFileSync(tmp, JSON.stringify({ runs: trimmed }, null, 2), 'utf-8');
+  fs.renameSync(tmp, API_RUNS_PATH);
+}
+
+function auditApiEvent(type, payload = {}) {
+  try {
+    const row = {
+      type,
+      time: new Date().toISOString(),
+      ...payload
+    };
+    fs.appendFileSync(API_AUDIT_LOG_PATH, JSON.stringify(row) + '\n', 'utf-8');
+  } catch {}
+}
+
+function publicRun(run, { includeInput = false } = {}) {
+  if (!run) return null;
+  const out = {
+    id: run.id,
+    object: 'run',
+    status: run.status,
+    agent_id: run.agent_id,
+    agent_name: run.agent_name,
+    topic: run.topic,
+    output: run.output || '',
+    error: run.error || null,
+    metadata: run.metadata || {},
+    latency_ms: run.latency_ms || null,
+    created_at: run.created_at,
+    updated_at: run.updated_at,
+    started_at: run.started_at || null,
+    completed_at: run.completed_at || null,
+    cancellation_requested: !!run.cancellation_requested
+  };
+  if (includeInput) out.input = run.input || '';
+  else out.input_preview = compactAgentText(run.input || '', 240);
+  return out;
+}
+
+function findApiRun(id) {
+  return apiRuns.find(run => run.id === id) || null;
+}
+
+function upsertApiRun(run) {
+  const idx = apiRuns.findIndex(row => row.id === run.id);
+  if (idx >= 0) apiRuns[idx] = run;
+  else apiRuns.unshift(run);
+  saveApiRuns();
+  return run;
+}
+
+function enqueueApiRun(run) {
+  apiRunQueue.push(run.id);
+  setImmediate(processApiRunQueue);
+}
+
+function processApiRunQueue() {
+  while (apiRunActive < API_RUN_CONCURRENCY && apiRunQueue.length > 0) {
+    const id = apiRunQueue.shift();
+    const run = findApiRun(id);
+    if (!run || run.status !== 'queued') continue;
+    apiRunActive++;
+    executeApiRun(id)
+      .catch(err => {
+        const current = findApiRun(id);
+        if (current && current.status === 'running') {
+          upsertApiRun({
+            ...current,
+            status: 'failed',
+            error: err?.stack || err?.message || String(err),
+            completed_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          });
+        }
+      })
+      .finally(() => {
+        apiRunActive = Math.max(0, apiRunActive - 1);
+        processApiRunQueue();
+      });
+  }
+}
+
+async function executeApiRun(id) {
+  const run = findApiRun(id);
+  if (!run || run.status !== 'queued') return null;
+
+  const config = loadConfig();
+  const agent = findAgent(run.agent_id);
+  const started = Date.now();
+  const startedAt = new Date(started).toISOString();
+
+  if (!agent) {
+    const failed = {
+      ...run,
+      status: 'failed',
+      error: `agent not found: ${run.agent_id}`,
+      updated_at: startedAt,
+      completed_at: startedAt,
+      latency_ms: 0
+    };
+    upsertApiRun(failed);
+    auditApiEvent('run.failed', { run_id: id, agent_id: run.agent_id, error: failed.error });
+    return failed;
+  }
+
+  upsertApiRun({
+    ...run,
+    agent_name: agent.name,
+    status: 'running',
+    started_at: startedAt,
+    updated_at: startedAt
+  });
+  auditApiEvent('run.started', { run_id: id, agent_id: agent.id });
+
+  const prompt = buildChatPrompt(agent, run.topic, run.input, 'api', chatHistory.messages);
+  const result = await runAgentChat(agent, prompt, config);
+  const completedAt = new Date().toISOString();
+  const current = findApiRun(id) || run;
+  const finalRun = {
+    ...current,
+    agent_name: agent.name,
+    status: result.ok ? 'completed' : 'failed',
+    output: result.ok ? (result.stdout || '') : '',
+    error: result.ok ? null : (result.stderr || result.stdout || 'agent failed'),
+    latency_ms: Date.now() - started,
+    completed_at: completedAt,
+    updated_at: completedAt
+  };
+  upsertApiRun(finalRun);
+
+  addChatMessage({
+    id,
+    from: agent.id,
+    fromName: `${agent.icon || ''} ${agent.name}`.trim(),
+    content: result.ok ? compactAgentText(result.stdout || '', 5000) : `❌ ${compactAgentText(result.stderr || result.stdout || 'agent failed', 2000)}`,
+    timestamp: completedAt,
+    responseTime: finalRun.latency_ms,
+    type: 'api',
+    topic: run.topic
+  });
+
+  auditApiEvent(result.ok ? 'run.completed' : 'run.failed', {
+    run_id: id,
+    agent_id: agent.id,
+    latency_ms: finalRun.latency_ms,
+    error: finalRun.error ? compactAgentText(finalRun.error, 500) : null
+  });
+
+  return finalRun;
+}
+
 // ── API v1: generic integration surface ─────────────────────────
 
 app.get('/api/v1/agents', (req, res) => {
@@ -3823,13 +4025,62 @@ app.get('/api/v1/agents', (req, res) => {
   });
 });
 
+app.get('/api/v1/runs', (req, res) => {
+  const limit = Math.max(1, Math.min(100, Number(req.query.limit || 50)));
+  const status = String(req.query.status || '').trim();
+  const agentId = String(req.query.agent_id || req.query.agentId || '').trim();
+  let rows = apiRuns.slice();
+  if (status) rows = rows.filter(run => run.status === status);
+  if (agentId) rows = rows.filter(run => run.agent_id === agentId);
+  rows = rows
+    .sort((a, b) => String(b.created_at || '').localeCompare(String(a.created_at || '')))
+    .slice(0, limit);
+  res.json({ object: 'list', data: rows.map(run => publicRun(run)) });
+});
+
+app.get('/api/v1/runs/:id', (req, res) => {
+  const run = findApiRun(req.params.id);
+  if (!run) return res.status(404).json({ error: { message: `run not found: ${req.params.id}` } });
+  res.json(publicRun(run, { includeInput: req.query.include_input === '1' }));
+});
+
+app.post('/api/v1/runs/:id/cancel', (req, res) => {
+  const run = findApiRun(req.params.id);
+  if (!run) return res.status(404).json({ error: { message: `run not found: ${req.params.id}` } });
+  const now = new Date().toISOString();
+  if (run.status === 'queued') {
+    const cancelled = {
+      ...run,
+      status: 'cancelled',
+      error: 'Run cancelled before execution.',
+      updated_at: now,
+      completed_at: now
+    };
+    upsertApiRun(cancelled);
+    apiRunQueue = apiRunQueue.filter(id => id !== run.id);
+    auditApiEvent('run.cancelled', { run_id: run.id, agent_id: run.agent_id });
+    return res.json(publicRun(cancelled));
+  }
+  if (run.status === 'running') {
+    const updated = {
+      ...run,
+      cancellation_requested: true,
+      updated_at: now
+    };
+    upsertApiRun(updated);
+    auditApiEvent('run.cancel_requested', { run_id: run.id, agent_id: run.agent_id });
+    return res.status(202).json(publicRun(updated));
+  }
+  res.status(409).json({ error: { message: `run is already ${run.status}` } });
+});
+
 app.post('/api/v1/runs', async (req, res) => {
   const started = Date.now();
-  const config = loadConfig();
   const agentId = String(req.body?.agent_id || req.body?.agentId || '').trim();
   const input = String(req.body?.input || req.body?.message || '').trim();
   const topic = String(req.body?.topic || 'API request').trim();
   const metadata = req.body?.metadata && typeof req.body.metadata === 'object' ? req.body.metadata : {};
+  const wantsAsync = req.body?.async === true || String(req.query.async || '').toLowerCase() === 'true';
 
   if (!agentId) return res.status(400).json({ error: { message: 'agent_id is required' } });
   if (!input) return res.status(400).json({ error: { message: 'input is required' } });
@@ -3839,34 +4090,37 @@ app.post('/api/v1/runs', async (req, res) => {
   if (agent.disabled) return res.status(409).json({ error: { message: `agent is disabled: ${agentId}` } });
 
   const runId = crypto.randomUUID();
-  const prompt = buildChatPrompt(agent, topic, input, 'api', chatHistory.messages);
-  const result = await runAgentChat(agent, prompt, config);
-  const response = {
+  const run = {
     id: runId,
     object: 'run',
-    status: result.ok ? 'completed' : 'failed',
+    status: 'queued',
     agent_id: agent.id,
     agent_name: agent.name,
     topic,
-    output: result.ok ? (result.stdout || '') : '',
-    error: result.ok ? null : (result.stderr || result.stdout || 'agent failed'),
+    input,
+    output: '',
+    error: null,
     metadata,
-    latency_ms: Date.now() - started,
-    created_at: new Date(started).toISOString()
+    latency_ms: null,
+    created_at: new Date(started).toISOString(),
+    updated_at: new Date(started).toISOString()
   };
+  upsertApiRun(run);
+  auditApiEvent('run.created', { run_id: run.id, agent_id: agent.id, async: wantsAsync });
 
-  addChatMessage({
-    id: runId,
-    from: agent.id,
-    fromName: `${agent.icon || ''} ${agent.name}`.trim(),
-    content: result.ok ? compactAgentText(result.stdout || '', 5000) : `❌ ${compactAgentText(result.stderr || result.stdout || 'agent failed', 2000)}`,
-    timestamp: new Date().toISOString(),
-    responseTime: response.latency_ms,
-    type: 'api',
-    topic
-  });
+  if (wantsAsync) {
+    enqueueApiRun(run);
+    return res.status(202).json(publicRun(run, { includeInput: true }));
+  }
 
-  res.status(result.ok ? 200 : 502).json(response);
+  apiRunActive++;
+  try {
+    const finalRun = await executeApiRun(run.id);
+    res.status(finalRun?.status === 'completed' ? 200 : 502).json(publicRun(finalRun, { includeInput: true }));
+  } finally {
+    apiRunActive = Math.max(0, apiRunActive - 1);
+    processApiRunQueue();
+  }
 });
 
 // ── API: Agents ─────────────────────────────────────────────────
@@ -6206,7 +6460,7 @@ function formatMusicDuration(seconds) {
 
 function loadMusicLibrary() {
   try {
-    const raw = JSON.parse(fs.readFileSync(MUSIC_LIBRARY_PATH, 'utf-8'));
+    const raw = readJsonFile(MUSIC_LIBRARY_PATH);
     return {
       favorites: Array.isArray(raw?.favorites) ? raw.favorites : [],
       recent: Array.isArray(raw?.recent) ? raw.recent : []
@@ -6899,7 +7153,7 @@ app.get('/api/backups', (req, res) => {
     const list = dirs.map(d => {
       const manifestPath = path.join(BACKUPS_DIR, d, 'manifest.json');
       let manifest = {};
-      try { manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf-8')); } catch {}
+      try { manifest = readJsonFile(manifestPath); } catch {}
       return { id: d, version: manifest.version || '?', timestamp: manifest.timestamp || d.split('_').slice(1).join('_'), task: manifest.task || '' };
     });
     res.json(list);
@@ -7019,7 +7273,7 @@ app.post('/api/backups/:id/restore', (req, res) => {
   }
   const manifestPath = path.join(backupDir, 'manifest.json');
   let manifest = {};
-  try { manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf-8')); } catch {}
+  try { manifest = readJsonFile(manifestPath); } catch {}
 
   // Overwrite project files from backup
   const projectDir = __dirname;

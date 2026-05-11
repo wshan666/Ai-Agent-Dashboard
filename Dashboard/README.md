@@ -39,8 +39,13 @@ Optional one-click launcher on Windows:
 - `GET /api/health`
 - `GET /api/v1/agents`
 - `POST /api/v1/runs`
+- `GET /api/v1/runs`
+- `GET /api/v1/runs/:id`
+- `POST /api/v1/runs/:id/cancel`
 
 See `../docs/API.md`.
+
+Runs created with `async: true` are queued and stored under `DASHBOARD_SHARED_OUT/api_runs.json`. Audit events are appended to `DASHBOARD_SHARED_OUT/api_audit.jsonl`.
 
 ## Private Runtime Files
 

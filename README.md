@@ -47,6 +47,17 @@ $headers = @{ Authorization = "Bearer $env:DASHBOARD_API_TOKEN" }
 Invoke-RestMethod http://127.0.0.1:3456/api/v1/agents -Headers $headers
 ```
 
+Create an asynchronous run:
+
+```powershell
+$body = @{
+  agent_id = "codex-cli"
+  input = "Draft a short launch checklist."
+  async = $true
+} | ConvertTo-Json
+Invoke-RestMethod http://127.0.0.1:3456/api/v1/runs -Headers $headers -Method Post -ContentType "application/json" -Body $body
+```
+
 ## Local Configuration
 
 Do not commit runtime secrets or local state. Keep these files local:
