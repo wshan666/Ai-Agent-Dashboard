@@ -8,7 +8,7 @@ struct NativeWorkflowView: View {
     @State private var codeCoders: [WorkflowCoderDraft] = [WorkflowCoderDraft()]
     @State private var codeReviewerIds: Set<String> = []
     @State private var codeSummarizerId = ""
-    @State private var projectDraft = ProjectWorkflowDraft(projectDir: "C:\\Users\\Administrator\\Documents\\New project\\zhongjian_new")
+    @State private var projectDraft = ProjectWorkflowDraft()
     @State private var contentDraft = ContentWorkflowDraft()
     @State private var pptDraft = PptWorkflowDraft()
     @State private var musicDraft = MusicWorkflowDraft()
@@ -42,21 +42,10 @@ struct NativeWorkflowView: View {
                     devProgressCard.padding(.horizontal, 18)
                 }
 
-                NavigationLink {
-                    AgentWebContainer(route: .workflow)
-                } label: {
-                    Label("\u{6253}\u{5f00}\u{7f51}\u{9875}\u{5de5}\u{4f5c}\u{6d41}\u{4e2d}\u{5fc3}", systemImage: "safari")
-                        .font(.subheadline.weight(.semibold))
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 12)
-                        .background(Color(.secondarySystemBackground))
-                        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-                }
-                .buttonStyle(.plain)
-                .padding(.horizontal, 18)
-                .padding(.bottom, 24)
+                Color.clear.frame(height: 6)
             }
             .padding(.top, 16)
+            .padding(.bottom, 24)
         }
         .scrollDismissesKeyboard(.interactively)
         .background(Color(.systemGroupedBackground))

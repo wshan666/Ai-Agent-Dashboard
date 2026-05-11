@@ -1,7 +1,6 @@
 import SwiftUI
 
 struct ContentView: View {
-    @EnvironmentObject private var settings: ServerSettings
     @EnvironmentObject private var store: AppStore
     @State private var selectedTab: RootTab = .home
 
@@ -19,8 +18,8 @@ struct ContentView: View {
                 .tabItem { Label("\u{5de5}\u{4f5c}\u{6d41}", systemImage: "point.3.connected.trianglepath.dotted") }
                 .tag(RootTab.workflow)
 
-            NavigationStack { AgentWebContainer(route: .bigscreen) }
-                .tabItem { Label("\u{5927}\u{5c4f}", systemImage: "display.2") }
+            NavigationStack { NativeBigScreenView() }
+                .tabItem { Label("\u{6307}\u{6325}", systemImage: "display.2") }
                 .tag(RootTab.bigscreen)
 
             ProfileView()
@@ -50,9 +49,11 @@ private enum RootTab { case home, chat, workflow, bigscreen, profile }
 private struct ProfileView: View {
     @EnvironmentObject private var settings: ServerSettings
     @State private var draftURL: String = ""
+    @State private var draftToken: String = ""
     @State private var testStatus: String = "\u{5c1a}\u{672a}\u{6d4b}\u{8bd5}"
     @State private var isTesting = false
     @FocusState private var urlFocused: Bool
+    @FocusState private var tokenFocused: Bool
 
     var body: some View {
         NavigationStack {
@@ -66,8 +67,10 @@ private struct ProfileView: View {
 
                     Button("\u{4fdd}\u{5b58}\u{5e76}\u{4f7f}\u{7528}") {
                         urlFocused = false
+                        tokenFocused = false
                         UIApplication.dismissKeyboard()
                         settings.baseURLString = draftURL.trimmingCharacters(in: .whitespacesAndNewlines)
+                        settings.apiToken = draftToken.trimmingCharacters(in: .whitespacesAndNewlines)
                     }
 
                     Button(isTesting ? "\u{6d4b}\u{8bd5}\u{4e2d}..." : "\u{6d4b}\u{8bd5}\u{8fde}\u{63a5}") {
@@ -82,17 +85,34 @@ private struct ProfileView: View {
                         .foregroundStyle(.secondary)
                 }
 
-                Section("\u{5feb}\u{6377}\u{5165}\u{53e3}") {
+                Section("API Token") {
+                    SecureField("\u{79c1}\u{6709}\u{90e8}\u{7f72}\u{7684} DASHBOARD_API_TOKEN", text: $draftToken)
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled()
+                        .focused($tokenFocused)
+
+                    Text("\u{4e0a}\u{4e91}\u{540e}\u{5efa}\u{8bae}\u{5f00}\u{542f} DASHBOARD_REQUIRE_AUTH\uff0cApp \u{4f1a}\u{81ea}\u{52a8}\u{4f7f}\u{7528} Bearer Token \u{8bf7}\u{6c42}\u{63a5}\u{53e3}\u{3002}")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+
+                Section("\u{539f}\u{751f}\u{80fd}\u{529b}") {
                     NavigationLink {
-                        AgentWebContainer(route: .dashboard)
+                        NativeDashboardView()
                     } label: {
-                        Label("\u{4eea}\u{8868}\u{76d8}", systemImage: AgentRoute.dashboard.systemImage)
+                        Label("\u{539f}\u{751f}\u{4eea}\u{8868}\u{76d8}", systemImage: "rectangle.grid.2x2")
                     }
 
                     NavigationLink {
-                        AgentWebContainer(route: .upgrade)
+                        NativeBigScreenView()
                     } label: {
-                        Label("\u{7cfb}\u{7edf}\u{5347}\u{7ea7}", systemImage: AgentRoute.upgrade.systemImage)
+                        Label("\u{539f}\u{751f}\u{6307}\u{6325}\u{5ba4}", systemImage: "display.2")
+                    }
+
+                    NavigationLink {
+                        NativeWorkflowView()
+                    } label: {
+                        Label("\u{539f}\u{751f}\u{5de5}\u{4f5c}\u{6d41}", systemImage: "point.3.connected.trianglepath.dotted")
                     }
                 }
             }
@@ -101,10 +121,12 @@ private struct ProfileView: View {
             .dismissKeyboardOnTap()
             .onDisappear {
                 urlFocused = false
+                tokenFocused = false
                 UIApplication.dismissKeyboard()
             }
             .onAppear {
                 draftURL = settings.baseURLString
+                draftToken = settings.apiToken
             }
         }
     }
@@ -119,15 +141,20 @@ private struct ProfileView: View {
         isTesting = true
         testStatus = "\u{6d4b}\u{8bd5}\u{4e2d}..."
 
-        var request = URLRequest(url: url)
+        let healthURL = URL(string: "/api/health", relativeTo: url)?.absoluteURL ?? url
+        var request = URLRequest(url: healthURL)
         request.timeoutInterval = 8
+        let token = draftToken.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !token.isEmpty {
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
         URLSession.shared.dataTask(with: request) { _, response, error in
             DispatchQueue.main.async {
                 isTesting = false
                 if let error {
                     testStatus = "\u{8fde}\u{63a5}\u{5931}\u{8d25}\u{ff1a}\(error.localizedDescription)"
                 } else if let http = response as? HTTPURLResponse {
-                    testStatus = "\u{8fde}\u{63a5}\u{6210}\u{529f}\u{ff1a}HTTP \(http.statusCode)"
+                    testStatus = (200 ... 299).contains(http.statusCode) ? "\u{8fde}\u{63a5}\u{6210}\u{529f}\u{ff1a}HTTP \(http.statusCode)" : "\u{670d}\u{52a1}\u{5668}\u{8fd4}\u{56de}\u{ff1a}HTTP \(http.statusCode)"
                 } else {
                     testStatus = "\u{8fde}\u{63a5}\u{6210}\u{529f}"
                 }

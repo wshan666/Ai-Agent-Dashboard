@@ -377,7 +377,11 @@ struct NativeChatView: View {
         UIApplication.dismissKeyboard()
 
         do {
-            try await store.sendChat(agentIds: targetIds, message: text, topic: trimmedTopic, room: roomId)
+            if mode == .group, targetIds.count >= 2 {
+                _ = try await store.startCollaboration(agentIds: targetIds, message: text, topic: trimmedTopic, mode: "parallel")
+            } else {
+                try await store.sendChat(agentIds: targetIds, message: text, topic: trimmedTopic, room: roomId)
+            }
         } catch {
             let text = error.localizedDescription.lowercased()
             if text.contains("timed out") || text.contains("超时") {

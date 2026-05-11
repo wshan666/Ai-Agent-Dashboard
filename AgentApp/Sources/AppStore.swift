@@ -20,6 +20,7 @@ final class AppStore: ObservableObject {
     @Published var musicCurrentTime: Double = 0
     @Published var musicDuration: Double = 0
     @Published var lastError: String?
+    @Published var lastCollaborationRun: CollaborationRun?
 
     private let settings: ServerSettings
     private var musicPlayer: AVPlayer?
@@ -120,6 +121,41 @@ final class AppStore: ObservableObject {
         if response.accepted == true && response.queued == true {
             return
         }
+    }
+
+    func startCollaboration(agentIds: [String], message: String, topic: String, mode: String = "parallel", summarizerId: String? = nil) async throws -> CollaborationRun {
+        var payload: [String: Any] = [
+            "agent_ids": agentIds,
+            "input": message,
+            "topic": topic.isEmpty ? "iOS collaboration" : topic,
+            "mode": mode,
+            "async": false
+        ]
+        if let summarizerId, !summarizerId.isEmpty {
+            payload["summarizer_agent_id"] = summarizerId
+        }
+
+        let run: CollaborationRun = try await postJSON(path: "/api/v1/collaborations", payload: payload, timeout: 240)
+        lastCollaborationRun = run
+        lastError = nil
+
+        let output = run.output?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        if !output.isEmpty {
+            messages.append(ChatMessage(
+                id: run.id,
+                from: "api-collaboration",
+                fromName: "\u{534f}\u{540c}\u{7ed3}\u{679c}",
+                content: output,
+                timestamp: run.completedAt ?? ISO8601DateFormatter().string(from: Date()),
+                type: "api",
+                topic: topic.isEmpty ? nil : topic,
+                room: nil
+            ))
+            messages.sort { ($0.timestamp?.asIsoDate ?? .distantPast) < ($1.timestamp?.asIsoDate ?? .distantPast) }
+        }
+
+        Task { await self.refreshDashboard() }
+        return run
     }
 
     func startCodeWorkflow(task: String, coders: [WorkflowCoderDraft], reviewerIds: [String], summarizerId: String?) async throws {
@@ -356,37 +392,27 @@ final class AppStore: ObservableObject {
     }
 
     private func fetchAgents() async throws -> [AgentSummary] {
-        let data = try await getData(path: "/api/agents")
+        let data = try await getData(path: "/api/v1/agents")
         guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any] else {
             return []
         }
 
         var items: [AgentSummary] = []
+        if let data = json["data"] as? [[String: Any]] {
+            for raw in data {
+                items.append(agentSummary(from: raw, defaultGroup: raw["hostGroup"] as? String ?? "default"))
+            }
+            return sortedAgents(items)
+        }
+
         for (group, value) in json where !group.hasPrefix("_") {
             guard let agents = value as? [[String: Any]] else { continue }
             for raw in agents {
-                items.append(
-                    AgentSummary(
-                        id: raw["id"] as? String ?? UUID().uuidString,
-                        name: raw["name"] as? String ?? "Agent",
-                        icon: raw["icon"] as? String ?? "",
-                        description: raw["description"] as? String ?? "",
-                        status: raw["status"] as? String ?? "offline",
-                        hostGroup: raw["hostGroup"] as? String ?? group,
-                        modelLabel: raw["modelLabel"] as? String ?? "",
-                        engineLabel: raw["engineLabel"] as? String ?? "",
-                        disabled: raw["disabled"] as? Bool ?? false
-                    )
-                )
+                items.append(agentSummary(from: raw, defaultGroup: group))
             }
         }
 
-        return items.sorted { lhs, rhs in
-            if lhs.isOnline != rhs.isOnline {
-                return lhs.isOnline && !rhs.isOnline
-            }
-            return lhs.name.localizedCompare(rhs.name) == .orderedAscending
-        }
+        return sortedAgents(items)
     }
 
     private func fetchChatHistory() async throws -> ChatHistoryResponse {
@@ -408,6 +434,7 @@ final class AppStore: ObservableObject {
         request.httpMethod = "POST"
         request.timeoutInterval = timeout
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        applyAuth(to: &request)
         request.httpBody = try JSONSerialization.data(withJSONObject: payload)
 
         let (data, response) = try await URLSession.shared.data(for: request)
@@ -427,6 +454,7 @@ final class AppStore: ObservableObject {
         let url = buildURL(path: path)
         var request = URLRequest(url: url)
         request.timeoutInterval = 30
+        applyAuth(to: &request)
 
         let (data, response) = try await URLSession.shared.data(for: request)
         guard let http = response as? HTTPURLResponse, (200 ... 299).contains(http.statusCode) else {
@@ -438,6 +466,35 @@ final class AppStore: ObservableObject {
 
     private func buildURL(path: String) -> URL {
         URL(string: path, relativeTo: settings.normalizedBaseURL)!.absoluteURL
+    }
+
+    private func applyAuth(to request: inout URLRequest) {
+        let token = settings.trimmedAPIToken
+        guard !token.isEmpty else { return }
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+    }
+
+    private func agentSummary(from raw: [String: Any], defaultGroup: String) -> AgentSummary {
+        AgentSummary(
+            id: raw["id"] as? String ?? UUID().uuidString,
+            name: raw["name"] as? String ?? "Agent",
+            icon: raw["icon"] as? String ?? "",
+            description: raw["description"] as? String ?? "",
+            status: raw["status"] as? String ?? "offline",
+            hostGroup: raw["hostGroup"] as? String ?? defaultGroup,
+            modelLabel: raw["modelLabel"] as? String ?? "",
+            engineLabel: raw["engineLabel"] as? String ?? "",
+            disabled: raw["disabled"] as? Bool ?? false
+        )
+    }
+
+    private func sortedAgents(_ items: [AgentSummary]) -> [AgentSummary] {
+        items.sorted { lhs, rhs in
+            if lhs.isOnline != rhs.isOnline {
+                return lhs.isOnline && !rhs.isOnline
+            }
+            return lhs.name.localizedCompare(rhs.name) == .orderedAscending
+        }
     }
 
     private func musicTrackPayload(_ track: MusicTrack) -> [String: Any] {

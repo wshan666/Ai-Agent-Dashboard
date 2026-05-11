@@ -104,6 +104,55 @@ struct AgentRunResponse: Codable, Hashable {
     let stderr: String?
 }
 
+struct CollaborationRun: Codable, Identifiable, Hashable {
+    let id: String
+    let object: String?
+    let kind: String?
+    let status: String
+    let topic: String?
+    let output: String?
+    let error: String?
+    let responses: [CollaborationAgentResponse]?
+    let createdAt: String?
+    let completedAt: String?
+
+    private enum CodingKeys: String, CodingKey {
+        case id, object, kind, status, topic, output, error, responses
+        case createdAt = "created_at"
+        case completedAt = "completed_at"
+    }
+
+    var isCompleted: Bool {
+        status == "completed"
+    }
+}
+
+struct CollaborationAgentResponse: Codable, Identifiable, Hashable {
+    let agentId: String
+    let agentName: String
+    let status: String
+    let output: String?
+    let error: String?
+    let latencyMs: Int?
+    let role: String?
+
+    private enum CodingKeys: String, CodingKey {
+        case agentId = "agent_id"
+        case agentName = "agent_name"
+        case status, output, error, role
+        case latencyMs = "latency_ms"
+    }
+
+    var id: String {
+        "\(agentId)-\(role ?? "member")"
+    }
+
+    var displayText: String {
+        let text = (output?.isEmpty == false ? output : error) ?? ""
+        return text.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+}
+
 struct WorkflowStartResponse: Codable {
     let ok: Bool?
     let error: String?
