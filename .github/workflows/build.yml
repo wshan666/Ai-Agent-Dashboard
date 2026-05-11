@@ -41,6 +41,44 @@ jobs:
           ")
           echo "version=$VER" >> $GITHUB_OUTPUT
 
+      - name: Mark OTA Build Started
+        if: vars.OTA_HOST != ''
+        run: |
+          pip3 install --break-system-packages paramiko
+          python3 << 'PYEOF'
+          import paramiko, os, json, datetime
+          from io import BytesIO
+
+          host = os.environ["OTA_HOST"]
+          port = int(os.environ.get("OTA_PORT", "22"))
+          user = os.environ.get("OTA_USER", "root")
+          password = os.environ["OTA_PASSWORD"]
+          remote_dir = "/opt/phonefinder-server/ota"
+          status = {
+              "status": "started",
+              "version": os.environ.get("VERSION", ""),
+              "sha": os.environ.get("GITHUB_SHA", ""),
+              "ref": os.environ.get("GITHUB_REF_NAME", ""),
+              "workflow": os.environ.get("GITHUB_WORKFLOW", ""),
+              "run_id": os.environ.get("GITHUB_RUN_ID", ""),
+              "time": datetime.datetime.now().isoformat()
+          }
+
+          ssh = paramiko.SSHClient()
+          ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+          ssh.connect(host, port=port, username=user, password=password, timeout=30)
+          sftp = ssh.open_sftp()
+          sftp.putfo(BytesIO(json.dumps(status, indent=2, ensure_ascii=False).encode()), f"{remote_dir}/agent_build_status.json")
+          sftp.close(); ssh.close()
+          print("Marked OTA build started")
+          PYEOF
+        env:
+          OTA_HOST: ${{ vars.OTA_HOST }}
+          OTA_PORT: ${{ vars.OTA_PORT }}
+          OTA_USER: ${{ vars.OTA_USER }}
+          OTA_PASSWORD: ${{ secrets.OTA_PASSWORD }}
+          VERSION: ${{ steps.version.outputs.version }}
+
       - name: Build App
         run: |
           set -o pipefail
@@ -198,3 +236,53 @@ jobs:
           OTA_HTTP_PORT: ${{ vars.OTA_HTTP_PORT }}
           OTA_PASSWORD: ${{ secrets.OTA_PASSWORD }}
           VERSION: ${{ steps.version.outputs.version }}
+
+      - name: Publish OTA Build Diagnostics
+        if: always() && vars.OTA_HOST != ''
+        run: |
+          pip3 install --break-system-packages paramiko
+          python3 << 'PYEOF'
+          import paramiko, os, json, datetime, pathlib
+          from io import BytesIO
+
+          host = os.environ["OTA_HOST"]
+          port = int(os.environ.get("OTA_PORT", "22"))
+          user = os.environ.get("OTA_USER", "root")
+          password = os.environ["OTA_PASSWORD"]
+          remote_dir = "/opt/phonefinder-server/ota"
+          build_log = pathlib.Path("build.log")
+          log_tail = ""
+          if build_log.exists():
+              text = build_log.read_text(errors="replace")
+              log_tail = text[-20000:]
+          ipa = pathlib.Path("agent_db.ipa")
+          status = {
+              "status": os.environ.get("JOB_STATUS", ""),
+              "version": os.environ.get("VERSION", ""),
+              "sha": os.environ.get("GITHUB_SHA", ""),
+              "ref": os.environ.get("GITHUB_REF_NAME", ""),
+              "workflow": os.environ.get("GITHUB_WORKFLOW", ""),
+              "run_id": os.environ.get("GITHUB_RUN_ID", ""),
+              "time": datetime.datetime.now().isoformat(),
+              "ipa_exists": ipa.exists(),
+              "ipa_size": ipa.stat().st_size if ipa.exists() else 0,
+              "build_log_tail": log_tail
+          }
+
+          ssh = paramiko.SSHClient()
+          ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+          ssh.connect(host, port=port, username=user, password=password, timeout=30)
+          sftp = ssh.open_sftp()
+          sftp.putfo(BytesIO(json.dumps(status, indent=2, ensure_ascii=False).encode()), f"{remote_dir}/agent_build_status.json")
+          if build_log.exists():
+              sftp.put(str(build_log), f"{remote_dir}/agent_build.log")
+          sftp.close(); ssh.close()
+          print("Published OTA build diagnostics")
+          PYEOF
+        env:
+          OTA_HOST: ${{ vars.OTA_HOST }}
+          OTA_PORT: ${{ vars.OTA_PORT }}
+          OTA_USER: ${{ vars.OTA_USER }}
+          OTA_PASSWORD: ${{ secrets.OTA_PASSWORD }}
+          VERSION: ${{ steps.version.outputs.version }}
+          JOB_STATUS: ${{ job.status }}
