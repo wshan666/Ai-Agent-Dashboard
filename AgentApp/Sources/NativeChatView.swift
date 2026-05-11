@@ -30,6 +30,35 @@ struct NativeChatView: View {
         store.agents.first(where: { $0.id == privateAgentId })
     }
 
+    private var activeMentionQuery: String? {
+        guard mode == .group, focusedField == .draft else { return nil }
+        guard let atIndex = draft.lastIndex(of: "@") else { return nil }
+        let query = String(draft[draft.index(after: atIndex)...])
+        if query.contains(where: { $0.isWhitespace || $0.isNewline }) { return nil }
+        return query.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private var mentionCandidates: [AgentSummary] {
+        guard let query = activeMentionQuery else { return [] }
+        let normalizedQuery = query.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        return store.agents
+            .filter { !$0.disabled }
+            .filter { agent in
+                normalizedQuery.isEmpty
+                    || agent.name.lowercased().contains(normalizedQuery)
+                    || agent.id.lowercased().contains(normalizedQuery)
+            }
+            .sorted { lhs, rhs in
+                let lhsSelected = selectedAgentIds.contains(lhs.id)
+                let rhsSelected = selectedAgentIds.contains(rhs.id)
+                if lhsSelected != rhsSelected { return lhsSelected && !rhsSelected }
+                if lhs.isOnline != rhs.isOnline { return lhs.isOnline && !rhs.isOnline }
+                return lhs.name.localizedCompare(rhs.name) == .orderedAscending
+            }
+            .prefix(10)
+            .map { $0 }
+    }
+
     private var visibleMessages: [ChatMessage] {
         let base = Array(store.messages.suffix(120))
         guard mode == .direct, let agent = privateAgent else { return base }
@@ -218,7 +247,23 @@ struct NativeChatView: View {
 
     private var composer: some View {
         VStack(spacing: 12) {
+            mentionSuggestionBar
+
             HStack(alignment: .bottom, spacing: 10) {
+                if mode == .group {
+                    Button {
+                        showMentionCandidates()
+                    } label: {
+                        Image(systemName: "at")
+                            .font(.headline)
+                    }
+                    .frame(width: 38, height: 38)
+                    .foregroundStyle(Color.blue)
+                    .background(Color.blue.opacity(0.12))
+                    .clipShape(Circle())
+                    .buttonStyle(.plain)
+                }
+
                 TextField(mode == .group ? "\u{8f93}\u{5165}\u{7fa4}\u{804a}\u{6d88}\u{606f}" : "\u{8f93}\u{5165}\u{79c1}\u{804a}\u{6d88}\u{606f}", text: $draft, axis: .vertical)
                     .textFieldStyle(.roundedBorder)
                     .lineLimit(2 ... 6)
@@ -252,6 +297,51 @@ struct NativeChatView: View {
         }
         .padding(16)
         .background(.ultraThinMaterial)
+    }
+
+    @ViewBuilder
+    private var mentionSuggestionBar: some View {
+        if mode == .group, !mentionCandidates.isEmpty {
+            VStack(alignment: .leading, spacing: 8) {
+                Text("\u{9009}\u{62e9}\u{8981} @ \u{7684}\u{667a}\u{80fd}\u{4f53}")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 8) {
+                        ForEach(mentionCandidates) { agent in
+                            Button {
+                                insertMention(agent)
+                            } label: {
+                                HStack(spacing: 8) {
+                                    Text(agent.displayIcon)
+                                    VStack(alignment: .leading, spacing: 1) {
+                                        Text(agent.name)
+                                            .font(.caption.weight(.semibold))
+                                            .lineLimit(1)
+                                        Text(agent.statusText)
+                                            .font(.caption2)
+                                            .foregroundStyle(.secondary)
+                                    }
+                                    if selectedAgentIds.contains(agent.id) {
+                                        Image(systemName: "checkmark.circle.fill")
+                                            .font(.caption)
+                                            .foregroundStyle(Color.blue)
+                                    }
+                                }
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 8)
+                                .background(Color(.secondarySystemBackground))
+                                .clipShape(Capsule())
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                }
+            }
+            .padding(10)
+            .background(Color(.systemBackground))
+            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+        }
     }
 
     private func messageRow(_ message: ChatMessage) -> some View {
@@ -356,6 +446,33 @@ struct NativeChatView: View {
             .frame(width: 34, height: 34)
             .background(Color(.tertiarySystemBackground))
             .clipShape(Circle())
+    }
+
+    private func showMentionCandidates() {
+        focusedField = .draft
+        if draft.isEmpty || draft.last?.isWhitespace == true {
+            draft += "@"
+        } else if activeMentionQuery == nil {
+            draft += " @"
+        }
+    }
+
+    private func insertMention(_ agent: AgentSummary) {
+        selectedAgentIds.insert(agent.id)
+        focusedField = .draft
+
+        if let atIndex = draft.lastIndex(of: "@") {
+            let tail = String(draft[draft.index(after: atIndex)...])
+            if !tail.contains(where: { $0.isWhitespace || $0.isNewline }) {
+                draft.replaceSubrange(atIndex ..< draft.endIndex, with: "@\(agent.name) ")
+                return
+            }
+        }
+
+        if !draft.isEmpty, draft.last?.isWhitespace == false {
+            draft += " "
+        }
+        draft += "@\(agent.name) "
     }
 
     private func send() async {
