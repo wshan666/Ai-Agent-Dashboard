@@ -9,7 +9,7 @@ final class ServerSettings: ObservableObject {
     }
 
     static let storageKey = "agentServerURL"
-    static let defaultURL = "http://192.168.50.32:3456"
+    static let defaultURL = "http://192.168.1.100:3456"
 
     init() {
         self.baseURLString = UserDefaults.standard.string(forKey: Self.storageKey) ?? Self.defaultURL

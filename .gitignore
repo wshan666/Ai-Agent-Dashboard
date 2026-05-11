@@ -1,0 +1,39 @@
+# Node / web
+node_modules/
+npm-debug.log*
+__pycache__/
+*.py[cod]
+
+# Dashboard runtime state
+Dashboard/config.json
+Dashboard/secrets.json
+Dashboard/chat_log.json
+Dashboard/chat_log.json.bak
+Dashboard/agent_lessons.json
+Dashboard/dev_progress.json
+Dashboard/codex_handoff.md
+Dashboard/MEMORY.md
+Dashboard/history_test.json
+Dashboard/raw_response_check.json
+Dashboard/server.log
+Dashboard/server.err.log
+Dashboard/backups/
+Dashboard/output/
+Dashboard/test-results/
+Dashboard/.tmp/
+Dashboard/public/uploads/*
+!Dashboard/public/uploads/.gitkeep
+
+# Local generated project files
+AgentApp/*.xcodeproj/
+AgentApp/DerivedData/
+build/
+Payload/
+*.ipa
+*.xcarchive
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

@@ -58,7 +58,7 @@ private struct ProfileView: View {
         NavigationStack {
             Form {
                 Section("\u{670d}\u{52a1}\u{5668}\u{5730}\u{5740}") {
-                    TextField("http://192.168.50.32:3456", text: $draftURL)
+                    TextField("http://192.168.1.100:3456", text: $draftURL)
                         .textInputAutocapitalization(.never)
                         .keyboardType(.URL)
                         .autocorrectionDisabled()

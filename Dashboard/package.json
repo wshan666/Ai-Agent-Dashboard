@@ -1,0 +1,14 @@
+{
+  "name": "agent-dashboard",
+  "version": "1.0.0",
+  "description": "AI Agent Management Dashboard",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.21.0",
+    "puppeteer": "^24.43.0",
+    "ssh2": "^1.17.0"
+  }
+}

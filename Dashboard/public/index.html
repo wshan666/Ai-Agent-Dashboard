@@ -29,6 +29,125 @@ main{max-width:1600px;margin:0 auto;padding:8px 12px}
 .tab-content{display:none}
 .tab-content.active{display:block}
 
+/* ── iOS Preview ────────────────────── */
+.ios-shell{
+  min-height:calc(100vh - 88px);display:flex;align-items:flex-start;justify-content:center;
+  padding:18px 10px 28px
+}
+.ios-phone{
+  width:min(420px,100%);min-height:820px;border-radius:38px;padding:12px;
+  background:linear-gradient(180deg,#171c28,#0c1018 72%);border:1px solid rgba(255,255,255,.08);
+  box-shadow:0 30px 80px rgba(0,0,0,.42),0 0 0 6px rgba(255,255,255,.03) inset
+}
+.ios-screen{
+  min-height:796px;border-radius:30px;overflow:hidden;position:relative;
+  background:linear-gradient(180deg,#f7f8fc 0%,#edf1f9 45%,#eef2f8 100%);color:#121826
+}
+.ios-statusbar{
+  display:flex;align-items:center;justify-content:space-between;padding:10px 18px 6px;
+  font-size:12px;font-weight:700;color:#1f2937
+}
+.ios-dynamic-island{
+  width:122px;height:28px;border-radius:999px;background:#0f1117;margin:0 auto 6px
+}
+.ios-app-head{
+  padding:6px 18px 14px;display:flex;align-items:flex-start;justify-content:space-between;gap:10px
+}
+.ios-app-head h2{font-size:26px;line-height:1.05;margin:0;color:#111827}
+.ios-app-head p{font-size:12px;color:#5b6474;margin-top:6px;max-width:210px;line-height:1.45}
+.ios-head-chip{
+  border:0;border-radius:14px;background:#111827;color:#fff;padding:9px 12px;
+  font-size:11px;font-weight:700;cursor:pointer;box-shadow:0 10px 24px rgba(17,24,39,.16)
+}
+.ios-body{padding:0 14px 90px;display:flex;flex-direction:column;gap:12px}
+.ios-panel{
+  background:rgba(255,255,255,.88);backdrop-filter:blur(18px);border:1px solid rgba(148,163,184,.18);
+  border-radius:22px;padding:14px;box-shadow:0 14px 30px rgba(15,23,42,.08)
+}
+.ios-panel-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px}
+.ios-panel-head strong{font-size:14px;color:#0f172a}
+.ios-panel-head span{font-size:11px;color:#64748b}
+.ios-stat-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.ios-stat-card{
+  border-radius:18px;padding:14px;background:linear-gradient(180deg,#111827,#1f2937);color:#fff;
+  min-height:92px;display:flex;flex-direction:column;justify-content:space-between
+}
+.ios-stat-card.alt{background:linear-gradient(180deg,#0f766e,#0f172a)}
+.ios-stat-card.warn{background:linear-gradient(180deg,#7c2d12,#1f2937)}
+.ios-stat-card.soft{background:linear-gradient(180deg,#4338ca,#1f2937)}
+.ios-stat-card .k{font-size:11px;color:rgba(255,255,255,.72)}
+.ios-stat-card .v{font-size:28px;font-weight:800;line-height:1}
+.ios-inline-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.ios-inline-stat{
+  border-radius:16px;padding:10px;background:#f8fafc;border:1px solid rgba(148,163,184,.18)
+}
+.ios-inline-stat strong{display:block;font-size:18px;color:#0f172a}
+.ios-inline-stat span{font-size:11px;color:#64748b}
+.ios-list{display:flex;flex-direction:column;gap:8px}
+.ios-row{
+  display:flex;align-items:flex-start;gap:10px;padding:10px 0;border-bottom:1px solid rgba(226,232,240,.9)
+}
+.ios-row:last-child{border-bottom:0;padding-bottom:0}
+.ios-row-icon{
+  width:34px;height:34px;border-radius:12px;background:#e2e8f0;display:flex;align-items:center;justify-content:center;
+  font-size:16px;flex-shrink:0
+}
+.ios-row-main{min-width:0;flex:1}
+.ios-row-title{
+  display:flex;align-items:center;gap:8px;justify-content:space-between;font-size:13px;font-weight:700;color:#0f172a
+}
+.ios-row-title span:first-child{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ios-row-sub{margin-top:3px;font-size:11px;color:#64748b;line-height:1.45;word-break:break-word}
+.ios-row-meta{margin-top:5px;font-size:10px;color:#94a3b8}
+.ios-pill{
+  display:inline-flex;align-items:center;justify-content:center;border-radius:999px;padding:4px 8px;
+  font-size:10px;font-weight:800;background:#e2e8f0;color:#334155;white-space:nowrap
+}
+.ios-pill.ok{background:#dcfce7;color:#166534}
+.ios-pill.bad{background:#fee2e2;color:#b91c1c}
+.ios-pill.warn{background:#fef3c7;color:#92400e}
+.ios-pill.run{background:#dbeafe;color:#1d4ed8}
+.ios-chip-row{display:flex;gap:8px;flex-wrap:wrap}
+.ios-chip-btn{
+  border:1px solid rgba(148,163,184,.22);background:#fff;color:#0f172a;border-radius:14px;
+  padding:8px 12px;font-size:12px;font-weight:700;cursor:pointer
+}
+.ios-chip-btn.active{background:#111827;color:#fff;border-color:#111827}
+.ios-shortcuts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.ios-shortcut{
+  border:1px solid rgba(148,163,184,.2);background:#fff;border-radius:18px;padding:12px;min-height:88px
+}
+.ios-shortcut strong{display:block;font-size:13px;color:#0f172a}
+.ios-shortcut p{margin-top:5px;font-size:11px;color:#64748b;line-height:1.45}
+.ios-shortcut button{
+  margin-top:10px;border:0;border-radius:12px;background:#111827;color:#fff;padding:8px 10px;
+  font-size:11px;font-weight:700;cursor:pointer
+}
+.ios-link-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.ios-link-btn{
+  border:1px solid rgba(148,163,184,.2);background:#fff;color:#0f172a;border-radius:14px;
+  padding:10px 12px;font-size:12px;font-weight:700;cursor:pointer;text-align:left
+}
+.ios-link-btn span{display:block;font-size:10px;color:#64748b;font-weight:600;margin-top:4px}
+.ios-bottom-nav{
+  position:absolute;left:14px;right:14px;bottom:14px;padding:8px;background:rgba(255,255,255,.92);
+  border:1px solid rgba(148,163,184,.22);border-radius:22px;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));
+  gap:6px;box-shadow:0 12px 28px rgba(15,23,42,.1)
+}
+.ios-bottom-nav button{
+  border:0;background:transparent;border-radius:16px;padding:9px 6px;font-size:11px;color:#64748b;cursor:pointer
+}
+.ios-bottom-nav button.active{background:#111827;color:#fff;font-weight:800}
+.ios-empty{
+  border-radius:16px;padding:16px;background:#f8fafc;border:1px dashed rgba(148,163,184,.4);
+  font-size:12px;color:#64748b;text-align:center
+}
+@media(max-width:768px){
+  .ios-shell{padding:8px 0 20px}
+  .ios-phone{width:100%;min-height:auto;border-radius:0;padding:0;background:transparent;border:0;box-shadow:none}
+  .ios-screen{border-radius:0;min-height:calc(100vh - 56px)}
+}
+
 /* ── Host section ─────────────────────── */
 .dashboard-summary{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;margin-bottom:6px}
 .dash-stat{background:linear-gradient(180deg,rgba(34,38,47,.98),rgba(20,23,31,.98));border:1px solid var(--border);border-radius:5px;padding:6px 8px;display:flex;align-items:center;justify-content:space-between;min-height:36px}
@@ -308,6 +427,7 @@ label.agent-check:hover .agent-private-btn{display:inline-block}
   <h1><span style="font-size:20px">🤖</span> AI Agent 管理面板</h1>
   <nav>
     <button onclick="switchTab('dashboard')" id="tab-dashboard" class="active">📊 仪表盘</button>
+    <button onclick="switchTab('ios')" id="tab-ios">📱 iOS预览</button>
     <button onclick="switchTab('chat')" id="tab-chat">💬 群聊</button>
     <button onclick="switchTab('bigscreen')" id="tab-bigscreen">🏢 大屏</button>
     <button onclick="switchTab('workflow')" id="tab-workflow">🔗 工作流</button>
@@ -322,6 +442,10 @@ label.agent-check:hover .agent-private-btn{display:inline-block}
 <!-- ═══════════ DASHBOARD TAB ═══════════ -->
 <div id="tab-dashboard-content" class="tab-content active">
   <div id="dashboard-container"></div>
+</div>
+
+<div id="tab-ios-content" class="tab-content">
+  <div id="ios-preview-root" class="ios-shell"></div>
 </div>
 
 <div id="tab-lessons-content" class="tab-content">
@@ -409,8 +533,6 @@ label.agent-check:hover .agent-private-btn{display:inline-block}
     <button onclick="sendPrivateMessage()">发送</button>
   </div>
 </div>
-
-</main>
 
 <!-- ═══════════ BIG SCREEN TAB ═══════════ -->
 <div id="tab-bigscreen-content" class="tab-content">
@@ -566,37 +688,75 @@ label.agent-check:hover .agent-private-btn{display:inline-block}
 
 <!-- ═══════════ WORKFLOW TAB ═══════════ -->
 <div id="tab-workflow-content" class="tab-content">
+  <div class="workflow-page-head">
+    <div class="workflow-page-copy">
+      <div class="eyebrow">任务中心</div>
+      <h2>面向 iOS 的工作流入口</h2>
+      <p>把长表单改成模板切换。后面做成 iPhone 客户端时，这里就能直接映射成“模板页 + 任务页”。</p>
+    </div>
+    <div class="workflow-page-stats">
+      <div class="wf-stat-card"><strong>6</strong><span>工作流模板</span></div>
+      <div class="wf-stat-card"><strong>1</strong><span>统一进度流</span></div>
+      <div class="wf-stat-card"><strong>iOS</strong><span>版面优先</span></div>
+    </div>
+  </div>
   <div class="workflow-layout">
     <div class="workflow-config">
-      <h3>🔗 代码审查流水线</h3>
-      <label>📝 总体项目描述</label>
-      <textarea id="wf-task" placeholder="例如：开发一个坦克大战网页游戏，需要前端界面和后端游戏逻辑" rows="6"></textarea>
-      <label>👨‍💻 程序员（每人分配子任务）</label>
-      <div id="wf-coders-list"></div>
-      <button onclick="addCoderRow()" style="font-size:10px;padding:4px 10px;background:var(--surface2);border:1px dashed var(--border);color:var(--text2);border-radius:5px;cursor:pointer;width:100%">+ 添加程序员</button>
-      <label>🔍 审查员（可多选）</label>
-      <div id="wf-reviewers" class="wf-check-grid"></div>
-      <label>📝 汇报人</label>
-      <select id="wf-summarizer"><option value="">不汇报</option></select>
-      <div class="wf-row">
-        <div><label>🎯 通过分数</label><input id="wf-pass-score" type="number" value="80" min="0" max="100" style="width:70px"></div>
-        <div><label>🔄 最多重试</label><input id="wf-max-retries" type="number" value="3" min="1" max="10" style="width:60px"></div>
+      <div class="workflow-sticky-head">
+        <div class="workflow-title-row">
+          <div>
+            <div class="workflow-title">模板中心</div>
+            <div class="workflow-subtitle">先选模板，再填参数，再看右侧执行进度。</div>
+          </div>
+        </div>
+        <div class="wf-template-switch" id="wf-template-switch">
+          <button type="button" class="active" data-wf-template="code" onclick="switchWorkflowTemplate('code')">代码审查</button>
+          <button type="button" data-wf-template="project" onclick="switchWorkflowTemplate('project')">项目改造</button>
+          <button type="button" data-wf-template="content" onclick="switchWorkflowTemplate('content')">内容发布</button>
+          <button type="button" data-wf-template="ppt" onclick="switchWorkflowTemplate('ppt')">PPT</button>
+          <button type="button" data-wf-template="music" onclick="switchWorkflowTemplate('music')">音乐</button>
+          <button type="button" data-wf-template="designer" onclick="switchWorkflowTemplate('designer')">设计器</button>
+        </div>
       </div>
-      <label>📦 输出格式（声明给程序员的目标代码类型，pptx 将自动路由到 PPT 工作流）</label>
-      <select id="wf-output-format">
-        <option value="">自动检测（不声明）</option>
-        <option value="html">HTML/CSS/JS 网页</option>
-        <option value="python">Python 脚本</option>
-        <option value="nodejs">Node.js / Express</option>
-        <option value="react">React 组件</option>
-        <option value="shell">Shell 脚本</option>
-        <option value="markdown">Markdown 文档</option>
-        <option value="pptx">PPTX（python-pptx 脚本）</option>
-        <option value="md+pptx">Markdown + PPTX 双输出</option>
-      </select>
-      <button class="btn-send" onclick="startWorkflow()" style="width:100%;margin-top:8px;padding:10px">▶ 启动流水线</button>
-      <div class="wf-project-box">
-        <h3>🏗️ 项目改造流水线</h3>
+
+      <section class="wf-template-panel active" data-wf-panel="code">
+        <div class="wf-panel-head">
+          <h3>🔗 代码审查流水线</h3>
+          <p>适合多 agent 拆任务、审查、总结，作为研发任务的默认模板。</p>
+        </div>
+        <label>📝 总体项目描述</label>
+        <textarea id="wf-task" placeholder="例如：开发一个坦克大战网页游戏，需要前端界面和后端游戏逻辑" rows="6"></textarea>
+        <label>👨‍💻 程序员（每人分配子任务）</label>
+        <div id="wf-coders-list"></div>
+        <button onclick="addCoderRow()" class="wf-secondary-btn">+ 添加程序员</button>
+        <label>🔍 审查员（可多选）</label>
+        <div id="wf-reviewers" class="wf-check-grid"></div>
+        <label>📝 汇报人</label>
+        <select id="wf-summarizer"><option value="">不汇报</option></select>
+        <div class="wf-row">
+          <div><label>🎯 通过分数</label><input id="wf-pass-score" type="number" value="80" min="0" max="100" style="width:70px"></div>
+          <div><label>🔄 最多重试</label><input id="wf-max-retries" type="number" value="3" min="1" max="10" style="width:60px"></div>
+        </div>
+        <label>📦 输出格式</label>
+        <select id="wf-output-format">
+          <option value="">自动检测（不声明）</option>
+          <option value="html">HTML/CSS/JS 网页</option>
+          <option value="python">Python 脚本</option>
+          <option value="nodejs">Node.js / Express</option>
+          <option value="react">React 组件</option>
+          <option value="shell">Shell 脚本</option>
+          <option value="markdown">Markdown 文档</option>
+          <option value="pptx">PPTX（python-pptx 脚本）</option>
+          <option value="md+pptx">Markdown + PPTX 双输出</option>
+        </select>
+        <button class="btn-send wf-primary-btn" onclick="startWorkflow()">▶ 启动流水线</button>
+      </section>
+
+      <section class="wf-template-panel" data-wf-panel="project">
+        <div class="wf-panel-head">
+          <h3>🏗️ 项目改造流水线</h3>
+          <p>适合指定目录改造、评审返工、飞书通知。</p>
+        </div>
         <label>项目目录</label>
         <input id="proj-dir" value="" placeholder="例如 C:\path\to\your-project">
         <label>改造需求</label>
@@ -614,10 +774,14 @@ label.agent-check:hover .agent-private-btn{display:inline-block}
           <div><label>最多轮次</label><input id="proj-max-retries" type="number" value="2" min="1" max="5"></div>
         </div>
         <label class="wf-inline-check"><input id="proj-feishu" type="checkbox" checked> 飞书通知开始、失败、需人工确认、最终汇报</label>
-        <button class="btn-send" onclick="startProjectPipeline()" id="proj-start-btn" style="width:100%;margin-top:8px;padding:10px;background:var(--yellow);color:#111">🏗️ 启动项目改造</button>
-      </div>
-      <div class="wf-project-box">
-        <h3>📣 内容发布流水线</h3>
+        <button class="btn-send wf-primary-btn wf-project-btn" onclick="startProjectPipeline()" id="proj-start-btn">🏗️ 启动项目改造</button>
+      </section>
+
+      <section class="wf-template-panel" data-wf-panel="content">
+        <div class="wf-panel-head">
+          <h3>📣 内容发布流水线</h3>
+          <p>适合小红书、公众号、朋友圈等内容协作发布。</p>
+        </div>
         <label>平台</label>
         <select id="pub-platform">
           <option value="小红书">小红书</option>
@@ -642,10 +806,14 @@ label.agent-check:hover .agent-private-btn{display:inline-block}
           <option value="auto">尝试自动发布（需平台授权）</option>
         </select>
         <label class="wf-inline-check"><input id="pub-feishu" type="checkbox" checked> 飞书通知开始、待确认、失败、完成</label>
-        <button class="btn-send" onclick="startContentPublishWorkflow()" id="pub-start-btn" style="width:100%;margin-top:8px;padding:10px;background:var(--accent2);color:#06110d">📣 启动内容发布</button>
-      </div>
-      <div class="wf-ppt-box">
-        <h3>📊 PPT制作与审核</h3>
+        <button class="btn-send wf-primary-btn wf-content-btn" onclick="startContentPublishWorkflow()" id="pub-start-btn">📣 启动内容发布</button>
+      </section>
+
+      <section class="wf-template-panel" data-wf-panel="ppt">
+        <div class="wf-panel-head">
+          <h3>📊 PPT制作与审核</h3>
+          <p>适合路演、汇报、方案展示，输出 Markdown/PPTX/PDF。</p>
+        </div>
         <label>PPT主题/需求</label>
         <textarea id="ppt-topic" rows="4" placeholder="例如：给企业老板看的多 Agent 协作方案介绍，突出价值、落地路径和预算收益"></textarea>
         <label>目标受众</label>
@@ -675,10 +843,14 @@ label.agent-check:hover .agent-private-btn{display:inline-block}
         <label>定稿 agent（可选）</label>
         <select id="ppt-finalizer-agent"><option value="">使用制作 agent</option></select>
         <label class="wf-inline-check"><input id="ppt-feishu" type="checkbox" checked> 飞书通知开始、失败、需人工确认、完成</label>
-        <button class="btn-send" onclick="startPptWorkflow()" id="ppt-start-btn" style="width:100%;margin-top:8px;padding:10px;background:#8fb7ff;color:#06111f">📊 启动PPT制作审核</button>
-      </div>
-      <div class="wf-music-box">
-        <h3>🎵 音乐工作流</h3>
+        <button class="btn-send wf-primary-btn wf-ppt-btn" onclick="startPptWorkflow()" id="ppt-start-btn">📊 启动PPT制作审核</button>
+      </section>
+
+      <section class="wf-template-panel" data-wf-panel="music">
+        <div class="wf-panel-head">
+          <h3>🎵 音乐工作流</h3>
+          <p>适合搜歌试听、歌词同步、音频小样生成。</p>
+        </div>
         <label>歌曲名称</label>
         <input id="music-song" placeholder="例如：晴天">
         <label>歌手/风格（可选）</label>
@@ -688,17 +860,21 @@ label.agent-check:hover .agent-private-btn{display:inline-block}
         <label>执行 Agent（用于生成歌词）</label>
         <select id="music-agent"></select>
         <label class="wf-inline-check"><input id="music-auto-play" type="checkbox" checked> 生成后自动播放</label>
-        <button class="btn-send" onclick="startMusicWorkflow()" id="music-start-btn" style="width:100%;margin-top:8px;padding:10px;background:#b57edc;color:#fff">🎵 生成音频小样</button>
-      </div>
-      <div class="wf-designer-box">
-        <h3>🧩 工作流设计师</h3>
+        <button class="btn-send wf-primary-btn wf-music-btn" onclick="startMusicWorkflow()" id="music-start-btn">🎵 生成音频小样</button>
+      </section>
+
+      <section class="wf-template-panel" data-wf-panel="designer">
+        <div class="wf-panel-head">
+          <h3>🧩 工作流设计师</h3>
+          <p>新增模板、修正流程、让系统自己进化。</p>
+        </div>
         <label>输入你想新增/优化的工作流</label>
         <textarea id="wf-design-request" rows="4" placeholder="例如：新增一个产品需求评审工作流，先让产品经理拆需求，再让架构师评估，再让测试设计用例，最后生成结论"></textarea>
         <label>执行设计并更新系统的本机 Agent</label>
         <select id="wf-design-agent"></select>
-        <button class="btn-send" onclick="startWorkflowDesign()" id="wf-design-btn" style="width:100%;margin-top:8px;padding:10px;background:var(--accent2);color:#06110d">✨ 设计并安装工作流</button>
+        <button class="btn-send wf-primary-btn wf-design-btn" onclick="startWorkflowDesign()" id="wf-design-btn">✨ 设计并安装工作流</button>
         <div id="wf-design-failures" class="wf-design-failures"></div>
-      </div>
+      </section>
     </div>
     <div class="workflow-progress">
       <div class="chat-messages" id="wf-messages">
@@ -775,6 +951,8 @@ label.agent-check:hover .agent-private-btn{display:inline-block}
     <div id="backup-list" style="font-size:12px;color:var(--text2)">加载中...</div>
   </div>
 </div>
+
+</main>
 
 <style>
 /* ── Big Screen Office ─────────────────── */
@@ -1595,8 +1773,34 @@ label.agent-check:hover .agent-private-btn{display:inline-block}
 .history-item .hi-time{font-size:10px;color:var(--text2);margin-top:4px}
 
 /* ── Workflow ───────────────────────── */
-.workflow-layout{display:flex;gap:14px;height:calc(100vh - 110px)}
-.workflow-config{width:320px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:14px;overflow-y:auto;flex-shrink:0;display:flex;flex-direction:column;gap:8px}
+.workflow-page-head{
+  display:flex;align-items:stretch;justify-content:space-between;gap:12px;margin-bottom:12px;
+  background:linear-gradient(180deg,rgba(28,34,47,.96),rgba(18,22,31,.96));border:1px solid var(--border);border-radius:14px;padding:14px 16px
+}
+.workflow-page-copy .eyebrow{font-size:10px;color:var(--accent2);margin-bottom:6px}
+.workflow-page-copy h2{font-size:20px;line-height:1.1;margin-bottom:6px}
+.workflow-page-copy p{font-size:12px;color:var(--text2);max-width:620px;line-height:1.5}
+.workflow-page-stats{display:grid;grid-template-columns:repeat(3,minmax(90px,1fr));gap:8px;min-width:300px}
+.wf-stat-card{background:rgba(255,255,255,.03);border:1px solid rgba(108,140,255,.16);border-radius:12px;padding:12px;display:flex;flex-direction:column;justify-content:space-between}
+.wf-stat-card strong{font-size:22px;color:var(--text)}
+.wf-stat-card span{font-size:11px;color:var(--text2)}
+.workflow-layout{display:flex;gap:14px;height:calc(100vh - 240px);min-height:620px}
+.workflow-config{width:430px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:12px;overflow-y:auto;flex-shrink:0;display:flex;flex-direction:column;gap:10px}
+.workflow-sticky-head{position:sticky;top:0;z-index:3;background:linear-gradient(180deg,var(--surface) 80%,rgba(26,29,39,.65));padding-bottom:10px}
+.workflow-title-row{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px}
+.workflow-title{font-size:18px;font-weight:700}
+.workflow-subtitle{font-size:11px;color:var(--text2);margin-top:3px}
+.wf-template-switch{display:flex;gap:6px;flex-wrap:wrap}
+.wf-template-switch button{
+  border:1px solid var(--border);background:var(--surface2);color:var(--text2);
+  border-radius:999px;padding:7px 10px;font-size:11px;cursor:pointer
+}
+.wf-template-switch button.active{background:var(--accent);border-color:var(--accent);color:#fff}
+.wf-template-panel{display:none;flex-direction:column;gap:8px}
+.wf-template-panel.active{display:flex}
+.wf-panel-head{padding:10px 12px;border:1px solid rgba(108,140,255,.16);background:rgba(108,140,255,.07);border-radius:10px}
+.wf-panel-head h3{font-size:15px;margin:0 0 4px}
+.wf-panel-head p{font-size:11px;color:var(--text2);line-height:1.45}
 .workflow-config h3{font-size:14px;margin-bottom:4px}
 .workflow-config label{font-size:11px;color:var(--text2)}
 .workflow-config textarea,.workflow-config select,.workflow-config input{background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:6px 8px;border-radius:5px;font-size:11px;width:100%}
@@ -1613,10 +1817,15 @@ label.agent-check:hover .agent-private-btn{display:inline-block}
 .wf-coder-row select{flex:1;min-width:0}
 .wf-coder-row input{flex:2;min-width:0}
 .wf-coder-row button{width:28px;height:28px;border-radius:5px;border:1px solid var(--border);background:var(--surface2);color:var(--text2);cursor:pointer}
-.wf-music-box{margin-top:12px;padding-top:12px;border-top:1px solid var(--border);display:flex;flex-direction:column;gap:7px}
-.wf-music-box h3{font-size:14px;color:#b57edc;margin:0}
-.wf-designer-box h3{font-size:14px;color:var(--accent2);margin:0}
-.wf-designer-box textarea{resize:vertical;min-height:84px}
+.wf-secondary-btn{
+  font-size:10px;padding:7px 10px;background:var(--surface2);border:1px dashed var(--border);color:var(--text2);border-radius:7px;cursor:pointer;width:100%
+}
+.wf-primary-btn{width:100%;margin-top:6px;padding:11px;border-radius:10px;font-size:13px}
+.wf-project-btn{background:var(--yellow)!important;color:#111!important}
+.wf-content-btn{background:var(--accent2)!important;color:#06110d!important}
+.wf-ppt-btn{background:#8fb7ff!important;color:#06111f!important}
+.wf-music-btn{background:#b57edc!important;color:#fff!important}
+.wf-design-btn{background:var(--accent2)!important;color:#06110d!important}
 .wf-design-failures{display:flex;flex-direction:column;gap:6px;margin-top:4px}
 .wf-design-failure{border:1px solid rgba(255,216,102,.28);background:rgba(58,35,27,.28);border-radius:5px;padding:7px;font-size:10px}
 .wf-design-failure-title{font-weight:800;color:var(--yellow);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -1624,14 +1833,25 @@ label.agent-check:hover .agent-private-btn{display:inline-block}
 .wf-design-failure-actions{display:flex;gap:5px;margin-top:6px}
 .wf-design-failure-actions button{border:1px solid rgba(108,140,255,.36);background:rgba(108,140,255,.16);color:#dbe4ff;border-radius:4px;padding:3px 8px;font-size:10px;cursor:pointer}
 .wf-design-failure-actions .danger{border-color:rgba(240,101,101,.36);background:rgba(240,101,101,.14);color:#ffc4c4}
-.wf-project-box{margin-top:12px;padding-top:12px;border-top:1px solid var(--border);display:flex;flex-direction:column;gap:7px}
-.wf-project-box h3{font-size:14px;color:var(--yellow);margin:0}
-.wf-project-box textarea{resize:vertical;min-height:92px}
-.wf-ppt-box{margin-top:12px;padding-top:12px;border-top:1px solid var(--border);display:flex;flex-direction:column;gap:7px}
-.wf-ppt-box h3{font-size:14px;color:#8fb7ff;margin:0}
-.wf-ppt-box textarea{resize:vertical;min-height:92px}
 .wf-inline-check{display:flex!important;align-items:center;gap:6px;color:var(--text)!important;background:var(--surface2);padding:6px 8px;border-radius:5px}
 .wf-inline-check input{width:auto!important;accent-color:var(--accent2)}
+@media(max-width:1100px){
+  .workflow-page-head{flex-direction:column}
+  .workflow-page-stats{grid-template-columns:repeat(3,minmax(0,1fr));min-width:0}
+  .workflow-layout{flex-direction:column;height:auto;min-height:0}
+  .workflow-config{width:100%}
+  .workflow-progress{min-height:420px}
+}
+@media(max-width:768px){
+  .workflow-page-copy h2{font-size:17px}
+  .workflow-page-copy p{font-size:11px}
+  .workflow-page-stats{grid-template-columns:1fr 1fr 1fr}
+  .workflow-config{padding:10px}
+  .workflow-sticky-head{top:-1px}
+  .wf-template-switch{overflow:auto;flex-wrap:nowrap;padding-bottom:2px}
+  .wf-template-switch button{white-space:nowrap}
+  .wf-row{flex-direction:column}
+}
 
 /* ── Upgrade ────────────────────────── */
 .upgrade-layout{display:flex;gap:14px;height:calc(100vh - 200px)}
@@ -1680,25 +1900,46 @@ label.agent-check:hover .agent-private-btn{display:inline-block}
 #floating-player{
   position:fixed;bottom:20px;right:20px;z-index:9999;
   background:var(--surface);border:1px solid var(--border);
-  border-radius:14px;padding:12px;width:300px;
-  box-shadow:0 8px 32px rgba(0,0,0,.5);
+  border-radius:16px;padding:12px;width:340px;
+  box-shadow:0 16px 40px rgba(0,0,0,.42);
   display:none;flex-direction:column;gap:8px;
   font-family:'Segoe UI',system-ui,sans-serif;
-  transition:opacity .2s
+  transition:opacity .2s,transform .2s;
+  backdrop-filter:blur(10px);
+  overflow:hidden;
+  touch-action:none
 }
-#floating-player.visible{display:flex}
+#floating-player.visible{display:flex;transform:translateY(0)}
+.fp-head{display:grid;grid-template-columns:72px 1fr;gap:12px;align-items:center;cursor:grab}
+.fp-head.dragging{cursor:grabbing}
+.fp-cover{
+  width:72px;height:72px;border-radius:10px;overflow:hidden;
+  background:linear-gradient(135deg,rgba(77,196,255,.24),rgba(113,88,255,.18));
+  border:1px solid rgba(255,255,255,.08);display:flex;align-items:center;justify-content:center;
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.03)
+}
+.fp-cover img{width:100%;height:100%;object-fit:cover;display:block}
+.fp-cover span{font-size:24px;color:var(--accent2)}
+.fp-meta{min-width:0;display:flex;flex-direction:column;gap:4px}
 .fp-title{
-  font-size:13px;font-weight:700;color:var(--text);
+  font-size:14px;font-weight:700;color:var(--text);
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
 }
-.fp-artist{font-size:11px;color:var(--text2)}
+.fp-artist{font-size:12px;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fp-tags{display:flex;gap:6px;flex-wrap:wrap}
+.fp-tag{
+  font-size:10px;line-height:1;padding:5px 7px;border-radius:999px;
+  border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.04);color:var(--text2)
+}
+.fp-tag.primary{color:var(--accent);border-color:rgba(77,196,255,.22);background:rgba(77,196,255,.08)}
+.fp-status{font-size:11px;color:var(--text2)}
 .fp-progress{
-  width:100%;height:4px;border-radius:2px;
+  width:100%;height:6px;border-radius:999px;
   background:var(--surface2);cursor:pointer;position:relative
 }
 .fp-progress-fill{
-  height:100%;border-radius:2px;background:var(--accent);
-  transition:width .5s linear
+  height:100%;border-radius:999px;background:linear-gradient(90deg,var(--accent),#7a7cff);
+  transition:width .2s linear
 }
 .fp-time{font-size:10px;color:var(--text2);display:flex;justify-content:space-between}
 .fp-controls{display:flex;align-items:center;gap:8px;justify-content:center}
@@ -1708,6 +1949,12 @@ label.agent-check:hover .agent-private-btn{display:inline-block}
 }
 .fp-controls button:hover{background:var(--surface2);color:var(--accent)}
 .fp-controls button.play-btn{font-size:22px;color:var(--accent)}
+.fp-controls button.active{color:#ffd34d}
+.fp-close{
+  position:absolute;top:8px;right:8px;background:none;border:none;color:var(--text2);
+  font-size:18px;cursor:pointer;padding:2px 6px;border-radius:8px;z-index:2
+}
+.fp-close:hover{background:var(--surface2);color:var(--text)}
 #fp-lyrics{
   max-height:80px;overflow-y:auto;font-size:11px;color:var(--text2);
   text-align:center;line-height:1.5;padding:4px;
@@ -1737,6 +1984,25 @@ label.agent-check:hover .agent-private-btn{display:inline-block}
   font-size:11px;cursor:pointer
 }
 .wf-search-result:hover{border-color:var(--accent)}
+.wf-music-section{margin-top:8px}
+.wf-music-section h4{font-size:11px;color:var(--text2);margin:0 0 6px}
+.wf-music-collection{display:flex;flex-direction:column;gap:4px;max-height:120px;overflow:auto}
+.wf-music-item{
+  display:grid;grid-template-columns:28px 1fr auto;gap:6px;align-items:center;
+  padding:5px 7px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;font-size:11px
+}
+.wf-music-item:hover{border-color:var(--accent)}
+.wf-music-item .cover{
+  width:28px;height:28px;border-radius:6px;background:rgba(255,255,255,.05);
+  background-size:cover;background-position:center;display:flex;align-items:center;justify-content:center;color:var(--text2)
+}
+.wf-music-item .meta{min-width:0}
+.wf-music-item .title{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--text)}
+.wf-music-item .sub{font-size:10px;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.wf-music-item .actions{display:flex;align-items:center;gap:4px}
+.wf-music-item button{background:none;border:none;color:var(--accent);cursor:pointer;font-size:12px}
+.wf-music-item button.danger{color:var(--red)}
+.wf-music-item button:hover{opacity:.88}
 .wf-search-result .result-title{color:var(--text);font-weight:600;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .wf-search-result .result-dur{color:var(--text2);font-size:10px}
 .wf-search-result .play-btn{background:none;border:none;color:var(--accent);font-size:12px;cursor:pointer;padding:2px 6px;border-radius:4px}
@@ -1762,6 +2028,7 @@ let devProgress = { active: [], items: [] };
 let selectedAgents = new Set();
 let lessonSelectedAgents = new Set();
 let bsReplyTarget = null;
+let iosPreviewState = { section: 'home', messages: [], lastLoadedAt: 0, loading: false };
 function debounce(fn,ms){let t;return function(...args){clearTimeout(t);t=setTimeout(()=>fn.apply(this,args),ms)}}
 
 // ── Tab switching ─────────────────────────────────────────────
@@ -1772,6 +2039,7 @@ function switchTab(tab) {
   document.getElementById('tab-'+tab).classList.add('active');
   if(tab==='chat'){initChatSidebar();loadChatHistory()}
   if(tab==='dashboard'){pollHostStatus();startHostPolling()}
+  if(tab==='ios'){renderIosPreview()}
   if(tab==='lessons'){initLessonsTab()}
   if(tab==='upgrade'){initUpgradeTab()}
 }
@@ -1805,6 +2073,7 @@ async function loadDashboard() {
       devProgress=await pr.json();
     }catch(e){devProgress={active:[],items:[]}}
     renderDashboard();
+    renderIosPreview();
     renderWorkflowDesignFailures();
   }catch(e){console.error(e)}
 }
@@ -1972,6 +2241,226 @@ function inferAgentModel(a){
   if(raw.includes('hermes'))return 'Hermes';
   if(raw.includes('openclaw'))return 'OpenClaw';
   return a.type==='docker'?'Docker Agent':'CLI Agent';
+}
+
+function getIosAgentCounts(){
+  const total=allAgents.length;
+  const online=allAgents.filter(a=>a.status==='available'||a.status==='running').length;
+  const disabled=allAgents.filter(a=>a.disabled||a.status==='disabled').length;
+  const checking=allAgents.filter(a=>a.status==='checking').length;
+  const offline=Math.max(0,total-online-disabled-checking);
+  return {total,online,offline,disabled,checking};
+}
+
+function setIosPreviewSection(section){
+  iosPreviewState.section=section||'home';
+  renderIosPreview();
+}
+
+function openIosRealTab(tab){
+  switchTab(tab);
+}
+
+async function ensureIosPreviewMessages(force){
+  const now=Date.now();
+  if(iosPreviewState.loading)return;
+  if(!force && iosPreviewState.messages.length && now-iosPreviewState.lastLoadedAt<15000)return;
+  iosPreviewState.loading=true;
+  try{
+    const res=await fetch('/api/chat/history');
+    const data=await res.json().catch(()=>({messages:[]}));
+    const messages=(data.messages||[]).filter(Boolean).slice(-24).reverse();
+    iosPreviewState.messages=messages;
+    iosPreviewState.lastLoadedAt=Date.now();
+  }catch(e){
+    console.error('ios preview history load failed',e);
+  }finally{
+    iosPreviewState.loading=false;
+  }
+}
+
+function iosStatusPill(status){
+  if(status==='available'||status==='running')return 'ok';
+  if(status==='disabled')return 'warn';
+  return 'bad';
+}
+
+function iosStatusText(status){
+  if(status==='available')return '在线';
+  if(status==='running')return '执行中';
+  if(status==='disabled')return '禁用';
+  if(status==='checking')return '检测中';
+  return '离线';
+}
+
+function renderIosHomeSection(){
+  const counts=getIosAgentCounts();
+  const active=(devProgress.active||[]).length;
+  const failed=(devProgress.items||[]).filter(x=>x.status==='failed'||x.status==='stale').length;
+  const models=[...new Set(allAgents.map(inferAgentModel).filter(Boolean))].slice(0,4);
+  return `<div class="ios-panel">
+    <div class="ios-panel-head"><strong>今日总览</strong><span>给未来 iPhone 客户端的首页雏形</span></div>
+    <div class="ios-stat-grid">
+      <div class="ios-stat-card"><span class="k">在线 Agent</span><span class="v">${counts.online}</span><span class="k">共 ${counts.total} 个</span></div>
+      <div class="ios-stat-card alt"><span class="k">研发进度</span><span class="v">${active}</span><span class="k">当前进行中</span></div>
+      <div class="ios-stat-card warn"><span class="k">异常 / 离线</span><span class="v">${counts.offline}</span><span class="k">禁用 ${counts.disabled}</span></div>
+      <div class="ios-stat-card soft"><span class="k">待处理问题</span><span class="v">${failed}</span><span class="k">研发异常记录</span></div>
+    </div>
+  </div>
+  <div class="ios-panel">
+    <div class="ios-panel-head"><strong>模型分布</strong><span>当前识别到的主模型</span></div>
+    <div class="ios-chip-row">${models.length?models.map(m=>`<span class="ios-pill run">${escHtml(m)}</span>`).join(''):'<span class="ios-pill">暂无</span>'}</div>
+  </div>
+  <div class="ios-panel">
+    <div class="ios-panel-head"><strong>快捷入口</strong><span>先把常用动作收紧成 App 化结构</span></div>
+    <div class="ios-shortcuts">
+      <div class="ios-shortcut"><strong>群聊协作</strong><p>按 @ 选人，发起公开聊天、私聊、广播。</p><button type="button" onclick="openIosRealTab('chat')">打开群聊</button></div>
+      <div class="ios-shortcut"><strong>工作流模板</strong><p>代码审查、项目改造、内容发布、PPT、音乐。</p><button type="button" onclick="openIosRealTab('workflow')">打开工作流</button></div>
+      <div class="ios-shortcut"><strong>大屏监控</strong><p>看会议场景、实时消息流、棋盘和牌局可视化。</p><button type="button" onclick="openIosRealTab('bigscreen')">打开大屏</button></div>
+      <div class="ios-shortcut"><strong>研发进度</strong><p>失败后支持继续研发，给未来移动端保留追踪入口。</p><button type="button" onclick="openIosRealTab('history')">打开记录</button></div>
+    </div>
+  </div>
+  <div class="ios-panel">
+    <div class="ios-panel-head"><strong>真实页面</strong><span>从预览直接进入现有功能页</span></div>
+    <div class="ios-link-grid">
+      <button class="ios-link-btn" type="button" onclick="openIosRealTab('chat')">群聊<span>发送消息 / @ 智能体</span></button>
+      <button class="ios-link-btn" type="button" onclick="openIosRealTab('bigscreen')">大屏<span>会议室 / 实时消息流</span></button>
+      <button class="ios-link-btn" type="button" onclick="openIosRealTab('workflow')">工作流<span>模板 / 研发任务</span></button>
+      <button class="ios-link-btn" type="button" onclick="openIosRealTab('history')">记录<span>历史消息 / 搜索</span></button>
+      <button class="ios-link-btn" type="button" onclick="openIosRealTab('lessons')">复盘<span>教训收集 / 手动记录</span></button>
+      <button class="ios-link-btn" type="button" onclick="openIosRealTab('upgrade')">系统升级<span>升级任务 / 备份历史</span></button>
+    </div>
+  </div>`;
+}
+
+function renderIosAgentsSection(){
+  const topAgents=allAgents.slice().sort((a,b)=>{
+    const pa=(a.status==='available'||a.status==='running')?0:(a.status==='checking'?1:2);
+    const pb=(b.status==='available'||b.status==='running')?0:(b.status==='checking'?1:2);
+    if(pa!==pb)return pa-pb;
+    return String(a.name||'').localeCompare(String(b.name||''),'zh-CN');
+  }).slice(0,12);
+  if(!topAgents.length)return `<div class="ios-empty">还没拿到 agent 列表。</div>`;
+  return `<div class="ios-panel">
+    <div class="ios-panel-head"><strong>Agent 在线墙</strong><span>挑前 12 个做移动端列表样式</span></div>
+    <div class="ios-list">${topAgents.map(a=>`
+      <div class="ios-row">
+        <div class="ios-row-icon">${escHtml(a.icon||'🤖')}</div>
+        <div class="ios-row-main">
+          <div class="ios-row-title"><span>${escHtml(a.name||a.id||'Agent')}</span><span class="ios-pill ${iosStatusPill(a.status)}">${iosStatusText(a.status)}</span></div>
+          <div class="ios-row-sub">${escHtml(a.description||inferAgentModel(a))}</div>
+          <div class="ios-row-meta">${escHtml(inferAgentModel(a))} · ${escHtml(HOST_LABELS[a.hostGroup]||a.hostGroup||'未分组')}</div>
+        </div>
+      </div>`).join('')}</div>
+  </div>`;
+}
+
+function renderIosWorkflowSection(){
+  const items=(devProgress.items||[]).slice().sort((a,b)=>Date.parse(b.updatedAt||b.startedAt||0)-Date.parse(a.updatedAt||a.startedAt||0)).slice(0,6);
+  return `<div class="ios-panel">
+    <div class="ios-panel-head"><strong>任务中心</strong><span>对应未来 App 的流程页</span></div>
+    <div class="ios-inline-stats">
+      <div class="ios-inline-stat"><strong>${(devProgress.active||[]).length}</strong><span>进行中</span></div>
+      <div class="ios-inline-stat"><strong>${(devProgress.items||[]).filter(x=>x.status==='completed').length}</strong><span>已完成</span></div>
+      <div class="ios-inline-stat"><strong>${(devProgress.items||[]).filter(x=>x.status==='failed'||x.status==='stale').length}</strong><span>异常</span></div>
+    </div>
+  </div>
+  <div class="ios-panel">
+    <div class="ios-panel-head"><strong>模板入口</strong><span>移动端优先保留高频模板</span></div>
+    <div class="ios-chip-row">
+      <span class="ios-pill run">代码审查</span>
+      <span class="ios-pill run">项目改造</span>
+      <span class="ios-pill run">内容发布</span>
+      <span class="ios-pill run">PPT</span>
+      <span class="ios-pill run">音乐</span>
+      <span class="ios-pill run">设计器</span>
+    </div>
+    <div style="margin-top:10px"><button class="ios-head-chip" type="button" onclick="openIosRealTab('workflow')">进入真实工作流页</button></div>
+  </div>
+  <div class="ios-panel">
+    <div class="ios-panel-head"><strong>最近研发</strong><span>异常后可继续研发</span></div>
+    ${items.length?`<div class="ios-list">${items.map(item=>{
+      const t=escHtml(item.title||item.retryHint||item.id||'自动研发');
+      const meta=[item.executor?`执行: ${item.executor}`:'',item.updatedAt?new Date(item.updatedAt).toLocaleString('zh-CN'):''].filter(Boolean).join(' · ');
+      return `<div class="ios-row">
+        <div class="ios-row-icon">🛠️</div>
+        <div class="ios-row-main">
+          <div class="ios-row-title"><span>${t}</span><span class="ios-pill ${item.status==='completed'?'ok':(item.status==='failed'||item.status==='stale'?'bad':'run')}">${escHtml(devProgressLabel(item.status))}</span></div>
+          <div class="ios-row-sub">${escHtml(item.requirement||item.backup||'暂无详情')}</div>
+          <div class="ios-row-meta">${escHtml(meta||item.id||'')}</div>
+        </div>
+      </div>`;
+    }).join('')}</div>`:'<div class="ios-empty">还没有研发记录。</div>'}
+  </div>`;
+}
+
+function renderIosMessagesSection(){
+  const msgs=iosPreviewState.messages||[];
+  return `<div class="ios-panel">
+    <div class="ios-panel-head"><strong>最近消息</strong><span>取系统里的最新消息流</span></div>
+    <div style="margin-bottom:10px"><button class="ios-head-chip" type="button" onclick="openIosRealTab('chat')">进入群聊页</button></div>
+    ${msgs.length?`<div class="ios-list">${msgs.slice(0,10).map(m=>{
+      const name=escHtml(m.fromName||m.from||'未知');
+      const content=escHtml((m.content||'').replace(/\s+/g,' ').trim()).slice(0,140);
+      const time=m.timestamp?new Date(m.timestamp).toLocaleTimeString('zh-CN'):'';
+      return `<div class="ios-row">
+        <div class="ios-row-icon">${name==='你'?'🧑':'💬'}</div>
+        <div class="ios-row-main">
+          <div class="ios-row-title"><span>${name}</span><span class="ios-pill">${escHtml(m.type||'chat')}</span></div>
+          <div class="ios-row-sub">${content||'空消息'}</div>
+          <div class="ios-row-meta">${escHtml(time)}${m.topic?` · ${escHtml(m.topic)}`:''}</div>
+        </div>
+      </div>`;
+    }).join('')}</div>`:'<div class="ios-empty">还没有可展示的消息。</div>'}
+  </div>`;
+}
+
+async function renderIosPreview(force){
+  const root=document.getElementById('ios-preview-root');
+  if(!root)return;
+  await ensureIosPreviewMessages(force);
+  const counts=getIosAgentCounts();
+  const section=iosPreviewState.section||'home';
+  const titleMap={home:'首页',agents:'智能体',workflow:'任务',messages:'消息'};
+  const subtitleMap={
+    home:'保留桌面版，同时抽出一套更像 iPhone App 的入口。',
+    agents:'把在线状态、模型和主机信息收成移动端列表。',
+    workflow:'把长工作流压成任务中心，适合后面做 IPA。',
+    messages:'消息页先做最近流，后面可以继续拆成群聊和私聊。'
+  };
+  let body='';
+  if(section==='agents')body=renderIosAgentsSection();
+  else if(section==='workflow')body=renderIosWorkflowSection();
+  else if(section==='messages')body=renderIosMessagesSection();
+  else body=renderIosHomeSection();
+  root.innerHTML=`<div class="ios-phone">
+    <div class="ios-screen">
+      <div class="ios-statusbar"><span>${new Date().toLocaleTimeString('zh-CN',{hour:'2-digit',minute:'2-digit'})}</span><span>${counts.online} 在线</span></div>
+      <div class="ios-dynamic-island"></div>
+      <div class="ios-app-head">
+        <div>
+          <h2>${titleMap[section]||'首页'}</h2>
+          <p>${subtitleMap[section]||''}</p>
+        </div>
+        <button class="ios-head-chip" type="button" onclick="renderIosPreview(true)">刷新</button>
+      </div>
+      <div class="ios-body">
+        <div class="ios-chip-row">
+          <button class="ios-chip-btn ${section==='home'?'active':''}" type="button" onclick="setIosPreviewSection('home')">总览</button>
+          <button class="ios-chip-btn ${section==='agents'?'active':''}" type="button" onclick="setIosPreviewSection('agents')">Agent</button>
+          <button class="ios-chip-btn ${section==='workflow'?'active':''}" type="button" onclick="setIosPreviewSection('workflow')">任务</button>
+          <button class="ios-chip-btn ${section==='messages'?'active':''}" type="button" onclick="setIosPreviewSection('messages')">消息</button>
+        </div>
+        ${body}
+      </div>
+      <div class="ios-bottom-nav">
+        <button type="button" class="${section==='home'?'active':''}" onclick="setIosPreviewSection('home')">首页</button>
+        <button type="button" class="${section==='agents'?'active':''}" onclick="setIosPreviewSection('agents')">智能体</button>
+        <button type="button" class="${section==='workflow'?'active':''}" onclick="setIosPreviewSection('workflow')">任务</button>
+        <button type="button" class="${section==='messages'?'active':''}" onclick="setIosPreviewSection('messages')">消息</button>
+      </div>
+    </div>
+  </div>`;
 }
 
 function renderAgentCard(a,groupId) {
@@ -2340,7 +2829,13 @@ async function sendMessage(){
     const d=await res.json();
     if(!res.ok)throw new Error(d.error||'发送失败');
     document.getElementById(tid)?.remove();
+    if(d.accepted&&d.queued){
+      addMsgToChat('system','','✅ 已发送，智能体正在处理中...');
+      setTimeout(()=>loadChatHistory(),1200);
+      return;
+    }
     for(const r of(d.responses||[])){
+      if(r.queued) continue;
       const agent=allAgents.find(a=>a.id===r.agentId);
       addMsgObjectToChat({
         from:r.agentId,
@@ -2856,7 +3351,7 @@ bindBsMentionInputs();
 applyChatSortOrder();
 
 const _origSwitchTab = switchTab;
-const VALID_TABS = ['dashboard', 'chat', 'bigscreen', 'workflow', 'history', 'lessons', 'upgrade'];
+const VALID_TABS = ['dashboard', 'ios', 'chat', 'bigscreen', 'workflow', 'history', 'lessons', 'upgrade'];
 function normalizeTabRoute(tab) {
   return VALID_TABS.includes(tab) ? tab : 'dashboard';
 }
@@ -2878,6 +3373,7 @@ switchTab = function(tab, opts) {
     history.replaceState(null, '', '#' + tab);
   }
   if (tab === 'chat') { initChatSidebar(); loadChatHistory(); updateChatMode(); bindBsMentionInputs(); }
+  if (tab === 'ios') { renderIosPreview(true); }
   if (tab === 'bigscreen') { setupBigScreen(); }
   if (tab === 'history') { loadHistory(); }
   if (tab === 'lessons') { initLessonsTab(); }
@@ -4084,8 +4580,14 @@ function sendBsMessage() {
   }).then(function(r) { return r.json(); }).then(function(d) {
     var el = document.getElementById(tid);
     if (el) el.remove();
+    if (d && d.accepted && d.queued) {
+      addBsMessage({ from: 'system', fromName: '系统', content: '✅ 已发送，智能体正在处理中...', timestamp: new Date().toISOString() });
+      setTimeout(function(){ if(typeof loadBigscreenChatHistory==='function') loadBigscreenChatHistory(); }, 1200);
+      return;
+    }
     for (var i = 0; i < (d.responses || []).length; i++) {
       var r2 = d.responses[i];
+      if (r2.queued) continue;
       if (!r2.ok) addBsMessage({ from: r2.agentId, fromName: r2.agentName, content: '❌ ' + (r2.stderr || '无响应'), timestamp: new Date().toISOString() });
     }
   }).catch(function(e) {
@@ -4240,7 +4742,13 @@ async function startBsMeeting() {
       const d = await res.json();
       var el = document.getElementById(tid);
       if (el) el.remove();
+      if (d && d.accepted && d.queued) {
+        addBsMessage({ from: 'system', fromName: '🔔 系统', content: '✅ 已发送，智能体正在处理中...', timestamp: new Date().toISOString() });
+        setTimeout(function(){ if(typeof loadBigscreenChatHistory==='function') loadBigscreenChatHistory(); }, 1200);
+        return;
+      }
       for (const r of (d.responses || [])) {
+        if (r.queued) continue;
         if (!r.ok) addBsMessage({ from: r.agentId, fromName: r.agentName, content: '❌ ' + (r.stderr || '无响应'), timestamp: new Date().toISOString() });
       }
     } catch (e) {
@@ -4394,6 +4902,26 @@ function initWorkflowTab(){
   initPptWorkflowControls();
   initMusicWorkflowControls();
   refreshDevProgressForWorkflow();
+  applyWorkflowTemplateState();
+}
+
+function switchWorkflowTemplate(key){
+  document.querySelectorAll('.wf-template-switch button').forEach(function(btn){
+    btn.classList.toggle('active', btn.dataset.wfTemplate === key);
+  });
+  document.querySelectorAll('.wf-template-panel').forEach(function(panel){
+    panel.classList.toggle('active', panel.dataset.wfPanel === key);
+  });
+  try{ localStorage.setItem('agentDashboard.workflowTemplate', key); } catch {}
+}
+
+function applyWorkflowTemplateState(){
+  let saved = '';
+  try{ saved = localStorage.getItem('agentDashboard.workflowTemplate') || ''; } catch {}
+  const first = document.querySelector('.wf-template-switch button');
+  const fallback = first?.dataset.wfTemplate || 'code';
+  const target = document.querySelector(`.wf-template-switch button[data-wf-template="${saved}"]`) ? saved : fallback;
+  switchWorkflowTemplate(target);
 }
 
 async function refreshDevProgressForWorkflow(){
@@ -4727,10 +5255,25 @@ async function startMusicWorkflow(){
     if(!d.ok){
       addWfMessage({from:'system',fromName:'🔔 系统',content:'❌ 音乐生成失败: '+(d.error||'未知错误'),timestamp:new Date().toISOString(),type:'workflow'});
     }else{
-      if(autoPlay && d.id) setTimeout(()=>playTrack(d.id,d.title||song,d.artist||artist),250);
+      if(autoPlay && d.id) {
+        setTimeout(()=>playTrack(
+          d.id,
+          d.title||song,
+          d.artist||artist,
+          {
+            source:'语音试唱',
+            sourceCode:'generated',
+            duration:'',
+            cover:'',
+            status:'正在载入工作流音频...',
+            rawId:d.id || '',
+            lyrics:d.lyrics||''
+          }
+        ),250);
+      }
       addWfMessage({from:'system',fromName:'🔔 系统',content:`✅ 音乐已生成${autoPlay?'并播放':''}
 🎵 ${d.title||song}${d.artist?' - '+d.artist:''}
-模式: ${d.mode==='tts-draft'?'音频小样':'未知'}
+模式: ${String(d.mode||'').includes('tts-draft')?'语音试唱小样':'未知'}
 ${d.audioUrl?'<a href="'+escHtml(d.audioUrl)+'" target="_blank">点击下载/播放</a>':''}${d.notesUrl?'\n说明文档: <a href="'+escHtml(d.notesUrl)+'" target="_blank">打开交付说明</a>':''}${d.lyrics?'\n📝 歌词:\n'+d.lyrics:''}`,timestamp:new Date().toISOString(),type:'workflow'});
     }
     setTimeout(()=>loadChatHistoryForWorkflow(),1500);
@@ -4991,7 +5534,14 @@ async function sendPrivateMessage(){
     });
     const d=await res.json();
     document.getElementById(tid)?.remove();
+    if(d.accepted&&d.queued){
+      msgsEl.insertAdjacentHTML('beforeend',`<div class="msg system">✅ 已发送，智能体正在处理中...</div>`);
+      setTimeout(()=>loadPrivateChat(privateChatAgentId),1200);
+      msgsEl.scrollTop=msgsEl.scrollHeight;
+      return;
+    }
     for(const r of(d.responses||[])){
+      if(r.queued) continue;
       const a=allAgents.find(x=>x.id===r.agentId);
       msgsEl.insertAdjacentHTML('beforeend',
         `<div class="msg agent"><div class="msg-meta"><strong>${a?`${a.icon} ${a.name}`:r.agentName}</strong></div><div>${escHtml(r.ok?r.stdout:`❌ ${r.stderr||'无响应'}`).replace(/\n/g,'<br>')}</div><div class="msg-time">${time}</div></div>`);
@@ -5151,27 +5701,324 @@ setTimeout(() => switchTab(initialTabRoute()), 0);
 
 // ── Floating Music Player ─────────────────────────────────────
 let fpAudio = null, fpSong = null, fpArtist = null, fpLyrics = [], fpLyricIdx = 0;
-let fpCurrentId = null, fpDownloadStatus = {};
+let fpCurrentId = null, fpDownloadStatus = {}, fpMeta = { cover: '', source: '', duration: '', status: '' };
+let fpAudioBound = null;
+let fpPlaylist = [];
+let fpPlaylistIndex = -1;
+let fpProgressBound = false;
+let fpProgressDragging = false;
+let fpCurrentTrack = null;
+let fpDragBound = false;
+let fpDragState = null;
+const MUSIC_PLAYER_POS_KEY = 'agentDashboardMusicPlayerPosV1';
+let musicRecentStore = [];
+let musicFavoritesStore = [];
 
-function showFloatingPlayer(title, artist) {
+function getRecentTracks() { return Array.isArray(musicRecentStore) ? musicRecentStore : []; }
+function getFavoriteTracks() { return Array.isArray(musicFavoritesStore) ? musicFavoritesStore : []; }
+
+function trackStoreKey(track) {
+  if (!track) return '';
+  return [track.id || '', track.rawId || '', track.title || '', track.channel || ''].join('|');
+}
+
+function normalizeTrack(track) {
+  return {
+    id: track?.id || '',
+    rawId: track?.rawId || '',
+    title: track?.title || '',
+    channel: track?.channel || '',
+    type: track?.type || 'preview',
+    previewUrl: normalizeAudioUrl(track?.previewUrl || ''),
+    artwork: track?.artwork || '',
+    duration: track?.duration || '',
+    sourceLabel: track?.sourceLabel || '',
+    source: track?.source || '',
+    lyrics: track?.lyrics || ''
+  };
+}
+
+function normalizeAudioUrl(url) {
+  const raw = String(url || '').trim();
+  if (!raw) return '';
+  if (/^http:\/\/(?:m\d+|music)\.126\.net\//i.test(raw)) {
+    return raw.replace(/^http:\/\//i, 'https://');
+  }
+  return raw;
+}
+
+function isFavoriteTrack(track) {
+  const key = trackStoreKey(track);
+  return !!key && getFavoriteTracks().some(item => trackStoreKey(item) === key);
+}
+
+function updateFavoriteButton() {
+  const btn = document.getElementById('fp-favorite-btn');
+  if (!btn) return;
+  const active = isFavoriteTrack(fpCurrentTrack);
+  btn.classList.toggle('active', active);
+  btn.title = active ? '取消收藏' : '收藏';
+  btn.textContent = active ? '★' : '☆';
+}
+
+function addRecentTrack(track) {
+  const item = normalizeTrack(track);
+  if (!item.id && !item.title) return;
+  const list = getRecentTracks().filter(entry => trackStoreKey(entry) !== trackStoreKey(item));
+  list.unshift(item);
+  musicRecentStore = list.slice(0, 20);
+  fetch('/api/music/library/recent', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ track: item })
+  }).then(r => r.json()).then(d => {
+    if (d?.ok && Array.isArray(d.recent)) musicRecentStore = d.recent.map(normalizeTrack);
+    renderMusicCollections();
+  }).catch(() => {});
+  renderMusicCollections();
+}
+
+function toggleFavoriteCurrent() {
+  if (!fpCurrentTrack) return;
+  const item = normalizeTrack(fpCurrentTrack);
+  fetch('/api/music/library/favorites/toggle', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ track: item })
+  }).then(r => r.json()).then(d => {
+    if (d?.ok) {
+      musicFavoritesStore = Array.isArray(d.favorites) ? d.favorites.map(normalizeTrack) : [];
+      updateFavoriteButton();
+      renderMusicCollections();
+    }
+  }).catch(() => {});
+}
+
+function removeFavoriteTrack(track) {
+  const item = normalizeTrack(track);
+  if (!isFavoriteTrack(item)) return;
+  fetch('/api/music/library/favorites/toggle', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ track: item })
+  }).then(r => r.json()).then(d => {
+    if (d?.ok) {
+      musicFavoritesStore = Array.isArray(d.favorites) ? d.favorites.map(normalizeTrack) : [];
+      updateFavoriteButton();
+      renderMusicCollections();
+    }
+  }).catch(() => {});
+}
+
+function playStoredTrack(track, collectionName) {
+  const list = collectionName === 'favorites' ? getFavoriteTracks() : getRecentTracks();
+  fpPlaylist = list.map(normalizeTrack);
+  fpPlaylistIndex = fpPlaylist.findIndex(item => trackStoreKey(item) === trackStoreKey(track));
+  wfPlayTrack(track.id, track.title, track.channel, track.type, track.previewUrl, track.artwork, track.duration, track.sourceLabel, track.source, track.rawId);
+}
+
+function renderMusicCollection(targetId, list, emptyText, collectionName) {
+  const el = document.getElementById(targetId);
+  if (!el) return;
+  if (!list.length) {
+    el.innerHTML = `<div style="font-size:11px;color:var(--text2);padding:4px 2px">${emptyText}</div>`;
+    return;
+  }
+  el.innerHTML = list.map(item => {
+    const safe = encodeURIComponent(trackStoreKey(item));
+    const coverStyle = item.artwork ? `background-image:url('${String(item.artwork).replace(/'/g, "%27")}')` : '';
+    const playPayload = JSON.stringify(item);
+    const deleteBtn = collectionName === 'favorites'
+      ? `<button class="danger" title="移出收藏" onclick='event.stopPropagation();removeFavoriteTrack(${playPayload})'>✕</button>`
+      : '';
+    return `<div class="wf-music-item" id="${targetId}-${safe}">
+      <div class="cover" style="${coverStyle}">${item.artwork ? '' : '♪'}</div>
+      <div class="meta" onclick='playStoredTrack(${playPayload}, ${JSON.stringify(collectionName)})'>
+        <div class="title">${escHtml(item.title || '未知歌曲')}</div>
+        <div class="sub">${escHtml(item.channel || item.sourceLabel || '')}${item.duration ? ' · ' + escHtml(item.duration) : ''}</div>
+      </div>
+      <div class="actions">
+        <button onclick='event.stopPropagation();playStoredTrack(${playPayload}, ${JSON.stringify(collectionName)})'>▶</button>
+        ${deleteBtn}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function renderMusicCollections() {
+  renderMusicCollection('wf-recent-list', getRecentTracks(), '暂无最近播放', 'recent');
+  renderMusicCollection('wf-favorite-list', getFavoriteTracks(), '暂无收藏歌曲', 'favorites');
+}
+
+async function loadMusicCollectionsFromServer() {
+  try {
+    const res = await fetch('/api/music/library');
+    const data = await res.json();
+    if (data?.ok) {
+      musicRecentStore = Array.isArray(data.recent) ? data.recent.map(normalizeTrack) : [];
+      musicFavoritesStore = Array.isArray(data.favorites) ? data.favorites.map(normalizeTrack) : [];
+      renderMusicCollections();
+      updateFavoriteButton();
+    }
+  } catch {}
+}
+
+function applyFloatingLyrics(rawLyrics) {
+  const text = String(rawLyrics || '').trim();
+  if (!text) return false;
+  const lines = text
+    .split(/\r?\n/)
+    .map(line => line.trim())
+    .filter(line => line && !/^#/.test(line) && !/^##/.test(line));
+  if (!lines.length) return false;
+  fpLyrics = lines.map((line, index) => ({ text: line, timeMs: index * 4000 }));
+  const cacheKey = (fpSong || '') + '|' + (fpArtist || '');
+  if (cacheKey !== '|') _lyricsCache[cacheKey] = fpLyrics;
+  updateFpLyricDisplay();
+  return true;
+}
+
+function normalizeLyricsEntries(lyrics, entries) {
+  if (Array.isArray(entries) && entries.length) {
+    return entries
+      .map(item => ({ text: String(item?.text || '').trim(), timeMs: Number(item?.timeMs || 0) }))
+      .filter(item => item.text);
+  }
+  if (Array.isArray(lyrics) && lyrics.length) {
+    return lyrics
+      .map((line, index) => ({ text: String(line || '').trim(), timeMs: index * 4000 }))
+      .filter(item => item.text);
+  }
+  return [];
+}
+
+function loadFloatingPlayerPosition() {
+  try { return JSON.parse(localStorage.getItem(MUSIC_PLAYER_POS_KEY) || 'null'); } catch { return null; }
+}
+
+function saveFloatingPlayerPosition(pos) {
+  try { localStorage.setItem(MUSIC_PLAYER_POS_KEY, JSON.stringify(pos)); } catch {}
+}
+
+function applyFloatingPlayerPosition() {
+  const player = document.getElementById('floating-player');
+  if (!player) return;
+  const pos = loadFloatingPlayerPosition();
+  if (pos && Number.isFinite(pos.left) && Number.isFinite(pos.top)) {
+    player.style.left = pos.left + 'px';
+    player.style.top = pos.top + 'px';
+    player.style.right = 'auto';
+    player.style.bottom = 'auto';
+  }
+}
+
+function clampFloatingPlayer(left, top, player) {
+  const pad = 8;
+  const maxLeft = Math.max(pad, window.innerWidth - player.offsetWidth - pad);
+  const maxTop = Math.max(pad, window.innerHeight - player.offsetHeight - pad);
+  return {
+    left: Math.min(Math.max(pad, left), maxLeft),
+    top: Math.min(Math.max(pad, top), maxTop)
+  };
+}
+
+function ensureFloatingPlayerDrag() {
+  const player = document.getElementById('floating-player');
+  const head = player?.querySelector('.fp-head');
+  if (!player || !head || fpDragBound) return;
+  fpDragBound = true;
+  applyFloatingPlayerPosition();
+  head.addEventListener('pointerdown', function(e) {
+    if (e.target.closest('button')) return;
+    const rect = player.getBoundingClientRect();
+    fpDragState = {
+      pointerId: e.pointerId,
+      offsetX: e.clientX - rect.left,
+      offsetY: e.clientY - rect.top
+    };
+    head.classList.add('dragging');
+    player.style.left = rect.left + 'px';
+    player.style.top = rect.top + 'px';
+    player.style.right = 'auto';
+    player.style.bottom = 'auto';
+    try { head.setPointerCapture(e.pointerId); } catch {}
+  });
+  head.addEventListener('pointermove', function(e) {
+    if (!fpDragState || fpDragState.pointerId !== e.pointerId) return;
+    const next = clampFloatingPlayer(e.clientX - fpDragState.offsetX, e.clientY - fpDragState.offsetY, player);
+    player.style.left = next.left + 'px';
+    player.style.top = next.top + 'px';
+  });
+  const stopDrag = function(e) {
+    if (!fpDragState || (e && fpDragState.pointerId !== e.pointerId)) return;
+    head.classList.remove('dragging');
+    const rect = player.getBoundingClientRect();
+    saveFloatingPlayerPosition({ left: rect.left, top: rect.top });
+    fpDragState = null;
+  };
+  head.addEventListener('pointerup', stopDrag);
+  head.addEventListener('pointercancel', stopDrag);
+  window.addEventListener('resize', function() {
+    const rect = player.getBoundingClientRect();
+    const next = clampFloatingPlayer(rect.left, rect.top, player);
+    player.style.left = next.left + 'px';
+    player.style.top = next.top + 'px';
+    saveFloatingPlayerPosition(next);
+  });
+}
+
+function showFloatingPlayer(title, artist, meta = {}) {
   const player = document.getElementById('floating-player');
   player.querySelector('.fp-title').textContent = title || '未知';
   player.querySelector('.fp-artist').textContent = artist || '';
+  fpMeta = {
+    cover: meta.cover || fpMeta.cover || '',
+    source: meta.source || fpMeta.source || '',
+    duration: meta.duration || fpMeta.duration || '',
+    status: meta.status || fpMeta.status || ''
+  };
+  const coverImg = player.querySelector('#fp-cover-img');
+  const coverFallback = player.querySelector('#fp-cover-fallback');
+  if (coverImg) {
+    if (fpMeta.cover) {
+      coverImg.src = fpMeta.cover;
+      coverImg.style.display = 'block';
+      if (coverFallback) coverFallback.style.display = 'none';
+    } else {
+      coverImg.removeAttribute('src');
+      coverImg.style.display = 'none';
+      if (coverFallback) coverFallback.style.display = 'flex';
+    }
+  }
+  const sourceEl = player.querySelector('#fp-source');
+  if (sourceEl) sourceEl.textContent = fpMeta.source || '播放器';
+  const durationEl = player.querySelector('#fp-duration-tag');
+  if (durationEl) durationEl.textContent = fpMeta.duration || '--:--';
+  const statusEl = player.querySelector('#fp-status');
+  if (statusEl) statusEl.textContent = fpMeta.status || '准备播放';
   player.classList.add('visible');
+  ensureFloatingProgressBinding();
+  ensureFloatingPlayerDrag();
+  updateFavoriteButton();
+  const downloadBtn = document.getElementById('fp-download-btn');
+  if (downloadBtn) downloadBtn.disabled = !fpCurrentTrack;
 }
 
 function hideFloatingPlayer() {
   document.getElementById('floating-player').classList.remove('visible');
-  if (fpAudio) { fpAudio.pause(); fpAudio = null; }
+  if (fpAudio) { fpAudio.pause(); }
 }
 
 function updateFpProgress() {
   if (!fpAudio) return;
   const p = document.getElementById('fp-progress-fill');
-  if (p) p.style.width = (fpAudio.currentTime / fpAudio.duration * 100) + '%';
+  const ratio = fpAudio.duration ? (fpAudio.currentTime / fpAudio.duration * 100) : 0;
+  if (p && !fpProgressDragging) p.style.width = ratio + '%';
   const ct = document.getElementById('fp-ct'), td = document.getElementById('fp-td');
   if (ct) ct.textContent = fmtTime(fpAudio.currentTime);
   if (td) td.textContent = fmtTime(fpAudio.duration || 0);
+  const durationEl = document.getElementById('fp-duration-tag');
+  if (durationEl && fpAudio.duration) durationEl.textContent = fmtTime(fpAudio.duration);
 }
 
 function fmtTime(s) {
@@ -5180,42 +6027,152 @@ function fmtTime(s) {
   return m + ':' + (sec < 10 ? '0' : '') + sec;
 }
 
-function updateFpLyric() {
-  if (!fpAudio || fpLyrics.length === 0) return;
-  const lines = document.querySelectorAll('#fp-lyrics .fp-lyric-line');
-  const idx = Math.floor(fpAudio.currentTime / (fpAudio.duration / fpLyrics.length));
-  lines.forEach((l, i) => {
-    l.classList.toggle('active', i === Math.min(idx, fpLyrics.length - 1));
+function seekFloatingProgress(clientX) {
+  const prog = document.getElementById('fp-progress');
+  if (!prog || !fpAudio || !fpAudio.duration) return;
+  const rect = prog.getBoundingClientRect();
+  const ratio = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+  const fill = document.getElementById('fp-progress-fill');
+  if (fill) fill.style.width = (ratio * 100) + '%';
+  fpAudio.currentTime = ratio * fpAudio.duration;
+  updateFpProgress();
+}
+
+function ensureFloatingProgressBinding() {
+  const prog = document.getElementById('fp-progress');
+  if (!prog || fpProgressBound) return;
+  fpProgressBound = true;
+  prog.addEventListener('pointerdown', function(e) {
+    if (!fpAudio) return;
+    fpProgressDragging = true;
+    try { prog.setPointerCapture(e.pointerId); } catch {}
+    seekFloatingProgress(e.clientX);
+  });
+  prog.addEventListener('pointermove', function(e) {
+    if (!fpProgressDragging) return;
+    seekFloatingProgress(e.clientX);
+  });
+  const stopDragging = function(e) {
+    if (!fpProgressDragging) return;
+    fpProgressDragging = false;
+    if (e && typeof e.clientX === 'number') seekFloatingProgress(e.clientX);
+  };
+  prog.addEventListener('pointerup', stopDragging);
+  prog.addEventListener('pointercancel', function() { fpProgressDragging = false; });
+  prog.addEventListener('click', function(e) {
+    seekFloatingProgress(e.clientX);
   });
 }
 
-function playTrack(id, title, artist) {
+function updateFpLyric() {
+  if (!fpAudio || fpLyrics.length === 0) return;
+  const lines = document.querySelectorAll('#fp-lyrics .fp-lyric-line');
+  const nowMs = Math.round((fpAudio.currentTime || 0) * 1000);
+  let idx = 0;
+  for (let i = 0; i < fpLyrics.length; i++) {
+    if (nowMs >= Number(fpLyrics[i].timeMs || 0)) idx = i;
+    else break;
+  }
+  lines.forEach((l, i) => {
+    const active = i === Math.min(idx, fpLyrics.length - 1);
+    l.classList.toggle('active', active);
+    if (active) {
+      try { l.scrollIntoView({ block:'nearest', behavior:'smooth' }); } catch {}
+    }
+  });
+}
+
+function bindFloatingAudioEvents() {
+  if (!fpAudio || fpAudioBound === fpAudio) return;
+  fpAudioBound = fpAudio;
+  fpAudio.addEventListener('timeupdate', function() { updateFpProgress(); updateFpLyric(); });
+  fpAudio.addEventListener('loadedmetadata', function() {
+    updateFpProgress();
+    const durationEl = document.getElementById('fp-duration-tag');
+    if (durationEl && fpAudio.duration) durationEl.textContent = fmtTime(fpAudio.duration);
+  });
+  fpAudio.addEventListener('playing', function() {
+    const statusEl = document.getElementById('fp-status');
+    if (statusEl) statusEl.textContent = '播放中';
+    const btn = document.querySelector('.fp-controls .play-btn');
+    if (btn) btn.textContent = '⏸';
+  });
+  fpAudio.addEventListener('pause', function() {
+    const statusEl = document.getElementById('fp-status');
+    if (statusEl) statusEl.textContent = fpAudio.ended ? '播放结束' : '已暂停';
+    const btn = document.querySelector('.fp-controls .play-btn');
+    if (btn) btn.textContent = '▶';
+  });
+  fpAudio.addEventListener('waiting', function() {
+    const statusEl = document.getElementById('fp-status');
+    if (statusEl) statusEl.textContent = '缓冲中...';
+  });
+  fpAudio.addEventListener('ended', function() {
+    const statusEl = document.getElementById('fp-status');
+    if (statusEl) statusEl.textContent = '播放结束';
+    const btn = document.querySelector('.fp-controls .play-btn');
+    if (btn) btn.textContent = '▶';
+    if (fpPlaylist.length > 1 && fpPlaylistIndex >= 0 && fpPlaylistIndex < fpPlaylist.length - 1) {
+      fpNext();
+    }
+  });
+  fpAudio.addEventListener('error', function() {
+    const statusEl = document.getElementById('fp-status');
+    if (statusEl) statusEl.textContent = '播放失败';
+  });
+}
+
+function playTrack(id, title, artist, meta = {}) {
+  const inlineAudio = document.getElementById('wf-mini-audio');
+  if (inlineAudio) {
+    wfPlayTrack(
+      id,
+      title,
+      artist,
+      meta.type || 'generated',
+      meta.previewUrl || '',
+      meta.cover || '',
+      meta.duration || '',
+      meta.source || '语音试唱',
+      meta.sourceCode || '',
+      meta.rawId || id
+    );
+    return;
+  }
   const statusUrl = '/api/music/status?id=' + encodeURIComponent(id);
   fetch(statusUrl).then(function(r) { return r.json(); }).then(function(d) {
     let audioUrl;
     if (d.ready) audioUrl = d.path;
     else audioUrl = '/api/music/stream?id=' + encodeURIComponent(id) + '&title=' + encodeURIComponent(title || '');
-    if (fpAudio) { fpAudio.pause(); fpAudio = null; }
+    if (fpAudio) { fpAudio.pause(); }
     fpAudio = new Audio(audioUrl);
     fpSong = title || ''; fpArtist = artist || ''; fpCurrentId = id;
-    showFloatingPlayer(title || 'YouTube 视频', artist || '');
-    const prog = document.getElementById('fp-progress');
-    if (prog) {
-      prog.onclick = function(e) {
-        const rect = prog.getBoundingClientRect();
-        const ratio = (e.clientX - rect.left) / rect.width;
-        if (fpAudio.duration) fpAudio.currentTime = ratio * fpAudio.duration;
-      };
-    }
-    fpAudio.addEventListener('timeupdate', function() { updateFpProgress(); updateFpLyric(); });
-    fpAudio.addEventListener('ended', function() {
-      document.querySelector('.fp-controls .play-btn').textContent = '▶';
+  fpCurrentTrack = normalizeTrack({
+      id,
+      rawId: meta.rawId || '',
+      title: title || '',
+      channel: artist || '',
+      type: meta.type || 'local',
+      previewUrl: normalizeAudioUrl(meta.previewUrl || ''),
+      artwork: meta.cover || '',
+      duration: meta.duration || '',
+      sourceLabel: meta.source || '语音试唱',
+      source: meta.sourceCode || '',
+      lyrics: meta.lyrics || ''
     });
+    addRecentTrack(fpCurrentTrack);
+    if (Array.isArray(meta.playlist)) fpPlaylist = meta.playlist;
+    if (typeof meta.playlistIndex === 'number') fpPlaylistIndex = meta.playlistIndex;
+    showFloatingPlayer(title || 'YouTube 视频', artist || '', meta);
+    bindFloatingAudioEvents();
     fpAudio.play().catch(function() {});
-    document.querySelector('.fp-controls .play-btn').textContent = '⏸';
-    fpLyrics = ['♪ 加载中...'];
+    const statusEl = document.getElementById('fp-status');
+    if (statusEl) statusEl.textContent = '加载中...';
+    fpLyrics = [{ text: '♪ 加载中...', timeMs: 0 }];
     updateFpLyricDisplay();
-    fetchLyricsFor(title || id, artist || '');
+    if (!(meta && applyFloatingLyrics(meta.lyrics))) {
+      fetchLyricsFor(title || id, artist || '', { source: meta.sourceCode || '', rawId: meta.rawId || '' });
+    }
   }).catch(function() {});
 }
 
@@ -5225,8 +6182,27 @@ function toggleFpPlay() {
   else { fpAudio.pause(); document.querySelector('.fp-controls .play-btn').textContent = '▶'; }
 }
 
-function fpPrev() { if (fpAudio && fpAudio.currentTime > 3) fpAudio.currentTime = 0; else if (fpAudio) fpAudio.currentTime -= 10; }
-function fpNext() { if (fpAudio) fpAudio.currentTime += 10; }
+function playPlaylistIndex(index) {
+  if (!Array.isArray(fpPlaylist) || !fpPlaylist.length) return;
+  const item = fpPlaylist[index];
+  if (!item) return;
+  fpPlaylistIndex = index;
+  wfPlayTrack(item.id, item.title, item.channel, item.type, item.previewUrl, item.artwork, item.duration, item.sourceLabel, item.source, item.rawId);
+}
+
+function fpPrev() {
+  if (fpPlaylist.length > 1 && fpPlaylistIndex > 0) {
+    playPlaylistIndex(fpPlaylistIndex - 1);
+    return;
+  }
+  if (fpAudio) fpAudio.currentTime = 0;
+}
+
+function fpNext() {
+  if (fpPlaylist.length > 1 && fpPlaylistIndex >= 0 && fpPlaylistIndex < fpPlaylist.length - 1) {
+    playPlaylistIndex(fpPlaylistIndex + 1);
+  }
+}
 
 // ── Workflow Music Search ─────────────────────────────────────
 function initMusicSearchUI() {
@@ -5244,22 +6220,44 @@ function initMusicSearchUI() {
       <button onclick="searchMusic()">搜索</button>
     </div>
     <div class="wf-search-results" id="wf-search-results"></div>
+    <div class="wf-music-section">
+      <h4>最近播放</h4>
+      <div class="wf-music-collection" id="wf-recent-list"></div>
+    </div>
+    <div class="wf-music-section">
+      <h4>收藏列表</h4>
+      <div class="wf-music-collection" id="wf-favorite-list"></div>
+    </div>
     <div class="wf-mini-player" id="wf-mini-player" style="display:none">
       <div class="mini-info">
         <div class="mini-title" id="wf-mini-title"></div>
         <div class="mini-artist" id="wf-mini-artist"></div>
       </div>
-      <audio id="wf-mini-audio" controls style="height:22px"></audio>
+      <audio id="wf-mini-audio" controls playsinline webkit-playsinline preload="metadata" style="height:22px"></audio>
       <button onclick="showFloaterFromWf()" style="background:none;border:none;color:var(--text2);cursor:pointer;font-size:12px;padding:2px">📌</button>
     </div>
   `;
 
-  const musicBox = agentSel.closest('.wf-music-box');
+  const musicBox = agentSel.closest('[data-wf-panel="music"]');
   if (musicBox) musicBox.appendChild(searchBox);
+  renderMusicCollections();
+  loadMusicCollectionsFromServer();
 }
 
 function showFloaterFromWf() {
-  if (fpSong) showFloatingPlayer(fpSong, fpArtist);
+  if (fpSong) showFloatingPlayer(fpSong, fpArtist, fpMeta);
+}
+
+function downloadCurrentTrack() {
+  if (!fpCurrentTrack) return;
+  const qs = new URLSearchParams({
+    id: fpCurrentTrack.id || '',
+    rawId: fpCurrentTrack.rawId || '',
+    source: fpCurrentTrack.source || '',
+    previewUrl: fpCurrentTrack.previewUrl || '',
+    title: fpCurrentTrack.title || 'music'
+  });
+  window.open('/api/music/download?' + qs.toString(), '_blank');
 }
 
 async function searchMusic() {
@@ -5276,16 +6274,37 @@ async function searchMusic() {
       return;
     }
     if (d.results?.length) {
+      fpPlaylist = d.results.map(r => {
+        const sourceLabel = r.local ? '本地' : (r.source === 'netease' ? (r.trial || '网易云') : (r.source === 'itunes' ? '市场试听' : (r.source === 'youtube' ? '市场' : '在线')));
+        return {
+          id: r.id || '',
+          title: r.title || '',
+          channel: r.channel || '',
+          type: r.local ? 'local' : (r.previewUrl ? 'preview' : 'youtube'),
+          previewUrl: normalizeAudioUrl(r.previewUrl || ''),
+          artwork: r.artwork || '',
+          duration: r.duration || '',
+          sourceLabel,
+          source: r.source || '',
+          rawId: r.rawId || ''
+        };
+      });
+      fpPlaylistIndex = -1;
       resultsEl.innerHTML = d.results.map(r => {
         const safeId = encodeURIComponent(r.id || '');
+        const sourceLabel = r.local ? '本地' : (r.source === 'netease' ? (r.trial || '网易云') : (r.source === 'itunes' ? '市场试听' : (r.source === 'youtube' ? '市场' : '在线')));
         const playArgs = [
           JSON.stringify(r.id || ''),
           JSON.stringify(r.title || ''),
           JSON.stringify(r.channel || ''),
           JSON.stringify(r.local ? 'local' : (r.previewUrl ? 'preview' : 'youtube')),
-          JSON.stringify(r.previewUrl || '')
+          JSON.stringify(normalizeAudioUrl(r.previewUrl || '')),
+          JSON.stringify(r.artwork || ''),
+          JSON.stringify(r.duration || ''),
+          JSON.stringify(sourceLabel),
+          JSON.stringify(r.source || ''),
+          JSON.stringify(r.rawId || '')
         ].join(', ');
-        const sourceLabel = r.local ? '本地' : (r.source === 'netease' ? (r.trial || '网易云') : (r.source === 'itunes' ? '市场试听' : (r.source === 'youtube' ? '市场' : '在线')));
         return `
           <div class="wf-search-result" id="wf-res-${safeId}">
             <button class="play-btn" onclick='event.stopPropagation();wfPlayTrack(${playArgs})'>▶</button>
@@ -5306,7 +6325,8 @@ async function searchMusic() {
   }
 }
 
-async function wfPlayTrack(id, title, channel, type, previewUrl) {
+async function wfPlayTrack(id, title, channel, type, previewUrl, artwork, duration, sourceLabel, source, rawId) {
+  previewUrl = normalizeAudioUrl(previewUrl);
   document.querySelectorAll('.wf-search-result').forEach(el => el.classList.remove('playing'));
   const resEl = document.getElementById('wf-res-' + encodeURIComponent(id));
   if (resEl) resEl.classList.add('playing');
@@ -5318,15 +6338,32 @@ async function wfPlayTrack(id, title, channel, type, previewUrl) {
   if (miniTitle) miniTitle.textContent = title || 'YouTube 视频';
   if (miniArtist) miniArtist.textContent = channel || '';
   fpSong = title || ''; fpArtist = channel || ''; fpCurrentId = id;
+  fpMeta = { cover: artwork || '', source: sourceLabel || '', duration: duration || '', status: '加载中...' };
+  fpCurrentTrack = normalizeTrack({ id, rawId, title, channel, type, previewUrl, artwork, duration, sourceLabel, source });
+  addRecentTrack(fpCurrentTrack);
+  const queueIndex = fpPlaylist.findIndex(item => item.id === id);
+  if (queueIndex >= 0) fpPlaylistIndex = queueIndex;
+  if (fpAudio && fpAudio !== miniAudio) fpAudio.pause();
+  fpAudio = miniAudio || null;
+  if (miniAudio) {
+    miniAudio.setAttribute('playsinline', '');
+    miniAudio.setAttribute('webkit-playsinline', '');
+    miniAudio.preload = 'metadata';
+  }
   let audioUrl;
   if (type === 'local') {
     audioUrl = '/files/music_temp/' + id + '.mp3';
-    if (miniAudio) { miniAudio.src = audioUrl; miniAudio.play().catch(() => {}); }
+    if (miniAudio) {
+      miniAudio.src = audioUrl;
+      bindFloatingAudioEvents();
+      miniAudio.play().catch(() => {});
+    }
   } else if (type === 'preview' && previewUrl) {
     audioUrl = previewUrl;
     if (miniAudio) {
       miniAudio.crossOrigin = 'anonymous';
       miniAudio.src = audioUrl;
+      bindFloatingAudioEvents();
       miniAudio.play().catch(() => {});
       miniAudio.onended = () => { if (resEl) resEl.classList.remove('playing'); };
     }
@@ -5336,45 +6373,67 @@ async function wfPlayTrack(id, title, channel, type, previewUrl) {
     else audioUrl = '/api/music/stream?id=' + encodeURIComponent(id) + '&title=' + encodeURIComponent(title || '');
     if (miniAudio) {
       miniAudio.src = audioUrl;
+      bindFloatingAudioEvents();
       miniAudio.oncanplay = () => miniAudio.play().catch(() => {});
       miniAudio.load();
       miniAudio.onended = () => { if (resEl) resEl.classList.remove('playing'); };
     }
   }
-  showFloatingPlayer(title || 'YouTube 视频', channel || '');
-  fetchLyricsFor(title || id, channel || '');
+  if (miniAudio) {
+    miniAudio.onloadedmetadata = () => {
+      const dyn = isFinite(miniAudio.duration) ? fmtTime(miniAudio.duration) : (duration || '');
+      fpMeta.duration = dyn || fpMeta.duration;
+      showFloatingPlayer(title || 'YouTube 视频', channel || '', fpMeta);
+    };
+  }
+  showFloatingPlayer(title || 'YouTube 视频', channel || '', fpMeta);
+  fpLyrics = [{ text: '♪ 正在获取歌词...', timeMs: 0 }];
+  updateFpLyricDisplay();
+  fetchLyricsFor(title || id, channel || '', { source: source || '', rawId: rawId || id || '' });
 }
 
 let _lyricsCache = {};
-async function fetchLyricsFor(song, artist) {
+async function fetchLyricsFor(song, artist, meta) {
   if (!song) return;
-  const cacheKey = song + '|' + (artist || '');
+  const source = meta?.source || '';
+  const rawId = meta?.rawId || '';
+  const cacheKey = [song, artist || '', source, rawId].join('|');
   if (_lyricsCache[cacheKey]) {
     fpLyrics = _lyricsCache[cacheKey];
     updateFpLyricDisplay();
     return;
   }
   try {
-    const res = await fetch('/api/music/lyrics?song=' + encodeURIComponent(song) + '&artist=' + encodeURIComponent(artist || ''));
+    const qs = new URLSearchParams({
+      song: song,
+      artist: artist || ''
+    });
+    if (source) qs.set('source', source);
+    if (rawId) {
+      qs.set('rawId', rawId);
+      qs.set('id', rawId);
+    }
+    const res = await fetch('/api/music/lyrics?' + qs.toString());
     const d = await res.json();
     if (d.ok && d.lyrics?.length) {
-      fpLyrics = d.lyrics;
+      fpLyrics = normalizeLyricsEntries(d.lyrics, d.entries);
       _lyricsCache[cacheKey] = fpLyrics;
       updateFpLyricDisplay();
     } else {
-      fpLyrics = ['♪ 暂无歌词（' + (d.error || '无法获取') + '）'];
+      fpLyrics = [{ text: '♪ 暂无歌词（' + (d.error || '无法获取') + '）', timeMs: 0 }];
       _lyricsCache[cacheKey] = fpLyrics;
       updateFpLyricDisplay();
     }
-  } catch { fpLyrics = ['♪ 歌词获取失败']; updateFpLyricDisplay(); }
+  } catch { fpLyrics = [{ text: '♪ 歌词获取失败', timeMs: 0 }]; updateFpLyricDisplay(); }
 }
 
 function updateFpLyricDisplay() {
   const el = document.getElementById('fp-lyrics');
   if (!el) return;
-  el.innerHTML = fpLyrics.map(function(l, i) {
-    var ts = (fpAudio && fpAudio.duration) ? (i * fpAudio.duration / Math.max(fpLyrics.length, 1)) : 0;
-    return '<div class="fp-lyric-line" onclick="if(fpAudio&&fpAudio.duration)fpAudio.currentTime=' + ts + '">' + l + '</div>';
+  el.innerHTML = fpLyrics.map(function(item, i) {
+    var ts = Number(item?.timeMs || 0) / 1000;
+    var text = escHtml(item?.text || '');
+    return '<div class="fp-lyric-line" onclick="if(fpAudio)fpAudio.currentTime=' + ts + '">' + text + '</div>';
   }).join('');
 }
 
@@ -5383,7 +6442,10 @@ switchTab = (function(orig) {
   return function(tab) {
     orig(tab);
     if (tab === 'workflow') {
-      setTimeout(initMusicSearchUI, 100);
+      setTimeout(function() {
+        initMusicSearchUI();
+        renderMusicCollections();
+      }, 100);
     }
   };
 })(switchTab);
@@ -5393,8 +6455,21 @@ switchTab = (function(orig) {
 <!-- Floating Music Player -->
 <div id="floating-player">
   <button class="fp-close" onclick="hideFloatingPlayer()">×</button>
-  <div class="fp-title"></div>
-  <div class="fp-artist"></div>
+  <div class="fp-head">
+    <div class="fp-cover">
+      <img id="fp-cover-img" alt="cover" style="display:none">
+      <span id="fp-cover-fallback">♪</span>
+    </div>
+    <div class="fp-meta">
+      <div class="fp-title"></div>
+      <div class="fp-artist"></div>
+      <div class="fp-tags">
+        <span class="fp-tag primary" id="fp-source">播放器</span>
+        <span class="fp-tag" id="fp-duration-tag">--:--</span>
+      </div>
+      <div class="fp-status" id="fp-status">准备播放</div>
+    </div>
+  </div>
   <div class="fp-progress" id="fp-progress">
     <div class="fp-progress-fill" id="fp-progress-fill" style="width:0%"></div>
   </div>
@@ -5403,6 +6478,8 @@ switchTab = (function(orig) {
     <button onclick="fpPrev()">⏮</button>
     <button class="play-btn" onclick="toggleFpPlay()">▶</button>
     <button onclick="fpNext()">⏭</button>
+    <button id="fp-favorite-btn" onclick="toggleFavoriteCurrent()" title="收藏">☆</button>
+    <button id="fp-download-btn" onclick="downloadCurrentTrack()" title="下载">⤓</button>
   </div>
   <div id="fp-lyrics"></div>
 </div>

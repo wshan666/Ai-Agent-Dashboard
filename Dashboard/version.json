@@ -1,0 +1,29 @@
+{
+  "version": "1.0.3",
+  "history": [
+    {
+      "version": "1.0.3",
+      "previous": "1.0.2",
+      "task": "工作流设计: 可以搜索音乐并且播放或者下载，要能显示歌词",
+      "agent": "Claude Code CLI",
+      "backup": "workflow_1.0.2_2026-05-10T01-11-35",
+      "timestamp": "2026-05-10T01:11:52.671Z"
+    },
+    {
+      "version": "1.0.2",
+      "previous": "1.0.1",
+      "task": "工作流设计: 新增一个PPT制作以及审核的工作流",
+      "agent": "Codex CLI",
+      "backup": "workflow_1.0.1_2026-05-09T14-15-07",
+      "timestamp": "2026-05-09T14:22:31.661Z"
+    },
+    {
+      "version": "1.0.1",
+      "previous": "1.0.0",
+      "task": "把大屏的动画做出来，有13位agengt，还有一个大圆桌，办公室。开会时，指定的agent会坐圆桌边，其他的代码的各自在办公",
+      "agent": "Codex CLI",
+      "backup": "v1.0.0_2026-05-08T08-35-58",
+      "timestamp": "2026-05-08T08:37:58.114Z"
+    }
+  ]
+}

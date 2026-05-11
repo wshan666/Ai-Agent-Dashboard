@@ -1,0 +1,59 @@
+{
+  "server": {
+    "port": 3456
+  },
+  "notifications": {
+    "feishuWebhook": "",
+    "feishuKeyword": ""
+  },
+  "hosts": {},
+  "agents": {
+    "local": [
+      {
+        "id": "codex-cli",
+        "name": "Codex CLI",
+        "icon": "🤖",
+        "type": "cli",
+        "executable": "codex",
+        "description": "Local Codex CLI agent",
+        "chatCmd": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts\\run-codex.ps1 \"{prompt_b64}\"",
+        "chatTimeout": 300000,
+        "actions": [
+          {
+            "label": "Version",
+            "cmd": "codex --version"
+          }
+        ]
+      },
+      {
+        "id": "claude-code",
+        "name": "Claude Code CLI",
+        "icon": "🧠",
+        "type": "cli",
+        "executable": "cc-deepseek",
+        "description": "Optional local Claude-compatible CLI wrapper",
+        "chatCmd": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts\\run-cc-deepseek.ps1 \"{prompt_b64}\"",
+        "chatTimeout": 300000,
+        "disabled": true,
+        "actions": [
+          {
+            "label": "Version",
+            "cmd": "cc-deepseek --version"
+          }
+        ]
+      },
+      {
+        "id": "qwen-vision",
+        "name": "Qwen Vision",
+        "icon": "👁",
+        "type": "cli",
+        "executable": "python",
+        "description": "Optional DashScope Qwen-VL vision model. Requires DASHSCOPE_API_KEY.",
+        "chatCmd": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts\\run-qwen-vision.ps1 \"{prompt_b64}\"",
+        "chatTimeout": 120000,
+        "disabled": true,
+        "actions": []
+      }
+    ]
+  }
+}
