@@ -21,6 +21,10 @@ jobs:
             echo "AgentApp must stay native SwiftUI, not a web shell."
             exit 1
           fi
+          if grep -R -n -E '\\u[0-9A-Fa-f]{4}|\\U[0-9A-Fa-f]{8}' AgentApp/Sources; then
+            echo "Swift Unicode escapes must use \\u{...} syntax."
+            exit 1
+          fi
 
       - name: Install XcodeGen
         run: brew install xcodegen

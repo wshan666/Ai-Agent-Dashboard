@@ -74,7 +74,7 @@ struct NativeRunsView: View {
             VStack(alignment: .leading, spacing: 8) {
                 Label("\u{6682}\u{65e0}\u{8fd0}\u{884c}\u{8bb0}\u{5f55}", systemImage: "tray")
                     .font(.headline)
-                Text("\u{4ece}\u{534f}\u{4f5c}\u{6216}\u{6307}\u{6325}\u{5ba4}\u{542f}\u{52a8}\u{4efb}\u{52a1}\u{540e}\uff0c\u{8fd9}\u{91cc}\u{4f1a}\u{663e}\u{793a}\u{72b6}\u{6001}\u{3001}\u{8f93}\u{51fa}\u{548c}\u{6bcf}\u{4e2a} agent \u{7684}\u{56de}\u{590d}\u{3002}")
+                Text("\u{4ece}\u{534f}\u{4f5c}\u{6216}\u{6307}\u{6325}\u{5ba4}\u{542f}\u{52a8}\u{4efb}\u{52a1}\u{540e}\u{ff0c}\u{8fd9}\u{91cc}\u{4f1a}\u{663e}\u{793a}\u{72b6}\u{6001}\u{3001}\u{8f93}\u{51fa}\u{548c}\u{6bcf}\u{4e2a} agent \u{7684}\u{56de}\u{590d}\u{3002}")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
             }

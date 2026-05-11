@@ -91,7 +91,7 @@ private struct ProfileView: View {
                         .autocorrectionDisabled()
                         .focused($tokenFocused)
 
-                    Text("\u{4e0a}\u{4e91}\u{540e}\u{5efa}\u{8bae}\u{5f00}\u{542f} DASHBOARD_REQUIRE_AUTH\uff0cApp \u{4f1a}\u{81ea}\u{52a8}\u{4f7f}\u{7528} Bearer Token \u{8bf7}\u{6c42}\u{63a5}\u{53e3}\u{3002}")
+                    Text("\u{4e0a}\u{4e91}\u{540e}\u{5efa}\u{8bae}\u{5f00}\u{542f} DASHBOARD_REQUIRE_AUTH\u{ff0c}App \u{4f1a}\u{81ea}\u{52a8}\u{4f7f}\u{7528} Bearer Token \u{8bf7}\u{6c42}\u{63a5}\u{53e3}\u{3002}")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
