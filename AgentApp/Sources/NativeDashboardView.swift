@@ -81,6 +81,18 @@ struct NativeDashboardView: View {
                     }
                 }
 
+                if store.agents.isEmpty, !store.isLoadingDashboard {
+                    sectionCard(title: "\u{8fde}\u{63a5}\u{72b6}\u{6001}") {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Label("\u{6682}\u{672a}\u{52a0}\u{8f7d}\u{5230}\u{667a}\u{80fd}\u{4f53}", systemImage: "exclamationmark.triangle")
+                                .font(.subheadline.weight(.semibold))
+                            Text("\u{8bf7}\u{5728}\u{6211}\u{7684}\u{91cc}\u{68c0}\u{67e5}\u{670d}\u{52a1}\u{5668}\u{5730}\u{5740}\u{548c} API Token\u{3002}\u{5982}\u{679c}\u{670d}\u{52a1}\u{7aef}\u{8fd8}\u{662f}\u{65e7}\u{7248}\u{ff0c}App \u{4f1a}\u{81ea}\u{52a8}\u{56de}\u{9000}\u{5230}\u{65e7}\u{63a5}\u{53e3}\u{52a0}\u{8f7d}\u{3002}")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                }
+
                 if !store.devProgress.isEmpty {
                     sectionCard(title: "\u{5f53}\u{524d}\u{7814}\u{53d1}\u{8fdb}\u{5ea6}") {
                         ForEach(store.devProgress.prefix(4)) { item in

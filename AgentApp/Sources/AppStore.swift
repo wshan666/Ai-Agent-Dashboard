@@ -63,11 +63,7 @@ final class AppStore: ObservableObject {
             errors.append("\u{804a}\u{5929}\u{8bb0}\u{5f55}\u{52a0}\u{8f7d}\u{5931}\u{8d25}\u{ff1a}\(error.localizedDescription)")
         }
 
-        do {
-            apiRuns = try await fetchApiRuns(limit: 20)
-        } catch {
-            errors.append("\u{8fd0}\u{884c}\u{8bb0}\u{5f55}\u{52a0}\u{8f7d}\u{5931}\u{8d25}\u{ff1a}\(error.localizedDescription)")
-        }
+        apiRuns = (try? await fetchApiRuns(limit: 20)) ?? apiRuns
 
         lastError = errors.isEmpty ? nil : errors.joined(separator: "\n")
     }
@@ -440,7 +436,16 @@ final class AppStore: ObservableObject {
     }
 
     private func fetchAgents() async throws -> [AgentSummary] {
-        let data = try await getData(path: "/api/v1/agents")
+        do {
+            let data = try await getData(path: "/api/v1/agents")
+            return try parseAgents(data)
+        } catch {
+            let legacyData = try await getData(path: "/api/agents")
+            return try parseAgents(legacyData)
+        }
+    }
+
+    private func parseAgents(_ data: Data) throws -> [AgentSummary] {
         guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any] else {
             return []
         }
@@ -497,11 +502,7 @@ final class AppStore: ObservableObject {
         let (data, response) = try await URLSession.shared.data(for: request)
         guard let http = response as? HTTPURLResponse, (200 ... 299).contains(http.statusCode) else {
             let body = String(data: data, encoding: .utf8) ?? ""
-            throw NSError(
-                domain: "AppStore",
-                code: (response as? HTTPURLResponse)?.statusCode ?? -1,
-                userInfo: [NSLocalizedDescriptionKey: body.isEmpty ? "\u{8bf7}\u{6c42}\u{5931}\u{8d25}" : body]
-            )
+            throw requestError(response: response, body: body)
         }
 
         return try JSONDecoder().decode(T.self, from: data)
@@ -515,7 +516,8 @@ final class AppStore: ObservableObject {
 
         let (data, response) = try await URLSession.shared.data(for: request)
         guard let http = response as? HTTPURLResponse, (200 ... 299).contains(http.statusCode) else {
-            throw URLError(.badServerResponse)
+            let body = String(data: data, encoding: .utf8) ?? ""
+            throw requestError(response: response, body: body)
         }
 
         return data
@@ -529,6 +531,21 @@ final class AppStore: ObservableObject {
         let token = settings.trimmedAPIToken
         guard !token.isEmpty else { return }
         request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+    }
+
+    private func requestError(response: URLResponse, body: String) -> NSError {
+        let code = (response as? HTTPURLResponse)?.statusCode ?? -1
+        let message: String
+        if code == 401 {
+            message = "\u{670d}\u{52a1}\u{5668}\u{9700}\u{8981}\u{6388}\u{6743}\u{ff0c}\u{8bf7}\u{5728}\u{6211}\u{7684} > API Token \u{586b}\u{5165} DASHBOARD_API_TOKEN\u{3002}"
+        } else if code == 404 {
+            message = "\u{63a5}\u{53e3}\u{4e0d}\u{5b58}\u{5728}\u{ff0c}\u{8bf7}\u{786e}\u{8ba4} Dashboard \u{670d}\u{52a1}\u{5df2}\u{542f}\u{52a8}\u{5e76}\u{662f}\u{6700}\u{65b0}\u{7248}\u{672c}\u{3002}"
+        } else if !body.isEmpty {
+            message = body
+        } else {
+            message = "\u{8bf7}\u{6c42}\u{5931}\u{8d25}\u{ff1a}HTTP \(code)"
+        }
+        return NSError(domain: "AppStore", code: code, userInfo: [NSLocalizedDescriptionKey: message])
     }
 
     private func agentSummary(from raw: [String: Any], defaultGroup: String) -> AgentSummary {
