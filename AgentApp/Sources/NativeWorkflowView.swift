@@ -39,10 +39,6 @@ struct NativeWorkflowView: View {
                 templateSwitcher
                 activeTemplateCard
 
-                if !store.devProgress.isEmpty {
-                    devProgressCard.padding(.horizontal, 18)
-                }
-
                 Color.clear.frame(height: 6)
             }
             .padding(.top, 16)
@@ -53,6 +49,7 @@ struct NativeWorkflowView: View {
         .navigationTitle("\u{5de5}\u{4f5c}\u{6d41}")
         .navigationBarTitleDisplayMode(.inline)
         .ignoresSafeArea(.keyboard, edges: .bottom)
+        .refreshable { await store.refreshDashboard() }
         .dismissKeyboardOnTap()
         .sheet(item: $reviewerSheetMode) { mode in reviewerPicker(mode: mode) }
         .task {
@@ -115,6 +112,11 @@ struct NativeWorkflowView: View {
                             ForEach(onlineAgents) { agent in
                                 Text("\(agent.displayIcon) \(agent.name)").tag(agent.id)
                             }
+                        }
+                        if let agent = agentById(coder.agentId) {
+                            Text(agentRoleDescription(agent))
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
                         }
                         TextField("\u{5b50}\u{4efb}\u{52a1}", text: $coder.task, axis: .vertical)
                             .textFieldStyle(.roundedBorder)
@@ -382,10 +384,17 @@ struct NativeWorkflowView: View {
     }
 
     private func pickerRow(_ title: String, selection: Binding<String>, allowEmpty: Bool = false) -> some View {
-        Picker(title, selection: selection) {
-            Text(allowEmpty ? "\u{53ef}\u{9009}" : "\u{8bf7}\u{9009}\u{62e9}").tag("")
-            ForEach(onlineAgents) { agent in
-                Text("\(agent.displayIcon) \(agent.name)").tag(agent.id)
+        VStack(alignment: .leading, spacing: 6) {
+            Picker(title, selection: selection) {
+                Text(allowEmpty ? "\u{53ef}\u{9009}" : "\u{8bf7}\u{9009}\u{62e9}").tag("")
+                ForEach(onlineAgents) { agent in
+                    Text("\(agent.displayIcon) \(agent.name)").tag(agent.id)
+                }
+            }
+            if let agent = agentById(selection.wrappedValue) {
+                Text(agentRoleDescription(agent))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
             }
         }
     }
@@ -401,6 +410,11 @@ struct NativeWorkflowView: View {
                 }
             }
             .labelsHidden()
+            if let agent = agentById(selection.wrappedValue) {
+                Text(agentRoleDescription(agent))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
         }
         .padding(12)
         .background(Color(.tertiarySystemBackground))
@@ -546,6 +560,16 @@ struct NativeWorkflowView: View {
                 }
             }
         }
+    }
+
+    private func agentById(_ id: String) -> AgentSummary? {
+        store.agents.first { $0.id == id }
+    }
+
+    private func agentRoleDescription(_ agent: AgentSummary) -> String {
+        let description = agent.description.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !description.isEmpty { return description }
+        return "\(agent.hostGroup) · \(agent.primaryModelText) · \(agent.statusText)"
     }
 
     private func pptResultBlock(_ result: WorkflowStartResponse) -> some View {

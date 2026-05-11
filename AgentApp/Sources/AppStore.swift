@@ -52,7 +52,7 @@ final class AppStore: ObservableObject {
             devProgress = progress.items ?? progress.active ?? []
         }
 
-        if let history = try? await fetchChatHistory(limit: 160) {
+        if let history = try? await fetchChatHistory(limit: 800) {
             messages = sortedMessages(history.messages)
             topics = history.topics
         }
@@ -67,7 +67,7 @@ final class AppStore: ObservableObject {
         defer { isLoadingChat = false }
 
         do {
-            let history = try await fetchChatHistory(limit: 160)
+            let history = try await fetchChatHistory(limit: 800)
             messages = sortedMessages(history.messages)
             topics = history.topics
             lastError = nil
@@ -121,7 +121,7 @@ final class AppStore: ObservableObject {
         }
     }
 
-    func refreshMessagesSilently(limit: Int = 160) async {
+    func refreshMessagesSilently(limit: Int = 800) async {
         guard let history = try? await fetchChatHistory(limit: limit) else { return }
         messages = sortedMessages(history.messages)
         topics = history.topics
@@ -179,7 +179,7 @@ final class AppStore: ObservableObject {
         var payload: [String: Any] = [
             "agent_ids": agentIds,
             "input": message,
-            "topic": topic.isEmpty ? "iOS collaboration" : topic,
+            "topic": topic.isEmpty ? (message.isEmpty ? "协作任务" : message) : topic,
             "mode": mode,
             "async": false
         ]
@@ -202,6 +202,29 @@ final class AppStore: ObservableObject {
 
         Task { await self.refreshRuns(limit: 20) }
         return run
+    }
+
+    func startRoundtable(agentIds: [String], topic: String, rounds: Int = 1, mode: String = "roundtable", summarizerId: String? = nil) async throws {
+        var payload: [String: Any] = [
+            "agentIds": agentIds,
+            "topic": topic.isEmpty ? "圆桌会议" : topic,
+            "rounds": max(1, min(5, rounds)),
+            "mode": mode
+        ]
+        if let summarizerId, !summarizerId.isEmpty {
+            payload["summarizerId"] = summarizerId
+        }
+        let response: BasicAPIResponse = try await postJSON(path: "/api/chat/roundtable", payload: payload, timeout: 600)
+        if response.ok == false {
+            throw NSError(
+                domain: "AppStore",
+                code: -1,
+                userInfo: [NSLocalizedDescriptionKey: response.error ?? "圆桌会议启动失败"]
+            )
+        }
+        lastError = nil
+        await refreshChat()
+        Task { await self.refreshRuns(limit: 20) }
     }
 
     func startCodeWorkflow(task: String, coders: [WorkflowCoderDraft], reviewerIds: [String], summarizerId: String?) async throws {
@@ -483,7 +506,7 @@ final class AppStore: ObservableObject {
 
     private func fetchChatHistory(limit: Int? = nil) async throws -> ChatHistoryResponse {
         if let limit {
-            return try await getJSON(path: "/api/chat/history?limit=\(max(1, min(500, limit)))")
+            return try await getJSON(path: "/api/chat/history?limit=\(max(1, min(1000, limit)))")
         }
         return try await getJSON(path: "/api/chat/history")
     }

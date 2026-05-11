@@ -117,23 +117,6 @@ struct NativeDashboardView: View {
                     }
                 }
 
-                if !store.devProgress.isEmpty {
-                    sectionCard(title: "\u{5f53}\u{524d}\u{7814}\u{53d1}\u{8fdb}\u{5ea6}") {
-                        ForEach(store.devProgress.prefix(4)) { item in
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text(item.title ?? item.requirement ?? item.id)
-                                    .font(.headline)
-                                Text(item.status ?? "\u{672a}\u{77e5}\u{72b6}\u{6001}")
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                            }
-                            if item.id != store.devProgress.prefix(4).last?.id {
-                                Divider()
-                            }
-                        }
-                    }
-                }
-
                 sectionCard(title: "\u{667a}\u{80fd}\u{4f53}") {
                     ForEach(store.agents.prefix(12)) { agent in
                         HStack(spacing: 12) {

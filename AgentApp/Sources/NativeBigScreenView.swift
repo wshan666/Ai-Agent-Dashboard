@@ -24,7 +24,8 @@ struct NativeBigScreenView: View {
     }
 
     private var canRun: Bool {
-        selectedAgentIds.count >= 2 && !prompt.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        selectedAgentIds.count >= 2 &&
+        (!prompt.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || !topic.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
     }
 
     private var latestGomokuMessage: ChatMessage? {
@@ -32,7 +33,33 @@ struct NativeBigScreenView: View {
     }
 
     private var latestDoudizhuMessage: ChatMessage? {
-        store.messages.reversed().first { $0.doudizhu != nil }
+        let indexed = store.messages.enumerated().filter { $0.element.doudizhu != nil }
+        guard !indexed.isEmpty else { return nil }
+
+        let lastFinishedIndex = indexed.last { $0.element.doudizhu?.status == "finished" }?.offset ?? -1
+        let afterLastFinished = indexed.filter { $0.offset > lastFinishedIndex }
+        let active = afterLastFinished.isEmpty ? indexed : afterLastFinished
+
+        let latestGameId = active.reversed().compactMap { item -> String? in
+            guard let gameId = item.element.doudizhu?.gameId, !gameId.isEmpty else { return nil }
+            return gameId
+        }.first
+        let scoped = latestGameId == nil ? active : active.filter { $0.element.doudizhu?.gameId == latestGameId }
+
+        if scoped.last(where: { $0.element.doudizhu?.status == "finished" }) != nil { return nil }
+        let maxTurn = scoped.map { $0.element.doudizhu?.turnNo ?? -1 }.max() ?? -1
+        return scoped.reversed().first { ($0.element.doudizhu?.turnNo ?? -1) >= maxTurn }?.element ?? scoped.last?.element
+    }
+
+    private var recentLiveMessages: [ChatMessage] {
+        store.messages
+            .filter { message in
+                guard message.doudizhu == nil, message.gomoku == nil else { return false }
+                guard let content = message.content?.trimmingCharacters(in: .whitespacesAndNewlines), !content.isEmpty else { return false }
+                return ["roundtable", "debate", "chat", "api", "workflow"].contains(message.type ?? "chat")
+            }
+            .suffix(8)
+            .map { $0 }
     }
 
     var body: some View {
@@ -40,6 +67,7 @@ struct NativeBigScreenView: View {
             VStack(alignment: .leading, spacing: 18) {
                 header
                 officeSection
+                liveMessageWall
                 liveGameSection
                 commandCard
                 agentBoard
@@ -183,6 +211,33 @@ struct NativeBigScreenView: View {
         }
     }
 
+    private var liveMessageWall: some View {
+        card {
+            HStack {
+                Label("\u{4f1a}\u{8bae}\u{53d1}\u{8a00}", systemImage: "bubble.left.and.bubble.right.fill")
+                    .font(.headline)
+                Spacer()
+                Text("\(recentLiveMessages.count)")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+            }
+
+            if recentLiveMessages.isEmpty {
+                Text("\u{5706}\u{684c}\u{4f1a}\u{8bae}\u{3001}\u{7fa4}\u{804a}\u{548c}\u{5de5}\u{4f5c}\u{6d41}\u{53d1}\u{8a00}\u{4f1a}\u{5728}\u{8fd9}\u{91cc}\u{6eda}\u{52a8}\u{51fa}\u{73b0}\u{3002}")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            } else {
+                VStack(spacing: 10) {
+                    ForEach(recentLiveMessages, id: \.stableId) { message in
+                        liveMessageBubble(message)
+                            .transition(.asymmetric(insertion: .move(edge: .bottom).combined(with: .opacity), removal: .opacity))
+                    }
+                }
+                .animation(.spring(response: 0.35, dampingFraction: 0.82), value: recentLiveMessages.map(\.stableId))
+            }
+        }
+    }
+
     private func gomokuPanel(_ game: GomokuGameState, message: ChatMessage) -> some View {
         card {
             HStack(alignment: .top) {
@@ -300,9 +355,11 @@ struct NativeBigScreenView: View {
                 Picker("", selection: $mode) {
                     Text("\u{5e76}\u{884c}").tag("parallel")
                     Text("\u{987a}\u{5e8f}").tag("sequential")
+                    Text("\u{5706}\u{684c}").tag("roundtable")
+                    Text("\u{8fa9}\u{8bba}").tag("debate")
                 }
                 .pickerStyle(.segmented)
-                .frame(width: 132)
+                .frame(width: 232)
             }
 
             TextField("\u{8bdd}\u{9898}\u{ff0c}\u{4f8b}\u{5982}\u{ff1a}\u{5ba2}\u{6237}\u{4e0a}\u{7ebf}\u{65b9}\u{6848}", text: $topic)
@@ -342,7 +399,7 @@ struct NativeBigScreenView: View {
                     if isRunning {
                         ProgressView().tint(.white)
                     } else {
-                        Label("\u{542f}\u{52a8}", systemImage: "paperplane.fill")
+                        Label(mode == "roundtable" ? "\u{5f00}\u{4f1a}" : "\u{542f}\u{52a8}", systemImage: "paperplane.fill")
                     }
                 }
                 .buttonStyle(.borderedProminent)
@@ -582,6 +639,53 @@ struct NativeBigScreenView: View {
         .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
     }
 
+    private func liveMessageBubble(_ message: ChatMessage) -> some View {
+        let isSystem = message.from == "system" || message.senderTitle.contains("\u{7cfb}\u{7edf}")
+        let tint: Color = isSystem ? .orange : (message.type == "debate" ? .red : .blue)
+        return HStack(alignment: .top, spacing: 10) {
+            avatarPill(message.senderTitle, tint: tint)
+            VStack(alignment: .leading, spacing: 5) {
+                HStack(spacing: 6) {
+                    Text(message.senderTitle)
+                        .font(.caption.weight(.bold))
+                        .lineLimit(1)
+                    if let topic = message.topic, !topic.isEmpty {
+                        Text(topic)
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                    }
+                    Spacer()
+                    Text(formatTime(message.timestamp))
+                        .font(.caption2)
+                        .foregroundStyle(.tertiary)
+                }
+                Text(message.content ?? "")
+                    .font(.caption)
+                    .lineLimit(4)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .padding(10)
+            .background(Color(.tertiarySystemBackground))
+            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+        }
+    }
+
+    private func avatarPill(_ title: String, tint: Color) -> some View {
+        let cleaned = title.replacingOccurrences(of: "\u{fe0f}", with: "")
+        let letter = cleaned.first(where: { char in
+            if char.isLetter || char.isNumber { return true }
+            guard let value = char.unicodeScalars.first?.value else { return false }
+            return value >= 0x4E00 && value <= 0x9FFF
+        }).map { String($0).uppercased() } ?? "A"
+        return Text(letter)
+            .font(.caption.bold())
+            .foregroundStyle(tint)
+            .frame(width: 30, height: 30)
+            .background(tint.opacity(0.13))
+            .clipShape(Circle())
+    }
+
     private func gomokuAgentName(id: String?, fallback: String?, defaultName: String) -> String {
         if let fallback, !fallback.isEmpty { return fallback }
         guard let id, !id.isEmpty else { return defaultName }
@@ -620,7 +724,8 @@ struct NativeBigScreenView: View {
 
     private func runCollaboration() async {
         let task = prompt.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !task.isEmpty else { return }
+        let trimmedTopic = topic.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !task.isEmpty || !trimmedTopic.isEmpty else { return }
 
         isRunning = true
         focusedField = nil
@@ -628,14 +733,25 @@ struct NativeBigScreenView: View {
         defer { isRunning = false }
 
         do {
-            let run = try await store.startCollaboration(
-                agentIds: Array(selectedAgentIds),
-                message: task,
-                topic: topic.trimmingCharacters(in: .whitespacesAndNewlines),
-                mode: mode,
-                summarizerId: summarizerId
-            )
-            activeRun = run
+            if mode == "roundtable" || mode == "debate" {
+                try await store.startRoundtable(
+                    agentIds: Array(selectedAgentIds),
+                    topic: trimmedTopic.isEmpty ? task : trimmedTopic,
+                    rounds: 1,
+                    mode: mode,
+                    summarizerId: summarizerId
+                )
+                await store.refreshMessagesSilently(limit: 800)
+            } else {
+                let run = try await store.startCollaboration(
+                    agentIds: Array(selectedAgentIds),
+                    message: task,
+                    topic: trimmedTopic,
+                    mode: mode,
+                    summarizerId: summarizerId
+                )
+                activeRun = run
+            }
         } catch {
             store.lastError = error.localizedDescription
         }
@@ -656,8 +772,7 @@ struct NativeBigScreenView: View {
     private func refreshLivePanelsLoop() async {
         while !Task.isCancelled {
             try? await Task.sleep(nanoseconds: 2_000_000_000)
-            guard hasRunningGame else { continue }
-            await store.refreshMessagesSilently(limit: 180)
+            await store.refreshMessagesSilently(limit: 800)
         }
     }
 
@@ -870,4 +985,9 @@ private func doudizhuStatusText(_ game: DoudizhuGameState) -> String {
         return "\u{8fdb}\u{884c}\u{4e2d}\u{ff1a}\u{7b2c} \(turn) \u{624b}"
     }
     return "\u{5df2}\u{542f}\u{52a8}"
+}
+
+private func formatTime(_ iso: String?) -> String {
+    guard let iso, let date = iso.asIsoDate else { return "" }
+    return date.formatted(date: .omitted, time: .shortened)
 }

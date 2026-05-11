@@ -134,6 +134,7 @@ struct GomokuMove: Codable, Identifiable, Hashable {
 }
 
 struct DoudizhuGameState: Codable, Hashable {
+    let gameId: String?
     let status: String?
     let players: [DoudizhuPlayer]?
     let handCounts: [DoudizhuPlayer]?

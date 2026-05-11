@@ -60,7 +60,7 @@ struct NativeChatView: View {
     }
 
     private var visibleMessages: [ChatMessage] {
-        let base = Array(store.messages.suffix(120))
+        let base = Array(store.messages.suffix(300))
         guard mode == .direct, let agent = privateAgent else { return base }
         return base.filter { message in
             if message.room == agent.id { return true }
@@ -103,6 +103,7 @@ struct NativeChatView: View {
             if store.messages.isEmpty {
                 await syncCurrentChat()
             }
+            await liveChatLoop()
         }
         .onChange(of: mode) { _ in
             Task { await syncCurrentChat() }
@@ -346,7 +347,7 @@ struct NativeChatView: View {
 
     private func messageRow(_ message: ChatMessage) -> some View {
         HStack(alignment: .bottom, spacing: 10) {
-            if message.isUser { Spacer(minLength: 44) } else { avatarView(for: message.senderTitle) }
+            if message.isUser { Spacer(minLength: 44) } else { avatarView(for: avatarTitle(for: message)) }
 
             VStack(alignment: message.isUser ? .trailing : .leading, spacing: 6) {
                 HStack(spacing: 6) {
@@ -439,13 +440,39 @@ struct NativeChatView: View {
     }
 
     private func avatarView(for title: String) -> some View {
-        let symbol = String(title.prefix(1)).uppercased()
+        let symbol = avatarInitial(title)
         return Text(symbol.isEmpty ? "A" : symbol)
             .font(.caption.bold())
             .foregroundStyle(.primary)
             .frame(width: 34, height: 34)
             .background(Color(.tertiarySystemBackground))
             .clipShape(Circle())
+    }
+
+    private func avatarTitle(for message: ChatMessage) -> String {
+        if message.from == "system",
+           let content = message.content,
+           content.contains("\u{6b63}\u{5728}\u{601d}\u{8003}") {
+            for agent in store.agents where content.contains(agent.name) {
+                return agent.name
+            }
+        }
+        if let from = message.from, let agent = store.agents.first(where: { $0.id == from }) {
+            return agent.name
+        }
+        return message.senderTitle
+    }
+
+    private func avatarInitial(_ title: String) -> String {
+        let cleaned = title.replacingOccurrences(of: "\u{fe0f}", with: "")
+        if let char = cleaned.first(where: { char in
+            if char.isLetter || char.isNumber { return true }
+            guard let value = char.unicodeScalars.first?.value else { return false }
+            return value >= 0x4E00 && value <= 0x9FFF
+        }) {
+            return String(char).uppercased()
+        }
+        return "A"
     }
 
     private func showMentionCandidates() {
@@ -506,7 +533,12 @@ struct NativeChatView: View {
 
         do {
             if mode == .group, targetIds.count >= 2 {
-                _ = try await store.startCollaboration(agentIds: targetIds, message: text, topic: trimmedTopic, mode: "parallel")
+                try await store.startRoundtable(
+                    agentIds: targetIds,
+                    topic: trimmedTopic.isEmpty ? text : trimmedTopic,
+                    rounds: 1,
+                    mode: "roundtable"
+                )
             } else {
                 try await store.sendChat(agentIds: targetIds, message: text, topic: trimmedTopic, room: roomId)
             }
@@ -530,6 +562,13 @@ struct NativeChatView: View {
             await store.refreshPrivateChat(agentId: privateAgentId)
         } else {
             await store.refreshChat()
+        }
+    }
+
+    private func liveChatLoop() async {
+        while !Task.isCancelled {
+            try? await Task.sleep(nanoseconds: 2_500_000_000)
+            await syncCurrentChat()
         }
     }
 

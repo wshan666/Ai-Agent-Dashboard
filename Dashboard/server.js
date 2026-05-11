@@ -354,6 +354,7 @@ function addChatMessage(msg) {
 // ── SSE (Server-Sent Events) for real-time big screen ─────────
 
 const sseClients = new Set();
+const doudizhuContinueRuns = new Set();
 
 function broadcastSSE(event, data) {
   const payload = `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
@@ -381,6 +382,11 @@ app.post('/api/doudizhu/continue', async (req, res) => {
     if (!resumeState) {
       return res.status(404).json({ ok: false, error: '没有可继续的斗地主牌局；已结束牌局或旧牌局缺少手牌状态时无法续局。' });
     }
+    const gameKey = doudizhuResumeKey(resumeState);
+    if (doudizhuContinueRuns.has(gameKey)) {
+      return res.json({ ok: true, accepted: true, resumed: true, alreadyRunning: true, gameId: resumeState.gameId || null });
+    }
+    doudizhuContinueRuns.add(gameKey);
     const reporter = pickAutoRepairReporterAgent(config);
     addChatMessage({
       id: crypto.randomUUID(),
@@ -390,21 +396,27 @@ app.post('/api/doudizhu/continue', async (req, res) => {
       timestamp: new Date().toISOString(),
       type: 'roundtable',
       topic: '斗地主流程',
-      doudizhu: ddzPublicState(resumeState.players, resumeState.landlordIndex, resumeState.nextTurnNo, resumeState.lastPlay, resumeState.players[resumeState.currentIndex])
+      doudizhu: ddzPublicState(resumeState.players, resumeState.landlordIndex, resumeState.nextTurnNo, resumeState.lastPlay, resumeState.players[resumeState.currentIndex], resumeState.gameId)
     });
-    const run = async () => runDoudizhuFlow({
-      plan: {
-        participants: resumeState.players.map(p => p.agent),
-        reporter,
-        maxTurns: resumeState.maxTurns,
-        topic: '斗地主流程',
-        resumeState,
-        resumed: true
-      },
-      message: '继续斗地主',
-      mode: 'roundtable',
-      config
-    });
+    const run = async () => {
+      try {
+        return await runDoudizhuFlow({
+          plan: {
+            participants: resumeState.players.map(p => p.agent),
+            reporter,
+            maxTurns: resumeState.maxTurns,
+            topic: '斗地主流程',
+            resumeState,
+            resumed: true
+          },
+          message: '继续斗地主',
+          mode: 'roundtable',
+          config
+        });
+      } finally {
+        doudizhuContinueRuns.delete(gameKey);
+      }
+    };
     if (req.body?.async || req.query.async) {
       run().catch(err => {
         addChatMessage({
@@ -1480,11 +1492,13 @@ function ddzComboBeats(combo, lastCombo) {
 function latestUnfinishedDoudizhuGame() {
   let startIndex = -1;
   let hasDdz = false;
+  let targetGameId = null;
   for (let i = chatHistory.messages.length - 1; i >= 0; i--) {
     const d = chatHistory.messages[i]?.doudizhu;
     if (!d) continue;
     hasDdz = true;
     if (d.status === 'finished') return null;
+    if (d.gameId) targetGameId = d.gameId;
     if (d.status === 'started') {
       startIndex = i;
       break;
@@ -1492,7 +1506,24 @@ function latestUnfinishedDoudizhuGame() {
   }
   if (!hasDdz || startIndex < 0) return null;
 
-  const slice = chatHistory.messages.slice(startIndex);
+  if (targetGameId) {
+    startIndex = -1;
+    for (let i = chatHistory.messages.length - 1; i >= 0; i--) {
+      const d = chatHistory.messages[i]?.doudizhu;
+      if (!d || d.gameId !== targetGameId) continue;
+      if (d.status === 'finished') return null;
+      if (d.status === 'started') {
+        startIndex = i;
+        break;
+      }
+    }
+    if (startIndex < 0) return null;
+  }
+
+  const slice = chatHistory.messages.slice(startIndex).filter(msg => {
+    const d = msg?.doudizhu;
+    return !targetGameId || !d || d.gameId === targetGameId;
+  });
   let latest = null;
   let latestMsg = null;
   let lastPlay = null;
@@ -1581,8 +1612,16 @@ function latestUnfinishedDoudizhuGame() {
     reporter: null,
     topic: latestMsg?.topic || '斗地主流程',
     maxTurns: 180,
+    gameId: latest?.gameId || targetGameId || null,
     resumed: true
   };
+}
+
+function doudizhuResumeKey(resumeState) {
+  if (resumeState?.gameId) return resumeState.gameId;
+  const ids = (resumeState?.players || []).map(p => p.agent?.id || p.agent?.name || '').sort().join('|');
+  const landlord = resumeState?.players?.[resumeState?.landlordIndex || 0]?.agent?.id || resumeState?.landlordIndex || 'unknown';
+  return `${ids}|landlord:${landlord}`;
 }
 
 function parseDoudizhuFlow(message, requester, config) {
@@ -1783,8 +1822,9 @@ async function askDdzPlay(player, hand, lastPlay, lastPlayer, config) {
   return { result, responseTime: Date.now() - start, play: result.ok ? parseDdzPlay(result.stdout, hand) : null };
 }
 
-function ddzPublicState(players, landlordIndex, turnNo, lastPlay, currentPlayer = null) {
+function ddzPublicState(players, landlordIndex, turnNo, lastPlay, currentPlayer = null, gameId = null) {
   return {
+    gameId,
     status: 'running',
     turnNo,
     landlordAgentId: players[landlordIndex]?.agent.id || null,
@@ -1810,6 +1850,7 @@ function ddzPublicState(players, landlordIndex, turnNo, lastPlay, currentPlayer 
 async function runDoudizhuFlow({ plan, message, mode, config }) {
   const flowType = mode && mode !== 'chat' ? mode : 'roundtable';
   const resumed = !!plan.resumeState;
+  const gameId = plan.resumeState?.gameId || plan.gameId || crypto.randomUUID();
   const players = resumed
     ? plan.resumeState.players.map(p => ({ agent: p.agent, hand: ddzSortCards(p.hand), role: p.role || '农民' }))
     : plan.participants.map(agent => ({ agent, hand: [], role: '农民' }));
@@ -1830,6 +1871,7 @@ async function runDoudizhuFlow({ plan, message, mode, config }) {
     type: flowType,
     topic: plan.topic,
     doudizhu: {
+      gameId,
       status: 'started',
       players: players.map(p => ({
         agentId: p.agent.id,
@@ -1896,7 +1938,7 @@ async function runDoudizhuFlow({ plan, message, mode, config }) {
       timestamp: new Date().toISOString(),
       type: flowType,
       topic: plan.topic,
-      doudizhu: ddzPublicState(players, landlordIndex, 0, null)
+      doudizhu: ddzPublicState(players, landlordIndex, 0, null, null, gameId)
     });
   } else {
     addChatMessage({
@@ -1907,7 +1949,7 @@ async function runDoudizhuFlow({ plan, message, mode, config }) {
       timestamp: new Date().toISOString(),
       type: flowType,
       topic: plan.topic,
-      doudizhu: ddzPublicState(players, landlordIndex, plan.resumeState.nextTurnNo, plan.resumeState.lastPlay, players[plan.resumeState.currentIndex])
+      doudizhu: ddzPublicState(players, landlordIndex, plan.resumeState.nextTurnNo, plan.resumeState.lastPlay, players[plan.resumeState.currentIndex], gameId)
     });
   }
 
@@ -1916,9 +1958,11 @@ async function runDoudizhuFlow({ plan, message, mode, config }) {
   let consecutivePasses = resumed ? (plan.resumeState.consecutivePasses || 0) : 0;
   let winner = null;
   let finishReason = '';
+  let lastTurnNo = resumed ? Math.max(0, Number(plan.resumeState.nextTurnNo) - 1 || 0) : 0;
   const plays = [];
 
   for (let turnNo = resumed ? plan.resumeState.nextTurnNo : 1; turnNo <= plan.maxTurns; turnNo++) {
+    lastTurnNo = turnNo;
     if (lastPlay && consecutivePasses >= players.length - 1) {
       const leadPlayer = lastPlay.player;
       current = players.findIndex(p => p.agent.id === leadPlayer.agent.id);
@@ -1932,7 +1976,7 @@ async function runDoudizhuFlow({ plan, message, mode, config }) {
         timestamp: new Date().toISOString(),
         type: flowType,
         topic: plan.topic,
-        doudizhu: ddzPublicState(players, landlordIndex, turnNo, null, players[current])
+        doudizhu: ddzPublicState(players, landlordIndex, turnNo, null, players[current], gameId)
       });
       continue;
     }
@@ -1946,7 +1990,7 @@ async function runDoudizhuFlow({ plan, message, mode, config }) {
       timestamp: new Date().toISOString(),
       type: flowType,
       topic: plan.topic,
-      doudizhu: ddzPublicState(players, landlordIndex, turnNo, lastPlay, player)
+      doudizhu: ddzPublicState(players, landlordIndex, turnNo, lastPlay, player, gameId)
     });
 
     const asked = await askDdzPlay(player.agent, player.hand, lastPlay, lastPlay?.player?.agent || null, config);
@@ -1994,7 +2038,7 @@ async function runDoudizhuFlow({ plan, message, mode, config }) {
         responseTime: asked.responseTime,
         type: flowType,
         topic: plan.topic,
-        doudizhu: ddzPublicState(players, landlordIndex, turnNo, lastPlay, players[(current + 1) % players.length])
+        doudizhu: ddzPublicState(players, landlordIndex, turnNo, lastPlay, players[(current + 1) % players.length], gameId)
       });
       current = (current + 1) % players.length;
       continue;
@@ -2013,7 +2057,7 @@ async function runDoudizhuFlow({ plan, message, mode, config }) {
       responseTime: asked.responseTime,
       type: flowType,
       topic: plan.topic,
-      doudizhu: ddzPublicState(players, landlordIndex, turnNo, lastPlay, players[(current + 1) % players.length])
+      doudizhu: ddzPublicState(players, landlordIndex, turnNo, lastPlay, players[(current + 1) % players.length], gameId)
     });
 
     if (player.hand.length === 0) {
@@ -2043,7 +2087,7 @@ async function runDoudizhuFlow({ plan, message, mode, config }) {
     type: flowType,
     topic: plan.topic,
     doudizhu: {
-      ...ddzPublicState(players, landlordIndex, plays.length, lastPlay),
+      ...ddzPublicState(players, landlordIndex, lastTurnNo, lastPlay, null, gameId),
       status: 'finished',
       winnerAgentId: winner.agent.id,
       winnerName: winner.agent.name,
@@ -3654,6 +3698,14 @@ function isCodexLikeAgent(agent) {
   return /\bcodex\b|codex-cli|codex exec/.test(raw);
 }
 
+function stripUnsupportedAgentCliArgs(command) {
+  let cmd = String(command || '');
+  if (/openclaw\s+agent/i.test(cmd)) {
+    cmd = cmd.replace(/\s+--skills(?:=(?:"[^"]*"|'[^']*'|\S+)|\s+(?:"[^"]*"|'[^']*'|\S+))/g, '');
+  }
+  return cmd;
+}
+
 function recentHandoffMessages(limit = 12) {
   return (chatHistory.messages || []).slice(-limit).map(m => {
     const who = m.fromName || m.from || 'unknown';
@@ -3782,7 +3834,7 @@ async function runAgentChat(agent, prompt, config) {
   }
 
   const promptB64 = tempFile ? `@${tempFile}` : Buffer.from(prompt).toString('base64');
-  let fullCmd = agent.chatCmd.replace(/\{prompt_b64\}/g, promptB64);
+  let fullCmd = stripUnsupportedAgentCliArgs(agent.chatCmd).replace(/\{prompt_b64\}/g, promptB64);
   if (!isLocal && fullCmd.includes('{prompt}')) {
     // Never splice the raw prompt into a remote shell command. Markdown fences,
     // quotes, and backticks from prior chat history can otherwise break bash.
@@ -5206,7 +5258,7 @@ app.get('/api/chat/private/:agentId', (req, res) => {
   const msgs = chatHistory.messages.filter(
     m => m.room === agentId && (m.from === 'user' || m.from === agentId)
   );
-  res.json({ agentId, messages: msgs.slice(-100) });
+  res.json({ agentId, messages: msgs.slice(-300) });
 });
 
 app.post('/api/chat/roundtable', async (req, res) => {
