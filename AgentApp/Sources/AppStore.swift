@@ -121,6 +121,16 @@ final class AppStore: ObservableObject {
         }
     }
 
+    func refreshPrivateChatSilently(agentId: String) async {
+        let trimmed = agentId.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        guard let encoded = trimmed.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed),
+              let history: PrivateChatHistoryResponse = try? await getJSON(path: "/api/chat/private/\(encoded)") else {
+            return
+        }
+        messages = sortedMessages(history.messages)
+    }
+
     func uploadImage(data: Data, mime: String = "image/jpeg") async throws -> String {
         let response: UploadResponse = try await postJSON(
             path: "/api/upload",

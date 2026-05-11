@@ -15,10 +15,13 @@ struct NativeChatView: View {
     @State private var attachedImageData: Data?
     @State private var attachedImagePreview: UIImage?
     @State private var isSending = false
+    @State private var isAutoRefreshing = false
     @State private var showAgentPicker = false
     @State private var showPrivatePicker = false
     @State private var mode: ChatMode = .group
     @FocusState private var focusedField: ChatField?
+
+    private let refreshTimer = Timer.publish(every: 2.0, on: .main, in: .common).autoconnect()
 
     private enum ChatField: Hashable { case topic, draft }
     private enum ChatMode: String, CaseIterable, Identifiable {
@@ -107,10 +110,10 @@ struct NativeChatView: View {
             if privateAgentId.isEmpty {
                 privateAgentId = store.agents.filter(\.isOnline).first?.id ?? ""
             }
-            if store.messages.isEmpty {
-                await syncCurrentChat()
-            }
-            await liveChatLoop()
+            await syncCurrentChat()
+        }
+        .onReceive(refreshTimer) { _ in
+            Task { await syncCurrentChatSilently() }
         }
         .onChange(of: mode) { _ in
             Task { await syncCurrentChat() }
@@ -663,6 +666,8 @@ struct NativeChatView: View {
             } else {
                 try await store.sendChat(agentIds: targetIds, message: finalText, topic: trimmedTopic, room: roomId)
             }
+            await syncCurrentChat()
+            Task { await followUpRefreshBurst() }
         } catch {
             let text = error.localizedDescription.lowercased()
             if text.contains("timed out") || text.contains("超时") {
@@ -683,6 +688,25 @@ struct NativeChatView: View {
             await store.refreshPrivateChat(agentId: privateAgentId)
         } else {
             await store.refreshChat()
+        }
+    }
+
+    private func syncCurrentChatSilently() async {
+        guard !isAutoRefreshing else { return }
+        isAutoRefreshing = true
+        defer { isAutoRefreshing = false }
+        if mode == .direct, !privateAgentId.isEmpty {
+            await store.refreshPrivateChatSilently(agentId: privateAgentId)
+        } else {
+            await store.refreshMessagesSilently(limit: 800)
+        }
+    }
+
+    private func followUpRefreshBurst() async {
+        for _ in 0 ..< 45 {
+            if Task.isCancelled { return }
+            try? await Task.sleep(nanoseconds: 2_000_000_000)
+            await syncCurrentChatSilently()
         }
     }
 
@@ -746,13 +770,6 @@ struct NativeChatView: View {
                 speechInput.seedTranscript(draft)
             }
             speechInput.start(localeIdentifier: "zh-CN")
-        }
-    }
-
-    private func liveChatLoop() async {
-        while !Task.isCancelled {
-            try? await Task.sleep(nanoseconds: 2_500_000_000)
-            await syncCurrentChat()
         }
     }
 
