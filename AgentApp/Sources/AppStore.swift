@@ -506,8 +506,7 @@ final class AppStore: ObservableObject {
               host == "127.0.0.1" || host == "localhost" else {
             return raw
         }
-        guard let base = settings.normalizedBaseURL,
-              var components = URLComponents(url: base, resolvingAgainstBaseURL: false) else {
+        guard var components = URLComponents(url: settings.normalizedBaseURL, resolvingAgainstBaseURL: false) else {
             return raw
         }
         components.path = url.path
