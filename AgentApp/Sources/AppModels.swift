@@ -578,6 +578,19 @@ struct MusicResult: Identifiable, Hashable {
 
 extension String {
     var asIsoDate: Date? {
-        ISO8601DateFormatter().date(from: self)
+        isoDateFormatterWithFractionalSeconds.date(from: self)
+            ?? isoDateFormatter.date(from: self)
     }
 }
+
+private let isoDateFormatterWithFractionalSeconds: ISO8601DateFormatter = {
+    let formatter = ISO8601DateFormatter()
+    formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+    return formatter
+}()
+
+private let isoDateFormatter: ISO8601DateFormatter = {
+    let formatter = ISO8601DateFormatter()
+    formatter.formatOptions = [.withInternetDateTime]
+    return formatter
+}()

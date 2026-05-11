@@ -4807,7 +4807,12 @@ app.post('/api/docker/:hostId/:action', async (req, res) => {
 // ── API: Chat ───────────────────────────────────────────────────
 
 app.get('/api/chat/history', (req, res) => {
-  res.json(chatHistory);
+  const limit = Math.max(0, Math.min(1000, Number(req.query.limit) || 0));
+  if (!limit) return res.json(chatHistory);
+  res.json({
+    topics: chatHistory.topics || [],
+    messages: (chatHistory.messages || []).slice(-limit)
+  });
 });
 
 app.delete('/api/chat/history', (req, res) => {

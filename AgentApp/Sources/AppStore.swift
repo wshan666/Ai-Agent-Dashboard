@@ -56,7 +56,7 @@ final class AppStore: ObservableObject {
         }
 
         do {
-            let history = try await fetchChatHistory()
+            let history = try await fetchChatHistory(limit: 160)
             messages = sortedMessages(history.messages)
             topics = history.topics
         } catch {
@@ -73,7 +73,7 @@ final class AppStore: ObservableObject {
         defer { isLoadingChat = false }
 
         do {
-            let history = try await fetchChatHistory()
+            let history = try await fetchChatHistory(limit: 160)
             messages = sortedMessages(history.messages)
             topics = history.topics
             lastError = nil
@@ -481,8 +481,11 @@ final class AppStore: ObservableObject {
         return sortedAgents(items)
     }
 
-    private func fetchChatHistory() async throws -> ChatHistoryResponse {
-        try await getJSON(path: "/api/chat/history")
+    private func fetchChatHistory(limit: Int? = nil) async throws -> ChatHistoryResponse {
+        if let limit {
+            return try await getJSON(path: "/api/chat/history?limit=\(max(1, min(500, limit)))")
+        }
+        return try await getJSON(path: "/api/chat/history")
     }
 
     private func fetchDevProgress() async throws -> DevProgressResponse {
@@ -724,17 +727,19 @@ final class AppStore: ObservableObject {
     }
 
     private func sortedMessages(_ messages: [ChatMessage]) -> [ChatMessage] {
-        messages.sorted { lhs, rhs in
+        messages.enumerated().sorted { lhsItem, rhsItem in
+            let lhs = lhsItem.element
+            let rhs = rhsItem.element
             switch (lhs.timestamp?.asIsoDate, rhs.timestamp?.asIsoDate) {
             case let (l?, r?):
-                return l == r ? lhs.stableId < rhs.stableId : l < r
+                return l == r ? lhsItem.offset < rhsItem.offset : l < r
             case (_?, nil):
                 return true
             case (nil, _?):
                 return false
             case (nil, nil):
-                return lhs.stableId < rhs.stableId
+                return lhsItem.offset < rhsItem.offset
             }
-        }
+        }.map(\.element)
     }
 }

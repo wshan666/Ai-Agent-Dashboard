@@ -31,7 +31,7 @@ struct NativeChatView: View {
     }
 
     private var visibleMessages: [ChatMessage] {
-        let base = Array(store.messages.suffix(220))
+        let base = Array(store.messages.suffix(120))
         guard mode == .direct, let agent = privateAgent else { return base }
         return base.filter { message in
             if message.room == agent.id { return true }
@@ -71,12 +71,15 @@ struct NativeChatView: View {
             if privateAgentId.isEmpty {
                 privateAgentId = store.agents.filter(\.isOnline).first?.id ?? ""
             }
-            await syncCurrentChat()
+            if store.messages.isEmpty {
+                await syncCurrentChat()
+            }
         }
         .onChange(of: mode) { _ in
             Task { await syncCurrentChat() }
         }
         .onChange(of: privateAgentId) { _ in
+            guard mode == .direct else { return }
             Task { await syncCurrentChat() }
         }
         .sheet(isPresented: $showAgentPicker) { groupAgentPicker }
@@ -195,6 +198,7 @@ struct NativeChatView: View {
                     ForEach(visibleMessages, id: \.stableId) { message in
                         messageRow(message).id(message.stableId)
                     }
+                    Color.clear.frame(height: 1).id("chat-bottom")
                 }
                 .padding(.horizontal, 14)
                 .padding(.vertical, 18)
@@ -203,6 +207,9 @@ struct NativeChatView: View {
             .refreshable { await syncCurrentChat() }
             .onAppear { scrollToBottom(proxy: proxy) }
             .onChange(of: store.messages.count) { _ in scrollToBottom(proxy: proxy) }
+            .onChange(of: visibleMessages.last?.stableId) { _ in scrollToBottom(proxy: proxy) }
+            .onChange(of: mode) { _ in scrollToBottom(proxy: proxy) }
+            .onChange(of: privateAgentId) { _ in scrollToBottom(proxy: proxy) }
             .onChange(of: focusedField) { field in
                 if field == .draft { scrollToBottom(proxy: proxy) }
             }
@@ -415,11 +422,9 @@ struct NativeChatView: View {
     }
 
     private func scrollToBottom(proxy: ScrollViewProxy) {
-        guard let last = visibleMessages.last else { return }
+        guard !visibleMessages.isEmpty else { return }
         DispatchQueue.main.async {
-            withAnimation(.easeOut(duration: 0.2)) {
-                proxy.scrollTo(last.stableId, anchor: .bottom)
-            }
+            proxy.scrollTo("chat-bottom", anchor: .bottom)
         }
     }
 }
