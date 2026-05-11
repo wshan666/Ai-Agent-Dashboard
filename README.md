@@ -10,6 +10,7 @@ This repository contains two parts:
 Productization docs:
 
 - `docs/API.md`: stable integration API v1.
+- `docs/AGENT_ADAPTERS.md`: how to connect CLI, SSH, Docker, and HTTP agents.
 - `docs/SECURITY.md`: security notes before deployment.
 - `docs/PRODUCT_ROADMAP.md`: path from private deploy to commercial product.
 

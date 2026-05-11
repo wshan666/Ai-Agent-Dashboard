@@ -3037,6 +3037,200 @@ function shIdent(value, fallback = '') {
   return /^[A-Za-z0-9_./:-]+$/.test(s) ? s : fallback;
 }
 
+const AGENT_ADAPTERS = {
+  cli: {
+    id: 'cli',
+    label: 'Local CLI',
+    description: 'Runs a local command on the Dashboard host.',
+    required: ['id', 'name', 'chatCmd'],
+    optional: ['executable', 'chatTimeout', 'responseParser']
+  },
+  ssh: {
+    id: 'ssh',
+    label: 'Remote SSH CLI',
+    description: 'Runs a command on a configured SSH host.',
+    required: ['id', 'name', 'chatCmd', 'hostGroup'],
+    optional: ['executable', 'runAs', 'chatTimeout', 'responseParser']
+  },
+  docker: {
+    id: 'docker',
+    label: 'Remote Docker',
+    description: 'Runs a command inside a remote Docker container over SSH.',
+    required: ['id', 'name', 'chatCmd', 'containerName', 'hostGroup'],
+    optional: ['runAs', 'chatTimeout', 'responseParser']
+  },
+  http: {
+    id: 'http',
+    label: 'HTTP API',
+    description: 'Calls a JSON HTTP endpoint and maps the response to agent output.',
+    required: ['id', 'name', 'endpoint'],
+    optional: ['method', 'headers', 'tokenEnv', 'requestTemplate', 'responsePath', 'chatTimeout']
+  }
+};
+
+function getAgentAdapter(agent, group = getHostGroup(agent?.id)) {
+  const explicit = String(agent?.adapter || agent?.provider || '').trim().toLowerCase();
+  if (explicit) return explicit;
+  const type = String(agent?.type || '').trim().toLowerCase();
+  if (type === 'http' || type === 'api' || type === 'webhook') return 'http';
+  if (type === 'docker' || agent?.containerName) return 'docker';
+  if (group && group !== 'local') return 'ssh';
+  return 'cli';
+}
+
+function validateAgentDefinition(agent, group = '') {
+  const adapter = getAgentAdapter(agent, group);
+  const def = AGENT_ADAPTERS[adapter];
+  const errors = [];
+  if (!def) {
+    errors.push(`Unsupported adapter: ${adapter}`);
+    return { ok: false, adapter, errors };
+  }
+  for (const field of def.required) {
+    if (field === 'hostGroup') {
+      if (!group || group === 'local') errors.push('hostGroup is required for remote adapters');
+      continue;
+    }
+    if (!String(agent?.[field] || '').trim()) errors.push(`${field} is required`);
+  }
+  if (adapter === 'http') {
+    try {
+      const url = new URL(agent.endpoint);
+      if (!/^https?:$/.test(url.protocol)) errors.push('endpoint must use http or https');
+    } catch {
+      errors.push('endpoint must be a valid URL');
+    }
+  }
+  return { ok: errors.length === 0, adapter, errors };
+}
+
+function validateDashboardConfig(config = loadConfig()) {
+  const errors = [];
+  const warnings = [];
+  const seen = new Set();
+  for (const [group, agents] of Object.entries(config.agents || {})) {
+    if (group !== 'local' && !config.hosts?.[group]) warnings.push(`Agent group "${group}" has no matching host config`);
+    for (const agent of agents || []) {
+      if (!agent.id) errors.push(`Agent in group "${group}" is missing id`);
+      if (agent.id && seen.has(agent.id)) errors.push(`Duplicate agent id: ${agent.id}`);
+      if (agent.id) seen.add(agent.id);
+      const validation = validateAgentDefinition(agent, group);
+      for (const err of validation.errors) errors.push(`${agent.id || agent.name || 'agent'}: ${err}`);
+    }
+  }
+  return {
+    ok: errors.length === 0,
+    errors,
+    warnings,
+    agentCount: seen.size,
+    adapters: Object.values(AGENT_ADAPTERS).map(a => a.id)
+  };
+}
+
+function resolveTemplateValue(value) {
+  return String(value || '').replace(/\$\{([A-Z0-9_]+)\}/gi, (_, name) => process.env[name] || '');
+}
+
+function objectPath(obj, pathExpr) {
+  if (!pathExpr) return undefined;
+  return String(pathExpr).split('.').reduce((cur, key) => {
+    if (cur == null) return undefined;
+    return cur[key];
+  }, obj);
+}
+
+async function requestJson({ url, method = 'POST', headers = {}, body = null, timeout = 120000 }) {
+  const target = new URL(url);
+  const transport = target.protocol === 'http:' ? require('http') : require('https');
+  const payload = body == null ? null : Buffer.from(JSON.stringify(body), 'utf-8');
+  return new Promise((resolve, reject) => {
+    const req = transport.request(target, {
+      method,
+      timeout,
+      headers: {
+        Accept: 'application/json',
+        ...(payload ? { 'Content-Type': 'application/json', 'Content-Length': payload.length } : {}),
+        ...headers
+      }
+    }, (resp) => {
+      let data = '';
+      resp.setEncoding('utf8');
+      resp.on('data', chunk => { data += chunk; });
+      resp.on('end', () => {
+        let json = null;
+        try { json = data ? JSON.parse(data) : null; } catch {}
+        if (resp.statusCode < 200 || resp.statusCode >= 300) {
+          return reject(new Error(`HTTP ${resp.statusCode}: ${data.slice(0, 1000)}`));
+        }
+        resolve({ statusCode: resp.statusCode, body: json, raw: data });
+      });
+    });
+    req.on('timeout', () => req.destroy(new Error('HTTP request timeout')));
+    req.on('error', reject);
+    if (payload) req.write(payload);
+    req.end();
+  });
+}
+
+async function runHttpAgent(agent, prompt, config) {
+  const timeout = agent.chatTimeout || 120000;
+  const endpoint = String(agent.endpoint || agent.url || '').trim();
+  if (!endpoint) return { ok: false, stdout: '', stderr: 'HTTP agent endpoint is required' };
+
+  const headers = {};
+  for (const [key, value] of Object.entries(agent.headers || {})) {
+    headers[key] = resolveTemplateValue(value);
+  }
+  if (agent.tokenEnv && process.env[agent.tokenEnv]) {
+    headers.Authorization = headers.Authorization || `Bearer ${process.env[agent.tokenEnv]}`;
+  }
+
+  const body = agent.requestTemplate && typeof agent.requestTemplate === 'object'
+    ? JSON.parse(resolveTemplateValue(JSON.stringify(agent.requestTemplate)).replace(/\{\{prompt\}\}/g, JSON.stringify(prompt).slice(1, -1)))
+    : {
+        input: prompt,
+        prompt,
+        agent_id: agent.id,
+        model: agent.model || agent.modelName || undefined
+      };
+
+  try {
+    const response = await requestJson({
+      url: endpoint,
+      method: agent.method || 'POST',
+      headers,
+      body,
+      timeout
+    });
+    const mapped = objectPath(response.body, agent.responsePath)
+      ?? response.body?.output
+      ?? response.body?.text
+      ?? response.body?.message
+      ?? response.body?.choices?.[0]?.message?.content
+      ?? response.body?.choices?.[0]?.text
+      ?? response.raw;
+    return { ok: true, stdout: typeof mapped === 'string' ? mapped : JSON.stringify(mapped, null, 2), stderr: '' };
+  } catch (e) {
+    return { ok: false, stdout: '', stderr: e.message || String(e) };
+  }
+}
+
+async function checkHttpAgent(agent) {
+  if (!agent.endpoint && !agent.url) return { status: 'not_found', info: 'HTTP endpoint 未配置' };
+  if (!agent.healthEndpoint) return { status: 'available', info: 'HTTP endpoint configured; health check not configured' };
+  try {
+    const result = await requestJson({
+      url: agent.healthEndpoint,
+      method: agent.healthMethod || 'GET',
+      headers: agent.healthHeaders || {},
+      timeout: Math.min(agent.chatTimeout || 120000, 8000)
+    });
+    return { status: 'available', info: `HTTP ${result.statusCode}` };
+  } catch (e) {
+    return { status: 'checking', info: e.message || 'HTTP health check failed' };
+  }
+}
+
 // Check status of a remote agent (via SSH)
 async function checkRemoteAgent(agent, hostConfig) {
   try {
@@ -3521,8 +3715,15 @@ function buildMeetingTranscript(responses) {
 async function runAgentChat(agent, prompt, config) {
   const timeout = agent.chatTimeout || 120000;
   const group = getHostGroup(agent.id);
+  const adapter = getAgentAdapter(agent, group);
   let result;
   prompt = attachCodexHandoff(agent, prompt);
+
+  if (adapter === 'http') {
+    result = await runHttpAgent(agent, prompt, config);
+    if (result.ok) cacheAgentStatus(agent.id, { status: 'available', version: 'HTTP API' });
+    return result;
+  }
 
   // For long prompts on local Windows, write to temp file to avoid ENAMETOOLONG
   const isLocal = group === 'local';
@@ -3792,6 +3993,9 @@ function inferAgentRuntimeInfo(agent, group = '') {
   } else if (/hermes/.test(raw)) {
     engineLabel = 'Hermes';
     if (!modelLabel) modelLabel = 'Hermes 默认模型（未配置具体型号）';
+  } else if (/http|api|webhook/.test(raw) || agent.endpoint || agent.url) {
+    engineLabel = 'HTTP API';
+    if (!modelLabel) modelLabel = agent.model || agent.modelName || 'HTTP Agent（未配置具体模型）';
   } else if (!modelLabel) {
     modelLabel = agent.type === 'docker' ? 'Docker Agent（未配置具体模型）' : 'CLI Agent（未配置具体模型）';
     modelSource = 'missing';
@@ -3807,17 +4011,21 @@ function withAgentRuntimeInfo(agent, group) {
 function publicAgentDescriptor(agent, group) {
   const runtime = inferAgentRuntimeInfo(agent, group);
   const cached = agentStatusCache[agent.id] || {};
+  const validation = validateAgentDefinition(agent, group);
   return {
     id: agent.id,
     name: agent.name,
     description: agent.description || '',
     type: agent.type || 'cli',
+    adapter: validation.adapter,
     hostGroup: group,
     disabled: !!agent.disabled,
     status: agent.disabled ? 'disabled' : (cached.status || 'unknown'),
     engineLabel: runtime.engineLabel,
     modelLabel: runtime.modelLabel,
-    modelSource: runtime.modelSource
+    modelSource: runtime.modelSource,
+    configOk: validation.ok,
+    configErrors: validation.errors
   };
 }
 
@@ -4017,6 +4225,18 @@ async function executeApiRun(id) {
 
 // ── API v1: generic integration surface ─────────────────────────
 
+app.get('/api/v1/adapters', (req, res) => {
+  res.json({
+    object: 'list',
+    data: Object.values(AGENT_ADAPTERS)
+  });
+});
+
+app.get('/api/v1/config/validate', (req, res) => {
+  const config = loadConfig();
+  res.json(validateDashboardConfig(config));
+});
+
 app.get('/api/v1/agents', (req, res) => {
   const config = loadConfig();
   res.json({
@@ -4146,7 +4366,7 @@ app.get('/api/agents', async (req, res) => {
           const cached = getCachedAgentStatus(agent);
           if (cached) { localRows.push(cached); continue; }
         }
-        const status = checkLocalAgent(agent);
+        const status = getAgentAdapter(agent, group) === 'http' ? await checkHttpAgent(agent) : checkLocalAgent(agent);
         cacheAgentStatus(agent.id, status);
         localRows.push({ ...agent, ...status, hostGroup: group });
       }
@@ -4203,7 +4423,8 @@ app.get('/api/agents/:id', async (req, res) => {
   if (!agent) return res.status(404).json({ error: 'Not found' });
   const group = getHostGroup(req.params.id);
   if (group === 'local') {
-    res.json({ ...agent, ...checkLocalAgent(agent), hostGroup: group });
+    const status = getAgentAdapter(agent, group) === 'http' ? await checkHttpAgent(agent) : checkLocalAgent(agent);
+    res.json({ ...agent, ...status, hostGroup: group });
   } else {
     const status = await checkRemoteAgent(agent, config.hosts[group]);
     res.json({ ...agent, ...status, hostGroup: group });

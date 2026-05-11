@@ -43,7 +43,7 @@ Required:
 - Role-based access control.
 - Async run queue with cancel/retry.
 - Webhook callback after run completion.
-- Agent adapter interface documented as a plugin contract.
+- Agent adapter interface documented as a plugin contract. The first version exists for `cli`, `ssh`, `docker`, and `http`; next step is moving all legacy execution paths fully behind that interface.
 
 ### 0.4 Commercial Pilot
 

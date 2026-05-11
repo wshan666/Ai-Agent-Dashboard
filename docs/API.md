@@ -41,6 +41,24 @@ Response:
 }
 ```
 
+## List Adapters
+
+```http
+GET /api/v1/adapters
+Authorization: Bearer <DASHBOARD_API_TOKEN>
+```
+
+Returns supported adapter types and required fields.
+
+## Validate Config
+
+```http
+GET /api/v1/config/validate
+Authorization: Bearer <DASHBOARD_API_TOKEN>
+```
+
+Use this before selling/deploying a customer instance. It catches duplicate agent IDs, missing fields, unsupported adapters, and missing host groups.
+
 ## Create Run
 
 ```http

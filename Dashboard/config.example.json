@@ -53,6 +53,27 @@
         "chatTimeout": 120000,
         "disabled": true,
         "actions": []
+      },
+      {
+        "id": "http-demo",
+        "name": "HTTP Demo Agent",
+        "icon": "H",
+        "type": "http",
+        "adapter": "http",
+        "description": "Example HTTP agent. Replace endpoint and token env with your own service.",
+        "endpoint": "https://example.com/agent/run",
+        "method": "POST",
+        "tokenEnv": "HTTP_DEMO_AGENT_TOKEN",
+        "headers": {
+          "Authorization": "Bearer ${HTTP_DEMO_AGENT_TOKEN}"
+        },
+        "requestTemplate": {
+          "input": "{{prompt}}"
+        },
+        "responsePath": "output",
+        "chatTimeout": 120000,
+        "disabled": true,
+        "actions": []
       }
     ]
   }

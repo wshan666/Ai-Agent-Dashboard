@@ -38,6 +38,8 @@ Optional one-click launcher on Windows:
 
 - `GET /api/health`
 - `GET /api/v1/agents`
+- `GET /api/v1/adapters`
+- `GET /api/v1/config/validate`
 - `POST /api/v1/runs`
 - `GET /api/v1/runs`
 - `GET /api/v1/runs/:id`
