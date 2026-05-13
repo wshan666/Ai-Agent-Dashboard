@@ -442,7 +442,7 @@ struct NativeChatView: View {
                     Text(message.senderTitle).font(.caption.weight(.semibold)).foregroundStyle(.secondary)
                     Text(formatTime(message.timestamp)).font(.caption2).foregroundStyle(.tertiary)
                 }
-                Text(message.content ?? "")
+                Text(displayContent(for: message))
                     .font(.subheadline)
                     .foregroundStyle(message.isUser ? Color.white : Color.primary)
                     .padding(.horizontal, 14)
@@ -452,7 +452,7 @@ struct NativeChatView: View {
                     .frame(maxWidth: UIScreen.main.bounds.width * 0.72, alignment: message.isUser ? .trailing : .leading)
                     .textSelection(.enabled)
 
-                let urls = imageUrls(in: message.content)
+                let urls = imageUrls(in: displayContent(for: message))
                 if !urls.isEmpty {
                     VStack(alignment: message.isUser ? .trailing : .leading, spacing: 8) {
                         ForEach(urls, id: \.absoluteString) { url in
@@ -570,17 +570,31 @@ struct NativeChatView: View {
     }
 
     private func avatarTitle(for message: ChatMessage) -> String {
-        if message.from == "system",
-           let content = message.content,
-           content.contains("\u{6b63}\u{5728}\u{601d}\u{8003}") {
-            for agent in store.agents where content.contains(agent.name) {
-                return agent.name
-            }
+        if let agent = thinkingAgent(for: message) {
+            return agent.name
         }
         if let from = message.from, let agent = store.agents.first(where: { $0.id == from }) {
             return agent.name
         }
         return message.senderTitle
+    }
+
+    private func displayContent(for message: ChatMessage) -> String {
+        guard let agent = thinkingAgent(for: message) else {
+            return message.content ?? ""
+        }
+        return "\(agent.name) \u{6b63}\u{5728}\u{601d}\u{8003}..."
+    }
+
+    private func thinkingAgent(for message: ChatMessage) -> AgentSummary? {
+        guard message.from == "system",
+              let content = message.content,
+              content.contains("\u{6b63}\u{5728}\u{601d}\u{8003}") else {
+            return nil
+        }
+        return store.agents.first { agent in
+            content.contains(agent.name) || content.contains(agent.id)
+        }
     }
 
     private func avatarInitial(_ title: String) -> String {
