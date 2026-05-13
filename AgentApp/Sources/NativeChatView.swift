@@ -88,7 +88,7 @@ struct NativeChatView: View {
             topicSection
             messageStream
         }
-        .background(Color(.systemGroupedBackground))
+        .v2PageBackground()
         .navigationTitle("\u{534f}\u{4f5c}")
         .navigationBarTitleDisplayMode(.inline)
         .safeAreaInset(edge: .bottom, spacing: 0) {
@@ -180,7 +180,8 @@ struct NativeChatView: View {
                             }
                             .padding(.horizontal, 10)
                             .padding(.vertical, 8)
-                            .background(Color(.secondarySystemBackground))
+                            .background(V2Theme.cyan.opacity(0.12))
+                            .overlay(Capsule().stroke(V2Theme.cyan.opacity(0.28), lineWidth: 1))
                             .clipShape(Capsule())
                         }
                     }
@@ -202,8 +203,7 @@ struct NativeChatView: View {
                         Image(systemName: "chevron.right").foregroundStyle(.tertiary)
                     }
                     .padding(12)
-                    .background(Color(.secondarySystemBackground))
-                    .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                    .v2Card(tint: V2Theme.cyan)
                 }
                 .buttonStyle(.plain)
             }
@@ -211,7 +211,12 @@ struct NativeChatView: View {
         .padding(.horizontal, 16)
         .padding(.top, 12)
         .padding(.bottom, 10)
-        .background(.ultraThinMaterial)
+        .background(.regularMaterial)
+        .overlay(alignment: .bottom) {
+            Rectangle()
+                .fill(LinearGradient(colors: [V2Theme.cyan.opacity(0.45), V2Theme.mint.opacity(0.18)], startPoint: .leading, endPoint: .trailing))
+                .frame(height: 1)
+        }
     }
 
     private var topicSection: some View {
@@ -228,7 +233,8 @@ struct NativeChatView: View {
                                 .font(.caption)
                                 .padding(.horizontal, 10)
                                 .padding(.vertical, 7)
-                                .background(topic == item.text ? Color.blue.opacity(0.16) : Color(.secondarySystemBackground))
+                                .background(topic == item.text ? V2Theme.cyan.opacity(0.18) : Color(.secondarySystemBackground).opacity(0.72))
+                                .overlay(Capsule().stroke(topic == item.text ? V2Theme.cyan.opacity(0.38) : Color.clear, lineWidth: 1))
                                 .clipShape(Capsule())
                                 .buttonStyle(.plain)
                         }
@@ -238,7 +244,12 @@ struct NativeChatView: View {
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 10)
-        .background(Color(.systemBackground))
+        .background(.regularMaterial)
+        .overlay(alignment: .bottom) {
+            Rectangle()
+                .fill(V2Theme.cyan.opacity(0.18))
+                .frame(height: 1)
+        }
     }
 
     private var messageStream: some View {
@@ -280,8 +291,9 @@ struct NativeChatView: View {
                             .font(.headline)
                     }
                     .frame(width: 38, height: 38)
-                    .foregroundStyle(Color.blue)
-                    .background(Color.blue.opacity(0.12))
+                    .foregroundStyle(V2Theme.cyan)
+                    .background(V2Theme.cyan.opacity(0.13))
+                    .overlay(Circle().stroke(V2Theme.cyan.opacity(0.32), lineWidth: 1))
                     .clipShape(Circle())
                         .buttonStyle(.plain)
                 }
@@ -290,8 +302,9 @@ struct NativeChatView: View {
                     Image(systemName: "photo")
                         .font(.headline)
                         .frame(width: 38, height: 38)
-                        .foregroundStyle(Color.blue)
-                        .background(Color.blue.opacity(0.12))
+                        .foregroundStyle(V2Theme.cyan)
+                        .background(V2Theme.cyan.opacity(0.13))
+                        .overlay(Circle().stroke(V2Theme.cyan.opacity(0.32), lineWidth: 1))
                         .clipShape(Circle())
                 }
                 .disabled(isSending)
@@ -302,8 +315,9 @@ struct NativeChatView: View {
                     Image(systemName: speechInput.isRecording ? "stop.fill" : "mic.fill")
                         .font(.headline)
                         .frame(width: 38, height: 38)
-                        .foregroundStyle(speechInput.isRecording ? Color.white : Color.blue)
-                        .background(speechInput.isRecording ? Color.red : Color.blue.opacity(0.12))
+                        .foregroundStyle(speechInput.isRecording ? Color.white : V2Theme.cyan)
+                        .background(speechInput.isRecording ? V2Theme.red : V2Theme.cyan.opacity(0.13))
+                        .overlay(Circle().stroke((speechInput.isRecording ? V2Theme.red : V2Theme.cyan).opacity(0.32), lineWidth: 1))
                         .clipShape(Circle())
                 }
                 .buttonStyle(.plain)
@@ -325,7 +339,7 @@ struct NativeChatView: View {
                 }
                 .frame(width: 44, height: 44)
                 .foregroundStyle(.white)
-                .background(canSend ? Color.blue : Color.gray.opacity(0.45))
+                .background(canSend ? V2Theme.cyan : Color.gray.opacity(0.45))
                 .clipShape(Circle())
                 .disabled(!canSend || isSending)
             }
@@ -341,7 +355,12 @@ struct NativeChatView: View {
             }
         }
         .padding(16)
-        .background(.ultraThinMaterial)
+        .background(.regularMaterial)
+        .overlay(alignment: .bottom) {
+            Rectangle()
+                .fill(LinearGradient(colors: [V2Theme.cyan.opacity(0.45), V2Theme.mint.opacity(0.18)], startPoint: .leading, endPoint: .trailing))
+                .frame(height: 1)
+        }
     }
 
     @ViewBuilder
@@ -352,7 +371,7 @@ struct NativeChatView: View {
                     .resizable()
                     .scaledToFill()
                     .frame(width: 62, height: 62)
-                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                    .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
                 VStack(alignment: .leading, spacing: 3) {
                     Text("\u{5df2}\u{9009}\u{62e9}\u{56fe}\u{7247}")
                         .font(.caption.weight(.semibold))
@@ -370,23 +389,20 @@ struct NativeChatView: View {
                 }
                 .buttonStyle(.plain)
             }
-            .padding(10)
-            .background(Color(.systemBackground))
-            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+            .v2Card(tint: V2Theme.cyan)
         }
 
         if speechInput.isRecording || !speechInput.statusText.isEmpty {
             HStack(spacing: 8) {
                 Image(systemName: speechInput.isRecording ? "waveform" : "mic")
-                    .foregroundStyle(speechInput.isRecording ? Color.red : Color.secondary)
+                    .foregroundStyle(speechInput.isRecording ? V2Theme.red : Color.secondary)
                 Text(speechInput.statusText)
                     .font(.caption)
                     .foregroundStyle(.secondary)
                 Spacer()
             }
             .padding(10)
-            .background(Color(.systemBackground))
-            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+            .v2Card(tint: V2Theme.cyan)
         }
     }
 
@@ -416,12 +432,13 @@ struct NativeChatView: View {
                                     if selectedAgentIds.contains(agent.id) {
                                         Image(systemName: "checkmark.circle.fill")
                                             .font(.caption)
-                                            .foregroundStyle(Color.blue)
+                                            .foregroundStyle(V2Theme.cyan)
                                     }
                                 }
                                 .padding(.horizontal, 10)
                                 .padding(.vertical, 8)
-                                .background(Color(.secondarySystemBackground))
+                                .background(V2Theme.cyan.opacity(0.11))
+                                .overlay(Capsule().stroke(V2Theme.cyan.opacity(0.22), lineWidth: 1))
                                 .clipShape(Capsule())
                             }
                             .buttonStyle(.plain)
@@ -430,8 +447,7 @@ struct NativeChatView: View {
                 }
             }
             .padding(10)
-            .background(Color(.systemBackground))
-            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+            .v2Card(tint: V2Theme.cyan)
         }
     }
 
@@ -450,8 +466,12 @@ struct NativeChatView: View {
                     .foregroundStyle(message.isUser ? Color.white : Color.primary)
                     .padding(.horizontal, 14)
                     .padding(.vertical, 11)
-                    .background(message.isUser ? Color.blue : Color(.secondarySystemBackground))
-                    .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+                    .background(message.isUser ? V2Theme.cyan : Color(.secondarySystemBackground).opacity(0.86))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 8, style: .continuous)
+                            .stroke(message.isUser ? V2Theme.mint.opacity(0.38) : V2Theme.cyan.opacity(0.18), lineWidth: 1)
+                    )
+                    .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
                     .frame(maxWidth: UIScreen.main.bounds.width * 0.72, alignment: message.isUser ? .trailing : .leading)
                     .textSelection(.enabled)
 
@@ -464,20 +484,20 @@ struct NativeChatView: View {
                                 case .empty:
                                     ProgressView()
                                         .frame(width: 180, height: 130)
-                                        .background(Color(.secondarySystemBackground))
+                                        .background(Color(.secondarySystemBackground).opacity(0.86))
                                 case .success(let image):
                                     image
                                         .resizable()
                                         .scaledToFill()
                                         .frame(width: 180, height: 130)
-                                        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                                        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
                                 case .failure:
                                     Label("\u{56fe}\u{7247}\u{52a0}\u{8f7d}\u{5931}\u{8d25}", systemImage: "photo")
                                         .font(.caption)
                                         .foregroundStyle(.secondary)
                                         .frame(width: 180, height: 70)
-                                        .background(Color(.secondarySystemBackground))
-                                        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                                        .background(Color(.secondarySystemBackground).opacity(0.86))
+                                        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
                                 @unknown default:
                                     EmptyView()
                                 }
@@ -568,7 +588,8 @@ struct NativeChatView: View {
             .font(.caption.bold())
             .foregroundStyle(.primary)
             .frame(width: 34, height: 34)
-            .background(Color(.tertiarySystemBackground))
+            .background(V2Theme.cyan.opacity(0.12))
+            .overlay(Circle().stroke(V2Theme.cyan.opacity(0.34), lineWidth: 1))
             .clipShape(Circle())
     }
 

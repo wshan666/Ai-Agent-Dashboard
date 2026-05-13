@@ -79,7 +79,7 @@ struct NativeBigScreenView: View {
             }
             .padding(18)
         }
-        .background(Color(.systemGroupedBackground))
+        .v2PageBackground()
         .navigationTitle("\u{6307}\u{6325}\u{5927}\u{5c4f}")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
@@ -107,22 +107,18 @@ struct NativeBigScreenView: View {
 
     private var header: some View {
         VStack(alignment: .leading, spacing: 12) {
-            HStack(alignment: .top) {
-                VStack(alignment: .leading, spacing: 5) {
-                    Text("\u{5927}\u{5c4f}\u{534f}\u{4f5c}")
-                        .font(.largeTitle.bold())
-                    Text("\u{539f}\u{751f}\u{5c55}\u{793a}\u{6700}\u{65b0}\u{534f}\u{4f5c}\u{3001}\u{4e94}\u{5b50}\u{68cb}\u{548c}\u{6597}\u{5730}\u{4e3b}\u{8fdb}\u{5ea6}")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                }
-                Spacer()
-                if store.isLoadingDashboard { ProgressView() }
-            }
+            V2HeroHeader(
+                eyebrow: "Live Ops",
+                title: "\u{6307}\u{6325}\u{5927}\u{5c4f}",
+                subtitle: "\u{52a8}\u{6001}\u{76d1}\u{63a7}\u{4f1a}\u{8bae}\u{53d1}\u{8a00}\u{3001}\u{6e38}\u{620f}\u{724c}\u{5c40}\u{548c}\u{591a} agent \u{534f}\u{540c}\u{4efb}\u{52a1}\u{3002}",
+                systemImage: "display.2",
+                tint: V2Theme.violet
+            )
 
             HStack(spacing: 10) {
-                metric("\u{5728}\u{7ebf}", "\(onlineAgents.count)", .green)
-                metric("\u{5df2}\u{9009}", "\(selectedAgentIds.count)", .blue)
-                metric("\u{6d88}\u{606f}", "\(store.messages.count)", .purple)
+                metric("\u{5728}\u{7ebf}", "\(onlineAgents.count)", V2Theme.mint)
+                metric("\u{5df2}\u{9009}", "\(selectedAgentIds.count)", V2Theme.cyan)
+                metric("\u{6d88}\u{606f}", "\(store.messages.count)", V2Theme.violet)
             }
         }
     }
@@ -204,8 +200,8 @@ struct NativeBigScreenView: View {
                         }
                     }
                     .padding(10)
-                    .background(Color(.tertiarySystemBackground))
-                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                    .background(Color(.secondarySystemBackground).opacity(0.68))
+                    .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
                 }
             }
         }
@@ -312,6 +308,7 @@ struct NativeBigScreenView: View {
                     }
                 }
                 .buttonStyle(.bordered)
+                .tint(V2Theme.cyan)
                 .disabled(isContinuingDoudizhu || game.status == "finished")
             }
 
@@ -388,6 +385,7 @@ struct NativeBigScreenView: View {
                     selectedAgentIds = Set(onlineAgents.prefix(4).map(\.id))
                 }
                 .buttonStyle(.bordered)
+                .tint(V2Theme.cyan)
 
                 Button("\u{6e05}\u{7a7a}") {
                     selectedAgentIds.removeAll()
@@ -407,6 +405,7 @@ struct NativeBigScreenView: View {
                     }
                 }
                 .buttonStyle(.borderedProminent)
+                .tint(V2Theme.cyan)
                 .disabled(!canRun || isRunning)
             }
         }
@@ -476,12 +475,12 @@ struct NativeBigScreenView: View {
             }
             .padding(12)
             .frame(maxWidth: .infinity, minHeight: 142, alignment: .topLeading)
-            .background(selected ? Color.blue.opacity(0.12) : Color(.secondarySystemBackground))
+            .background(selected ? V2Theme.cyan.opacity(0.14) : Color(.secondarySystemBackground).opacity(0.72))
             .overlay(
-                RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .stroke(selected ? Color.blue.opacity(0.55) : Color.clear, lineWidth: 1)
+                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    .stroke(selected ? V2Theme.cyan.opacity(0.55) : Color.clear, lineWidth: 1)
             )
-            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+            .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
             .opacity(agent.disabled ? 0.45 : 1)
         }
         .buttonStyle(.plain)
@@ -551,8 +550,7 @@ struct NativeBigScreenView: View {
         }
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color(.secondarySystemBackground))
-        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .v2Card(tint: V2Theme.violet)
     }
 
     private func doudizhuPlayerRow(_ player: DoudizhuPlayer, game: DoudizhuGameState) -> some View {
@@ -619,8 +617,7 @@ struct NativeBigScreenView: View {
             Spacer()
         }
         .padding(14)
-        .background(Color(.secondarySystemBackground))
-        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .v2Card(tint: V2Theme.cyan)
     }
 
     private func playerBadge(title: String, name: String, color: Color) -> some View {
@@ -725,17 +722,16 @@ struct NativeBigScreenView: View {
         }
         .padding(12)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(color.opacity(0.12))
-        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .background(color.opacity(0.13))
+        .overlay(RoundedRectangle(cornerRadius: 8, style: .continuous).stroke(color.opacity(0.28), lineWidth: 1))
+        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
     }
 
     private func card<Content: View>(@ViewBuilder _ content: () -> Content) -> some View {
         VStack(alignment: .leading, spacing: 14) {
             content()
         }
-        .padding(16)
-        .background(Color(.secondarySystemBackground))
-        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .v2Card(tint: V2Theme.violet)
     }
 
     private func runCollaboration() async {

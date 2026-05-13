@@ -27,13 +27,13 @@ struct NativeWorkflowView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 18) {
-                VStack(alignment: .leading, spacing: 6) {
-                    Text("\u{5de5}\u{4f5c}\u{6d41}\u{4e2d}\u{5fc3}")
-                        .font(.largeTitle.bold())
-                    Text("\u{5728}\u{624b}\u{673a}\u{91cc}\u{76f4}\u{63a5}\u{53d1}\u{8d77}\u{4e0d}\u{540c}\u{7c7b}\u{578b}\u{7684}\u{539f}\u{751f}\u{5de5}\u{4f5c}\u{6d41}\u{3002}")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                }
+                V2HeroHeader(
+                    eyebrow: "Workflow Lab",
+                    title: "\u{5de5}\u{4f5c}\u{6d41}\u{4e2d}\u{5fc3}",
+                    subtitle: "\u{5728}\u{624b}\u{673a}\u{91cc}\u{53d1}\u{8d77}\u{4ee3}\u{7801}\u{3001}PPT\u{3001}\u{5185}\u{5bb9}\u{548c}\u{97f3}\u{4e50}\u{7b49}\u{539f}\u{751f}\u{5de5}\u{4f5c}\u{6d41}\u{3002}",
+                    systemImage: "point.3.connected.trianglepath.dotted",
+                    tint: V2Theme.mint
+                )
                 .padding(.horizontal, 18)
 
                 templateSwitcher
@@ -45,7 +45,7 @@ struct NativeWorkflowView: View {
             .padding(.bottom, 24)
         }
         .scrollDismissesKeyboard(.interactively)
-        .background(Color(.systemGroupedBackground))
+        .v2PageBackground()
         .navigationTitle("\u{5de5}\u{4f5c}\u{6d41}")
         .navigationBarTitleDisplayMode(.inline)
         .ignoresSafeArea(.keyboard, edges: .bottom)
@@ -75,9 +75,13 @@ struct NativeWorkflowView: View {
                     }
                     .padding(14)
                     .frame(maxWidth: .infinity, minHeight: 96, alignment: .leading)
-                    .background(selectedTemplate == template ? Color.blue : Color(.secondarySystemBackground))
+                    .background(selectedTemplate == template ? V2Theme.mint : Color(.secondarySystemBackground).opacity(0.72))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 8, style: .continuous)
+                            .stroke(selectedTemplate == template ? V2Theme.cyan.opacity(0.6) : V2Theme.mint.opacity(0.18), lineWidth: 1)
+                    )
                     .foregroundStyle(selectedTemplate == template ? .white : .primary)
-                    .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+                    .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
                 }
                 .buttonStyle(.plain)
             }
@@ -434,9 +438,7 @@ struct NativeWorkflowView: View {
 
     private func card<Content: View>(@ViewBuilder _ content: () -> Content) -> some View {
         VStack(alignment: .leading, spacing: 14) { content() }
-            .padding(16)
-            .background(Color(.secondarySystemBackground))
-            .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+            .v2Card(tint: V2Theme.mint)
     }
 
     private func nativePlayerCard(_ track: MusicTrack) -> some View {
@@ -501,8 +503,7 @@ struct NativeWorkflowView: View {
             }
         }
         .padding(14)
-        .background(Color(.tertiarySystemBackground))
-        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .v2Card(tint: V2Theme.cyan)
     }
 
     private func musicListBlock(_ title: String, tracks: [MusicTrack], showDelete: Bool) -> some View {

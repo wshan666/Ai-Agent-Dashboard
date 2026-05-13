@@ -26,7 +26,7 @@ struct ContentView: View {
                 .tabItem { Label("\u{6211}\u{7684}", systemImage: "person.crop.circle") }
                 .tag(RootTab.profile)
         }
-        .tint(.blue)
+        .tint(V2Theme.cyan)
         .onChange(of: selectedTab) { _ in UIApplication.dismissKeyboard() }
         .task {
             if store.agents.isEmpty {

@@ -51,6 +51,8 @@ struct NativeRunsView: View {
                 }
             }
         }
+        .scrollContentBackground(.hidden)
+        .v2PageBackground()
         .navigationTitle("\u{8fd0}\u{884c}\u{8bb0}\u{5f55}")
         .refreshable { await store.refreshRuns(status: filter.apiStatus) }
         .overlay {
@@ -155,6 +157,7 @@ struct NativeRunDetailView: View {
             }
             .padding(18)
         }
+        .v2PageBackground()
         .navigationTitle("\u{8fd0}\u{884c}\u{8be6}\u{60c5}")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
@@ -207,9 +210,7 @@ struct NativeRunDetailView: View {
                 metaTile("\u{8017}\u{65f6}", run.latencyMs.map { "\($0)ms" } ?? "-")
             }
         }
-        .padding(16)
-        .background(Color(.secondarySystemBackground))
-        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .v2Card(tint: V2Theme.cyan)
     }
 
     private func block(title: String, text: String, color: Color = .primary) -> some View {
@@ -221,9 +222,7 @@ struct NativeRunDetailView: View {
                 .textSelection(.enabled)
                 .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .padding(16)
-        .background(Color(.secondarySystemBackground))
-        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .v2Card(tint: V2Theme.cyan)
     }
 
     private func responsesBlock(_ responses: [CollaborationAgentResponse]) -> some View {
@@ -249,9 +248,7 @@ struct NativeRunDetailView: View {
                 .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
             }
         }
-        .padding(16)
-        .background(Color(.secondarySystemBackground))
-        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .v2Card(tint: V2Theme.cyan)
     }
 
     private func metaTile(_ title: String, _ value: String) -> some View {
