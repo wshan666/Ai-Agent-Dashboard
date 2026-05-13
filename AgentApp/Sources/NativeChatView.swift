@@ -18,6 +18,7 @@ struct NativeChatView: View {
     @State private var isAutoRefreshing = false
     @State private var showAgentPicker = false
     @State private var showPrivatePicker = false
+    @State private var expandedMessageIds: Set<String> = []
     @State private var mode: ChatMode = .group
     @FocusState private var focusedField: ChatField?
 
@@ -452,7 +453,12 @@ struct NativeChatView: View {
     }
 
     private func messageRow(_ message: ChatMessage) -> some View {
-        HStack(alignment: .bottom, spacing: 10) {
+        let bodyText = displayContent(for: message)
+        let lineCount = bodyText.components(separatedBy: .newlines).count
+        let isLong = bodyText.count > 360 || lineCount > 10
+        let isExpanded = expandedMessageIds.contains(message.stableId)
+
+        return HStack(alignment: .bottom, spacing: 10) {
             if message.isUser { Spacer(minLength: 44) } else { avatarView(for: avatarTitle(for: message)) }
 
             VStack(alignment: message.isUser ? .trailing : .leading, spacing: 6) {
@@ -461,11 +467,12 @@ struct NativeChatView: View {
                     Text(displaySenderTitle(for: message)).font(.caption.weight(.semibold)).foregroundStyle(.secondary)
                     Text(formatTime(message.timestamp)).font(.caption2).foregroundStyle(.tertiary)
                 }
-                Text(displayContent(for: message))
+                Text(bodyText)
                     .font(.subheadline)
                     .foregroundStyle(message.isUser ? Color.white : Color.primary)
                     .padding(.horizontal, 14)
                     .padding(.vertical, 11)
+                    .lineLimit(isLong && !isExpanded ? 10 : nil)
                     .background(message.isUser ? V2Theme.cyan : Color(.secondarySystemBackground).opacity(0.86))
                     .overlay(
                         RoundedRectangle(cornerRadius: 8, style: .continuous)
@@ -475,7 +482,22 @@ struct NativeChatView: View {
                     .frame(maxWidth: UIScreen.main.bounds.width * 0.72, alignment: message.isUser ? .trailing : .leading)
                     .textSelection(.enabled)
 
-                let urls = imageUrls(in: displayContent(for: message))
+                if isLong {
+                    Button {
+                        if isExpanded {
+                            expandedMessageIds.remove(message.stableId)
+                        } else {
+                            expandedMessageIds.insert(message.stableId)
+                        }
+                    } label: {
+                        Label(isExpanded ? "\u{6536}\u{8d77}\u{957f}\u{6d88}\u{606f}" : "\u{5c55}\u{5f00}\u{5b8c}\u{6574}\u{5185}\u{5bb9}", systemImage: isExpanded ? "chevron.up.circle" : "chevron.down.circle")
+                            .font(.caption.weight(.semibold))
+                    }
+                    .buttonStyle(.plain)
+                    .foregroundStyle(V2Theme.cyan)
+                }
+
+                let urls = imageUrls(in: bodyText)
                 if !urls.isEmpty {
                     VStack(alignment: message.isUser ? .trailing : .leading, spacing: 8) {
                         ForEach(urls, id: \.absoluteString) { url in
@@ -512,7 +534,6 @@ struct NativeChatView: View {
         }
         .frame(maxWidth: .infinity, alignment: message.isUser ? .trailing : .leading)
     }
-
     private var groupAgentPicker: some View {
         NavigationStack {
             List(store.agents) { agent in
@@ -712,16 +733,7 @@ struct NativeChatView: View {
 
         do {
             let finalText = try await messageWithUploadedImage(text: text, imageData: imageData)
-            if mode == .group, targetIds.count >= 2 {
-                try await store.startRoundtable(
-                    agentIds: targetIds,
-                    topic: trimmedTopic.isEmpty ? finalText : "\(trimmedTopic)\n\n\(finalText)",
-                    rounds: 1,
-                    mode: "roundtable"
-                )
-            } else {
-                try await store.sendChat(agentIds: targetIds, message: finalText, topic: trimmedTopic, room: roomId)
-            }
+            try await store.sendChat(agentIds: targetIds, message: finalText, topic: trimmedTopic, room: roomId)
             await syncCurrentChat()
             Task { await followUpRefreshBurst() }
         } catch {

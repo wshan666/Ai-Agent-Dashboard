@@ -166,45 +166,257 @@ struct NativeBigScreenView: View {
                 Label("\u{529e}\u{516c}\u{5ba4}\u{5927}\u{5c4f}", systemImage: "building.2")
                     .font(.headline)
                 Spacer()
-                Text("\u{539f}\u{751f}\u{7248}")
+                Text("\u{52a8}\u{6001}\u{76d1}\u{63a7}")
                     .font(.caption.weight(.semibold))
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(V2Theme.cyan)
+            }
+
+            TimelineView(.animation) { timeline in
+                let time = timeline.date.timeIntervalSinceReferenceDate
+                VStack(alignment: .leading, spacing: 12) {
+                    officeCommandPulse(time: time)
+
+                    LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 10) {
+                        ForEach(Array(groupedAgents.enumerated()), id: \.offset) { index, item in
+                            officeGroupPanel(group: item.0, agents: item.1, index: index, time: time)
+                        }
+                    }
+                }
+            }
+            .frame(minHeight: 300)
+        }
+    }
+
+    private func officeCommandPulse(time: TimeInterval) -> some View {
+        let onlineRatio = store.agents.isEmpty ? 0 : Double(onlineAgents.count) / Double(store.agents.count)
+        let sweep = (sin(time * 1.1) + 1) / 2
+
+        return ZStack {
+            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                .fill(
+                    LinearGradient(
+                        colors: [
+                            V2Theme.cyan.opacity(0.10),
+                            V2Theme.violet.opacity(0.14),
+                            Color.black.opacity(0.08)
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+
+            Canvas { context, size in
+                let midY = size.height * 0.5
+                let sweepX = size.width * (0.16 + sweep * 0.68)
+
+                var rail = Path()
+                rail.move(to: CGPoint(x: 18, y: midY))
+                rail.addLine(to: CGPoint(x: size.width - 18, y: midY))
+                context.stroke(rail, with: .color(V2Theme.cyan.opacity(0.16)), lineWidth: 1.4)
+
+                var pulse = Path()
+                pulse.move(to: CGPoint(x: max(18, sweepX - 54), y: midY))
+                pulse.addLine(to: CGPoint(x: min(size.width - 18, sweepX + 54), y: midY))
+                context.stroke(pulse, with: .color(V2Theme.cyan.opacity(0.52)), lineWidth: 2.2)
+            }
+            .allowsHitTesting(false)
+
+            HStack(spacing: 14) {
+                ZStack {
+                    Circle()
+                        .stroke(V2Theme.cyan.opacity(0.25 + sweep * 0.28), lineWidth: 1.6)
+                        .frame(width: 58, height: 58)
+                    Circle()
+                        .fill(V2Theme.cyan.opacity(0.12 + sweep * 0.08))
+                        .frame(width: 42, height: 42)
+                    Image(systemName: "antenna.radiowaves.left.and.right")
+                        .font(.title3.weight(.semibold))
+                        .foregroundStyle(V2Theme.cyan)
+                }
+
+                VStack(alignment: .leading, spacing: 5) {
+                    Text("\u{534f}\u{4f5c}\u{4e2d}\u{67a2}")
+                        .font(.headline)
+                    Text("\u{5b9e}\u{65f6}\u{5e7f}\u{64ad}\u{667a}\u{80fd}\u{4f53}\u{72b6}\u{6001}\u{3001}\u{53d1}\u{8a00}\u{6d41}\u{548c}\u{4efb}\u{52a1}\u{8c03}\u{5ea6}")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(2)
+                }
+
+                Spacer(minLength: 10)
+
+                VStack(alignment: .trailing, spacing: 4) {
+                    Text("\u{5728}\u{7ebf}\u{8986}\u{76d6}")
+                        .font(.caption2.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                    Text("\(Int((onlineRatio * 100).rounded()))%")
+                        .font(.system(size: 26, weight: .bold, design: .rounded))
+                        .foregroundStyle(V2Theme.cyan)
+                }
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 12)
+        }
+        .frame(height: 86)
+        .overlay(
+            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                .stroke(V2Theme.cyan.opacity(0.18 + sweep * 0.18), lineWidth: 1)
+        )
+        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+    }
+
+    private func officeGroupPanel(group: String, agents: [AgentSummary], index: Int, time: TimeInterval) -> some View {
+        let tint = index.isMultiple(of: 2) ? V2Theme.cyan : V2Theme.violet
+        let sweep = (sin(time * 1.35 + Double(index)) + 1) / 2
+        let visibleAgents = Array(agents.prefix(4))
+        let overflowCount = max(agents.count - visibleAgents.count, 0)
+
+        return VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(group)
+                        .font(.caption.weight(.bold))
+                        .lineLimit(1)
+                    Text("\(agents.count) \u{4e2a} agent")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                }
+                Spacer()
+                if overflowCount > 0 {
+                    Text("+\(overflowCount)")
+                        .font(.caption2.weight(.bold))
+                        .foregroundStyle(.secondary)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 3)
+                        .background(Color.white.opacity(0.06))
+                        .clipShape(Capsule())
+                }
+                Spacer(minLength: 6)
+                HStack(spacing: 6) {
+                    Circle()
+                        .fill(tint.opacity(0.85))
+                        .frame(width: 6, height: 6)
+                    Text("\(agents.filter(\.isOnline).count)/\(agents.count)")
+                        .font(.caption2.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                }
+            }
+
+            ZStack(alignment: .topLeading) {
+                GeometryReader { proxy in
+                    Canvas { context, size in
+                        let center = CGPoint(x: size.width * 0.5, y: size.height * 0.52)
+
+                        for item in Array(visibleAgents.enumerated()) {
+                            let angle = Double(item.offset) / Double(max(visibleAgents.count, 1)) * Double.pi * 2 - Double.pi / 2
+                            let radius = min(size.width, size.height) * 0.28
+                            let point = CGPoint(
+                                x: center.x + CGFloat(cos(angle)) * radius,
+                                y: center.y + CGFloat(sin(angle)) * radius * 0.82
+                            )
+
+                            var link = Path()
+                            link.move(to: center)
+                            link.addLine(to: point)
+                            context.stroke(link, with: .color(tint.opacity(0.14)), lineWidth: 1)
+
+                            let beacon = CGRect(x: point.x - 2, y: point.y - 2, width: 4, height: 4)
+                            context.fill(Path(ellipseIn: beacon), with: .color(tint.opacity(0.24 + sweep * 0.32)))
+                        }
+
+                        let scanRadius = min(size.width, size.height) * (0.14 + sweep * 0.08)
+                        let scanRect = CGRect(
+                            x: center.x - scanRadius,
+                            y: center.y - scanRadius,
+                            width: scanRadius * 2,
+                            height: scanRadius * 2
+                        )
+                        context.stroke(Path(ellipseIn: scanRect), with: .color(tint.opacity(0.28 + sweep * 0.18)), lineWidth: 1.2)
+                    }
+                }
+                .allowsHitTesting(false)
+
+                Text("\u{8fd0}\u{884c}\u{4e2d}")
+                    .font(.caption2.weight(.semibold))
+                    .foregroundStyle(tint)
+                    .padding(.horizontal, 7)
+                    .padding(.vertical, 4)
+                    .background(Color.black.opacity(0.18))
+                    .clipShape(Capsule())
+                    .padding(8)
             }
 
             LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 10) {
-                ForEach(groupedAgents, id: \.0) { group, agents in
-                    VStack(alignment: .leading, spacing: 10) {
-                        HStack {
-                            Text(group)
-                                .font(.caption.weight(.bold))
-                                .lineLimit(1)
-                            Spacer()
-                            Text("\(agents.filter(\.isOnline).count)/\(agents.count)")
-                                .font(.caption2.weight(.semibold))
-                                .foregroundStyle(.secondary)
-                        }
-                        LazyVGrid(columns: [GridItem(.adaptive(minimum: 42), spacing: 8)], spacing: 8) {
-                            ForEach(agents) { agent in
-                                VStack(spacing: 4) {
-                                    Text(agent.displayIcon)
-                                        .font(.caption)
-                                        .frame(width: 34, height: 34)
-                                        .background(statusColor(agent).opacity(0.16))
-                                        .overlay(Circle().stroke(statusColor(agent).opacity(0.5), lineWidth: 1))
-                                        .clipShape(Circle())
-                                    Text(agent.name)
-                                        .font(.system(size: 9, weight: .semibold))
-                                        .lineLimit(1)
-                                }
-                            }
-                        }
-                    }
-                    .padding(10)
-                    .background(Color(.secondarySystemBackground).opacity(0.68))
-                    .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                ForEach(Array(visibleAgents.enumerated()), id: \.element.id) { nodeIndex, item in
+                    officeAgentNode(item, index: nodeIndex, time: time)
                 }
             }
+            .padding(.top, 62)
+            .frame(minHeight: 164, alignment: .top)
         }
+        .padding(12)
+        .background(Color(.secondarySystemBackground).opacity(0.7))
+        .overlay(
+            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                .stroke(tint.opacity(0.24 + sweep * 0.16), lineWidth: 1)
+        )
+        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+    }
+
+    private func officeAgentNode(_ agent: AgentSummary, index: Int, time: TimeInterval) -> some View {
+        let tint = statusColor(agent)
+        let wave = (sin(time * 2.1 + Double(index) * 0.74) + 1) / 2
+        let activePulse = agent.isOnline ? wave : 0.12
+
+        return HStack(spacing: 8) {
+            ZStack {
+                Circle()
+                    .stroke(tint.opacity(0.16 + activePulse * 0.34), lineWidth: 1.4)
+                    .frame(width: 34, height: 34)
+                Circle()
+                    .fill(tint.opacity(0.12 + activePulse * 0.08))
+                    .frame(width: 26, height: 26)
+                Text(agent.displayIcon)
+                    .font(.system(size: 11))
+            }
+            .shadow(color: tint.opacity(agent.isOnline ? 0.18 + activePulse * 0.26 : 0.08), radius: 6)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(agent.name)
+                    .font(.system(size: 11, weight: .semibold))
+                    .lineLimit(1)
+                Text(agent.description.isEmpty ? agent.statusText : agent.description)
+                    .font(.system(size: 9))
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+            }
+
+            Spacer(minLength: 6)
+
+            if agent.isOnline {
+                Capsule()
+                    .fill(tint.opacity(0.85))
+                    .frame(width: 8 + activePulse * 8, height: 5)
+            } else if agent.isChecking {
+                Capsule()
+                    .fill(Color.orange.opacity(0.75))
+                    .frame(width: 10, height: 5)
+            } else {
+                Circle()
+                    .fill(Color.red.opacity(0.7))
+                    .frame(width: 6, height: 6)
+            }
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 8)
+        .background(Color.white.opacity(0.04))
+        .overlay(
+            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                .stroke(tint.opacity(0.14 + activePulse * 0.18), lineWidth: 1)
+        )
+        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+        .offset(y: CGFloat(sin(time * 1.4 + Double(index)) * (agent.isOnline ? 1.6 : 0.5)))
+        .opacity(agent.disabled ? 0.42 : 1)
     }
 
     private var liveMessageWall: some View {
@@ -363,6 +575,11 @@ struct NativeBigScreenView: View {
                 .frame(width: 232)
             }
 
+            Text(collaborationModeDescription)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+
             TextField("\u{8bdd}\u{9898}\u{ff0c}\u{4f8b}\u{5982}\u{ff1a}\u{5ba2}\u{6237}\u{4e0a}\u{7ebf}\u{65b9}\u{6848}", text: $topic)
                 .textFieldStyle(.roundedBorder)
                 .focused($focusedField, equals: .topic)
@@ -461,6 +678,10 @@ struct NativeBigScreenView: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
+                Text(agent.description.isEmpty ? "\(agent.hostGroup) / \(agent.statusText)" : agent.description)
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(2)
                 HStack {
                     Circle()
                         .fill(agent.isOnline ? Color.green : Color.orange)
@@ -781,6 +1002,21 @@ struct NativeBigScreenView: View {
         return .red
     }
 
+
+    private var collaborationModeDescription: String {
+        switch mode {
+        case "parallel":
+            return "\u{5e76}\u{884c}\u{ff1a}\u{540c}\u{65f6}\u{628a}\u{4efb}\u{52a1}\u{5206}\u{53d1}\u{7ed9}\u{6240}\u{9009} agent\uff0c\u{9002}\u{5408}\u{505a}\u{65b9}\u{6848}\u{5bf9}\u{6bd4}\u{548c}\u{591a}\u{89c6}\u{89d2}\u{8f93}\u{51fa}\u{3002}"
+        case "sequential":
+            return "\u{987a}\u{5e8f}\u{ff1a}\u{4e0a}\u{4e00}\u{4e2a} agent \u{7684}\u{8f93}\u{51fa}\u{4f1a}\u{4f20}\u{7ed9}\u{4e0b}\u{4e00}\u{4e2a}\u{ff0c}\u{9002}\u{5408}\u{7b56}\u{5212}\u{2192}\u{6267}\u{884c}\u{2192}\u{5ba1}\u{6838}\u{8fd9}\u{79cd}\u{6d41}\u{6c34}\u{7ebf}\u{3002}"
+        case "roundtable":
+            return "\u{5706}\u{684c}\u{ff1a}\u{6309}\u{4f1a}\u{8bae}\u{8f6e}\u{6d41}\u{53d1}\u{8a00}\u{ff0c}\u{9002}\u{5408}\u{5f00}\u{4f1a}\u{3001}\u{590d}\u{76d8}\u{3001}\u{96c6}\u{4f53}\u{8ba8}\u{8bba}\u{ff0c}\u{4e0d}\u{662f}\u{666e}\u{901a}\u{7fa4}\u{804a}\u{6a21}\u{5f0f}\u{3002}"
+        case "debate":
+            return "\u{8fa9}\u{8bba}\u{ff1a}\u{5f3a}\u{5236}\u{5f15}\u{5165}\u{4e0d}\u{540c}\u{89c2}\u{70b9}\u{5bf9}\u{6297}\u{8f93}\u{51fa}\u{ff0c}\u{9002}\u{5408}\u{98ce}\u{9669}\u{8bc4}\u{4f30}\u{6216}\u{65b9}\u{6848}\u{8d28}\u{7591}\u{3002}"
+        default:
+            return ""
+        }
+    }
     private func refreshLivePanelsLoop() async {
         while !Task.isCancelled {
             try? await Task.sleep(nanoseconds: 2_000_000_000)
