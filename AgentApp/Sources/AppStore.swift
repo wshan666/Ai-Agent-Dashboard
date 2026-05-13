@@ -54,6 +54,7 @@ final class AppStore: ObservableObject {
 
         if let history = try? await fetchChatHistory(limit: 800) {
             messages = sortedMessages(history.messages)
+            markRespondingAgentsAvailable(from: messages)
             topics = history.topics
         }
 
@@ -69,6 +70,7 @@ final class AppStore: ObservableObject {
         do {
             let history = try await fetchChatHistory(limit: 800)
             messages = sortedMessages(history.messages)
+            markRespondingAgentsAvailable(from: messages)
             topics = history.topics
             lastError = nil
         } catch {
@@ -87,6 +89,7 @@ final class AppStore: ObservableObject {
             let encoded = trimmed.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? trimmed
             let history: PrivateChatHistoryResponse = try await getJSON(path: "/api/chat/private/\(encoded)")
             messages = sortedMessages(history.messages)
+            markRespondingAgentsAvailable(from: messages)
             lastError = nil
         } catch {
             lastError = "\u{79c1}\u{804a}\u{8bb0}\u{5f55}\u{52a0}\u{8f7d}\u{5931}\u{8d25}\u{ff1a}\(error.localizedDescription)"
@@ -129,6 +132,7 @@ final class AppStore: ObservableObject {
             return
         }
         messages = sortedMessages(history.messages)
+        markRespondingAgentsAvailable(from: messages)
     }
 
     func uploadImage(data: Data, mime: String = "image/jpeg") async throws -> String {
@@ -790,6 +794,37 @@ final class AppStore: ObservableObject {
             byId[message.stableId] = message
         }
         messages = sortedMessages(Array(byId.values))
+        markRespondingAgentsAvailable(from: incoming)
+    }
+
+    private func markRespondingAgentsAvailable(from incoming: [ChatMessage]) {
+        let respondedIds = Set(incoming.compactMap { message -> String? in
+            guard let from = message.from,
+                  from != "user",
+                  from != "system",
+                  from != "api-collaboration" else {
+                return nil
+            }
+            let text = (message.content ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !text.isEmpty, !text.hasPrefix("\u{274c}") else { return nil }
+            return from
+        })
+        guard !respondedIds.isEmpty else { return }
+
+        agents = agents.map { agent in
+            guard respondedIds.contains(agent.id), !agent.disabled, !agent.isOnline else { return agent }
+            return AgentSummary(
+                id: agent.id,
+                name: agent.name,
+                icon: agent.icon,
+                description: agent.description,
+                status: "available",
+                hostGroup: agent.hostGroup,
+                modelLabel: agent.modelLabel,
+                engineLabel: agent.engineLabel,
+                disabled: agent.disabled
+            )
+        }
     }
 
     private func sortedMessages(_ messages: [ChatMessage]) -> [ChatMessage] {

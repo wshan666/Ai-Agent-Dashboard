@@ -4111,6 +4111,8 @@ function withAgentRuntimeInfo(agent, group) {
 function publicAgentDescriptor(agent, group) {
   const runtime = inferAgentRuntimeInfo(agent, group);
   const cached = agentStatusCache[agent.id] || {};
+  const recent = agent.disabled ? null : recentSuccessStatus(agent);
+  const effective = cached.status ? cached : (recent || {});
   const validation = validateAgentDefinition(agent, group);
   return {
     id: agent.id,
@@ -4120,7 +4122,10 @@ function publicAgentDescriptor(agent, group) {
     adapter: validation.adapter,
     hostGroup: group,
     disabled: !!agent.disabled,
-    status: agent.disabled ? 'disabled' : (cached.status || 'unknown'),
+    status: agent.disabled ? 'disabled' : (effective.status || 'unknown'),
+    version: effective.version || null,
+    info: effective.info || '',
+    lastSuccessAt: effective.lastSuccessAt || null,
     engineLabel: runtime.engineLabel,
     modelLabel: runtime.modelLabel,
     modelSource: runtime.modelSource,
@@ -5256,7 +5261,7 @@ app.post('/api/chat/send', async (req, res) => {
 app.get('/api/chat/private/:agentId', (req, res) => {
   const { agentId } = req.params;
   const msgs = chatHistory.messages.filter(
-    m => m.room === agentId && (m.from === 'user' || m.from === agentId)
+    m => m.room === agentId && (m.from === 'user' || m.from === agentId || m.from === 'system')
   );
   res.json({ agentId, messages: msgs.slice(-300) });
 });

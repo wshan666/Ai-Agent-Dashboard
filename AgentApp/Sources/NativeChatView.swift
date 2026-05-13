@@ -71,7 +71,10 @@ struct NativeChatView: View {
 
     private var visibleMessages: [ChatMessage] {
         let base = Array(store.messages.suffix(300))
-        guard mode == .direct, let agent = privateAgent else { return base }
+        if mode == .group {
+            return base.filter { ($0.room ?? "").isEmpty }
+        }
+        guard let agent = privateAgent else { return base }
         return base.filter { message in
             if message.room == agent.id { return true }
             if message.from == agent.id { return true }

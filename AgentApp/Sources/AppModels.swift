@@ -18,7 +18,7 @@ struct AgentSummary: Identifiable, Hashable {
         case "available": return "\u{5728}\u{7ebf}"
         case "running": return "\u{5fd9}\u{788c}"
         case "checking": return "\u{68c0}\u{6d4b}\u{4e2d}"
-        case "unknown": return "\u{68c0}\u{6d4b}\u{4e2d}"
+        case "unknown": return "\u{672a}\u{68c0}\u{6d4b}"
         case "disabled": return "\u{5df2}\u{7981}\u{7528}"
         default: return "\u{79bb}\u{7ebf}"
         }
@@ -29,7 +29,7 @@ struct AgentSummary: Identifiable, Hashable {
     }
 
     var isChecking: Bool {
-        status == "checking" || status == "unknown"
+        status == "checking"
     }
 
     var primaryModelText: String {
