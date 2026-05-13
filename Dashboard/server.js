@@ -5192,7 +5192,7 @@ app.post('/api/chat/send', async (req, res) => {
       id: crypto.randomUUID(),
       from: 'system',
       fromName: '🔔 系统',
-      content: `⏳ ${agent.icon} ${agent.name} 正在思考...`,
+      content: `⏳ ${agent.name} 正在思考...`,
       timestamp: new Date().toISOString(),
       type: mode || 'chat',
       topic: currentTopic || null,

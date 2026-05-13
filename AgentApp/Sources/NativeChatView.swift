@@ -439,7 +439,7 @@ struct NativeChatView: View {
             VStack(alignment: message.isUser ? .trailing : .leading, spacing: 6) {
                 HStack(spacing: 6) {
                     if message.isUser { Spacer() }
-                    Text(message.senderTitle).font(.caption.weight(.semibold)).foregroundStyle(.secondary)
+                    Text(displaySenderTitle(for: message)).font(.caption.weight(.semibold)).foregroundStyle(.secondary)
                     Text(formatTime(message.timestamp)).font(.caption2).foregroundStyle(.tertiary)
                 }
                 Text(displayContent(for: message))
@@ -570,8 +570,8 @@ struct NativeChatView: View {
     }
 
     private func avatarTitle(for message: ChatMessage) -> String {
-        if let agent = thinkingAgent(for: message) {
-            return agent.name
+        if let thinking = thinkingDisplay(for: message) {
+            return thinking
         }
         if let from = message.from, let agent = store.agents.first(where: { $0.id == from }) {
             return agent.name
@@ -579,30 +579,48 @@ struct NativeChatView: View {
         return message.senderTitle
     }
 
-    private func displayContent(for message: ChatMessage) -> String {
-        guard let agent = thinkingAgent(for: message) else {
-            return message.content ?? ""
+    private func displaySenderTitle(for message: ChatMessage) -> String {
+        if let thinking = thinkingDisplay(for: message) {
+            return thinking
         }
-        return "\(agent.name) \u{6b63}\u{5728}\u{601d}\u{8003}..."
+        return message.senderTitle
     }
 
-    private func thinkingAgent(for message: ChatMessage) -> AgentSummary? {
+    private func displayContent(for message: ChatMessage) -> String {
+        guard let thinking = thinkingDisplay(for: message) else {
+            return message.content ?? ""
+        }
+        return "\(thinking) \u{6b63}\u{5728}\u{601d}\u{8003}..."
+    }
+
+    private func thinkingDisplay(for message: ChatMessage) -> String? {
         guard message.from == "system",
               let content = message.content,
               content.contains("\u{6b63}\u{5728}\u{601d}\u{8003}") else {
             return nil
         }
-        return store.agents.first { agent in
+        if let agent = store.agents.first(where: { agent in
             content.contains(agent.name) || content.contains(agent.id)
+        }) {
+            return agent.name
         }
+        let marker = "\u{6b63}\u{5728}\u{601d}\u{8003}"
+        let rawName = content.components(separatedBy: marker).first ?? content
+        let cleaned = rawName
+            .replacingOccurrences(of: "\u{23f3}", with: "")
+            .replacingOccurrences(of: "\u{fffd}", with: "")
+            .replacingOccurrences(of: "?", with: "")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        let name = cleaned.split(separator: " ").last.map(String.init) ?? cleaned
+        return name.isEmpty ? "\u{667a}\u{80fd}\u{4f53}" : name
     }
 
     private func avatarInitial(_ title: String) -> String {
         let cleaned = title.replacingOccurrences(of: "\u{fe0f}", with: "")
         if let char = cleaned.first(where: { char in
-            if char.isLetter || char.isNumber { return true }
             guard let value = char.unicodeScalars.first?.value else { return false }
-            return value >= 0x4E00 && value <= 0x9FFF
+            if value >= 0x4E00 && value <= 0x9FFF { return true }
+            return (value >= 65 && value <= 90) || (value >= 97 && value <= 122) || (value >= 48 && value <= 57)
         }) {
             return String(char).uppercased()
         }
