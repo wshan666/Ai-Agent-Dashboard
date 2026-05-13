@@ -114,7 +114,7 @@ struct NativeWorkflowView: View {
                         Picker("\u{6267}\u{884c}\u{667a}\u{80fd}\u{4f53}", selection: $coder.agentId) {
                             Text("\u{8bf7}\u{9009}\u{62e9}").tag("")
                             ForEach(onlineAgents) { agent in
-                                Text("\(agent.displayIcon) \(agent.name)").tag(agent.id)
+                                Text(agentMenuTitle(agent)).tag(agent.id)
                             }
                         }
                         if let agent = agentById(coder.agentId) {
@@ -261,7 +261,7 @@ struct NativeWorkflowView: View {
 
     private var musicTemplate: some View {
         card {
-            headerBlock("\u{97f3}\u{4e50}\u{5de5}\u{4f5c}\u{6d41}", "\u{8f93}\u{5165}\u{6b4c}\u{66f2}\u{540d}\u{ff0c}\u{751f}\u{6210}\u{6b4c}\u{8bcd}\u{3001}\u{8bd5}\u{542c}\u{97f3}\u{9891}\u{548c}\u{8bf4}\u{660e}\u{6587}\u{6863}\u{3002}")
+            headerBlock("\u{97f3}\u{4e50}\u{5de5}\u{4f5c}\u{6d41}", "Lyrics + voice demo draft. Not full singing or composition yet; connect a dedicated music model later.")
             TextField("\u{6b4c}\u{66f2}\u{540d}\u{79f0}", text: $musicDraft.song).textFieldStyle(.roundedBorder).focused($focusedField, equals: .musicSong)
             TextField("\u{53c2}\u{8003}\u{6b4c}\u{624b}\u{6216}\u{98ce}\u{683c}", text: $musicDraft.artist).textFieldStyle(.roundedBorder).focused($focusedField, equals: .musicArtist)
             TextField("\u{6b4c}\u{8bcd}\u{98ce}\u{683c}", text: $musicDraft.lyricsStyle).textFieldStyle(.roundedBorder).focused($focusedField, equals: .musicStyle)
@@ -276,7 +276,7 @@ struct NativeWorkflowView: View {
                         channel: result.artist,
                         duration: "",
                         source: "generated",
-                        sourceLabel: "\u{8bed}\u{97f3}\u{8bd5}\u{5531}",
+                        sourceLabel: "Voice demo draft",
                         previewUrl: result.audioUrl,
                         url: result.audioUrl,
                         rawId: "",
@@ -392,7 +392,7 @@ struct NativeWorkflowView: View {
             Picker(title, selection: selection) {
                 Text(allowEmpty ? "\u{53ef}\u{9009}" : "\u{8bf7}\u{9009}\u{62e9}").tag("")
                 ForEach(onlineAgents) { agent in
-                    Text("\(agent.displayIcon) \(agent.name)").tag(agent.id)
+                    Text(agentMenuTitle(agent)).tag(agent.id)
                 }
             }
             if let agent = agentById(selection.wrappedValue) {
@@ -410,7 +410,7 @@ struct NativeWorkflowView: View {
             Picker(title, selection: selection) {
                 Text(allowEmpty ? "\u{4f7f}\u{7528}\u{5236}\u{4f5c}\u{667a}\u{80fd}\u{4f53}" : "\u{8bf7}\u{9009}\u{62e9}").tag("")
                 ForEach(onlineAgents) { agent in
-                    Text("\(agent.displayIcon) \(agent.name)").tag(agent.id)
+                    Text(agentMenuTitle(agent)).tag(agent.id)
                 }
             }
             .labelsHidden()
@@ -506,6 +506,44 @@ struct NativeWorkflowView: View {
         .v2Card(tint: V2Theme.cyan)
     }
 
+
+    private func syncedLyricsBlock(_ lyrics: String) -> some View {
+        let lines = lyrics
+            .split(separator: "\n", omittingEmptySubsequences: true)
+            .map { String($0).trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+        let active = activeLyricIndex(lineCount: lines.count)
+
+        return ScrollViewReader { proxy in
+            ScrollView {
+                VStack(alignment: .leading, spacing: 6) {
+                    ForEach(Array(lines.enumerated()), id: \.offset) { index, line in
+                        Text(line)
+                            .font(index == active ? .caption.weight(.bold) : .caption)
+                            .foregroundStyle(index == active ? V2Theme.cyan : Color.secondary)
+                            .id(index)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                }
+                .padding(10)
+            }
+            .frame(maxHeight: 128)
+            .background(Color(.secondarySystemBackground).opacity(0.55))
+            .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+            .onChange(of: active) { idx in
+                withAnimation(.easeInOut(duration: 0.25)) {
+                    proxy.scrollTo(idx, anchor: .center)
+                }
+            }
+        }
+    }
+
+    private func activeLyricIndex(lineCount: Int) -> Int {
+        guard lineCount > 0 else { return 0 }
+        let duration = max(store.musicDuration, 1)
+        let progress = max(0, min(0.999, store.musicCurrentTime / duration))
+        return min(lineCount - 1, max(0, Int(Double(lineCount) * progress)))
+    }
     private func musicListBlock(_ title: String, tracks: [MusicTrack], showDelete: Bool) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             Text(title).font(.subheadline.weight(.semibold))
@@ -570,9 +608,15 @@ struct NativeWorkflowView: View {
     private func agentRoleDescription(_ agent: AgentSummary) -> String {
         let description = agent.description.trimmingCharacters(in: .whitespacesAndNewlines)
         if !description.isEmpty { return description }
-        return "\(agent.hostGroup) · \(agent.primaryModelText) · \(agent.statusText)"
+        return "\(agent.hostGroup) / \(agent.primaryModelText) / \(agent.statusText)"
     }
 
+
+    private func agentMenuTitle(_ agent: AgentSummary) -> String {
+        let role = agent.description.trimmingCharacters(in: .whitespacesAndNewlines)
+        let detail = role.isEmpty ? agent.primaryModelText : role
+        return "\(agent.displayIcon) \(agent.name) - \(detail)"
+    }
     private func pptResultBlock(_ result: WorkflowStartResponse) -> some View {
         VStack(alignment: .leading, spacing: 10) {
             Divider()
