@@ -1006,7 +1006,7 @@ struct NativeBigScreenView: View {
     private var collaborationModeDescription: String {
         switch mode {
         case "parallel":
-            return "\u{5e76}\u{884c}\u{ff1a}\u{540c}\u{65f6}\u{628a}\u{4efb}\u{52a1}\u{5206}\u{53d1}\u{7ed9}\u{6240}\u{9009} agent\uff0c\u{9002}\u{5408}\u{505a}\u{65b9}\u{6848}\u{5bf9}\u{6bd4}\u{548c}\u{591a}\u{89c6}\u{89d2}\u{8f93}\u{51fa}\u{3002}"
+            return "\u{5e76}\u{884c}\u{ff1a}\u{540c}\u{65f6}\u{628a}\u{4efb}\u{52a1}\u{5206}\u{53d1}\u{7ed9}\u{6240}\u{9009} agent\u{ff0c}\u{9002}\u{5408}\u{505a}\u{65b9}\u{6848}\u{5bf9}\u{6bd4}\u{548c}\u{591a}\u{89c6}\u{89d2}\u{8f93}\u{51fa}\u{3002}"
         case "sequential":
             return "\u{987a}\u{5e8f}\u{ff1a}\u{4e0a}\u{4e00}\u{4e2a} agent \u{7684}\u{8f93}\u{51fa}\u{4f1a}\u{4f20}\u{7ed9}\u{4e0b}\u{4e00}\u{4e2a}\u{ff0c}\u{9002}\u{5408}\u{7b56}\u{5212}\u{2192}\u{6267}\u{884c}\u{2192}\u{5ba1}\u{6838}\u{8fd9}\u{79cd}\u{6d41}\u{6c34}\u{7ebf}\u{3002}"
         case "roundtable":
