@@ -175,15 +175,20 @@ struct NativeBigScreenView: View {
                 let time = timeline.date.timeIntervalSinceReferenceDate
                 VStack(alignment: .leading, spacing: 12) {
                     officeCommandPulse(time: time)
-
-                    LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 10) {
-                        ForEach(Array(groupedAgents.enumerated()), id: \.offset) { index, item in
-                            officeGroupPanel(group: item.0, agents: item.1, index: index, time: time)
-                        }
+                    HStack {
+                        Text("\u{8f7b}\u{70b9}\u{529e}\u{516c}\u{5ba4}\u{91cc}\u{7684} agent \u{5373}\u{53ef}\u{52a0}\u{5165}\u{534f}\u{540c}\u{4efb}\u{52a1}")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        Spacer()
+                        Text("\(officeVisibleAgents.count) active")
+                            .font(.caption2.weight(.semibold))
+                            .foregroundStyle(V2Theme.cyan)
                     }
+
+                    officeFloorplanScene(time: time)
                 }
             }
-            .frame(minHeight: 300)
+            .frame(minHeight: 420)
         }
     }
 
@@ -265,158 +270,94 @@ struct NativeBigScreenView: View {
         .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
     }
 
-    private func officeGroupPanel(group: String, agents: [AgentSummary], index: Int, time: TimeInterval) -> some View {
-        let tint = index.isMultiple(of: 2) ? V2Theme.cyan : V2Theme.violet
-        let sweep = (sin(time * 1.35 + Double(index)) + 1) / 2
-        let visibleAgents = Array(agents.prefix(4))
-        let overflowCount = max(agents.count - visibleAgents.count, 0)
+    private func officeFloorplanScene(time: TimeInterval) -> some View {
+        GeometryReader { proxy in
+            let size = proxy.size
+            let placements = officePlacements(in: size)
 
-        return VStack(alignment: .leading, spacing: 10) {
-            HStack {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(group)
-                        .font(.caption.weight(.bold))
-                        .lineLimit(1)
-                    Text("\(agents.count) \u{4e2a} agent")
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
-                }
-                Spacer()
-                if overflowCount > 0 {
-                    Text("+\(overflowCount)")
-                        .font(.caption2.weight(.bold))
-                        .foregroundStyle(.secondary)
-                        .padding(.horizontal, 6)
-                        .padding(.vertical, 3)
-                        .background(Color.white.opacity(0.06))
-                        .clipShape(Capsule())
-                }
-                Spacer(minLength: 6)
-                HStack(spacing: 6) {
-                    Circle()
-                        .fill(tint.opacity(0.85))
-                        .frame(width: 6, height: 6)
-                    Text("\(agents.filter(\.isOnline).count)/\(agents.count)")
-                        .font(.caption2.weight(.semibold))
-                        .foregroundStyle(.secondary)
-                }
-            }
-
-            ZStack(alignment: .topLeading) {
-                GeometryReader { proxy in
-                    Canvas { context, size in
-                        let center = CGPoint(x: size.width * 0.5, y: size.height * 0.52)
-
-                        for item in Array(visibleAgents.enumerated()) {
-                            let angle = Double(item.offset) / Double(max(visibleAgents.count, 1)) * Double.pi * 2 - Double.pi / 2
-                            let radius = min(size.width, size.height) * 0.28
-                            let point = CGPoint(
-                                x: center.x + CGFloat(cos(angle)) * radius,
-                                y: center.y + CGFloat(sin(angle)) * radius * 0.82
-                            )
-
-                            var link = Path()
-                            link.move(to: center)
-                            link.addLine(to: point)
-                            context.stroke(link, with: .color(tint.opacity(0.14)), lineWidth: 1)
-
-                            let beacon = CGRect(x: point.x - 2, y: point.y - 2, width: 4, height: 4)
-                            context.fill(Path(ellipseIn: beacon), with: .color(tint.opacity(0.24 + sweep * 0.32)))
-                        }
-
-                        let scanRadius = min(size.width, size.height) * (0.14 + sweep * 0.08)
-                        let scanRect = CGRect(
-                            x: center.x - scanRadius,
-                            y: center.y - scanRadius,
-                            width: scanRadius * 2,
-                            height: scanRadius * 2
+            ZStack {
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    .fill(
+                        LinearGradient(
+                            colors: [
+                                Color(red: 0.03, green: 0.07, blue: 0.12),
+                                Color(red: 0.04, green: 0.05, blue: 0.09),
+                                Color(red: 0.05, green: 0.08, blue: 0.14)
+                            ],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
                         )
-                        context.stroke(Path(ellipseIn: scanRect), with: .color(tint.opacity(0.28 + sweep * 0.18)), lineWidth: 1.2)
+                    )
+
+                Canvas { context, canvasSize in
+                    let step: CGFloat = 28
+                    var grid = Path()
+                    var x: CGFloat = 0
+                    while x <= canvasSize.width {
+                        grid.move(to: CGPoint(x: x, y: 0))
+                        grid.addLine(to: CGPoint(x: x, y: canvasSize.height))
+                        x += step
+                    }
+                    var y: CGFloat = 0
+                    while y <= canvasSize.height {
+                        grid.move(to: CGPoint(x: 0, y: y))
+                        grid.addLine(to: CGPoint(x: canvasSize.width, y: y))
+                        y += step
+                    }
+                    context.stroke(grid, with: .color(V2Theme.cyan.opacity(0.08)), lineWidth: 0.7)
+                }
+                .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+
+                ForEach(officeRooms) { room in
+                    officeRoom(room, in: size)
+                }
+
+                officeMeetingTable(in: size)
+
+                if let game = latestGomokuMessage?.gomoku {
+                    officeMiniGomokuBoard(game, in: size)
+                }
+
+                if let topic = officeMeetingTopic {
+                    officeMeetingBanner(topic: topic, in: size, time: time)
+                }
+
+                ForEach(Array(officeVisibleAgents.enumerated()), id: \.element.id) { item in
+                    if let placement = placements[item.element.id] {
+                        officeAgentAvatar(
+                            item.element,
+                            placement: placement,
+                            index: item.offset,
+                            time: time,
+                            canvasSize: size
+                        )
                     }
                 }
-                .allowsHitTesting(false)
 
-                Text("\u{8fd0}\u{884c}\u{4e2d}")
-                    .font(.caption2.weight(.semibold))
-                    .foregroundStyle(tint)
-                    .padding(.horizontal, 7)
-                    .padding(.vertical, 4)
-                    .background(Color.black.opacity(0.18))
-                    .clipShape(Capsule())
-                    .padding(8)
-            }
-
-            LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 10) {
-                ForEach(Array(visibleAgents.enumerated()), id: \.element.id) { nodeIndex, item in
-                    officeAgentNode(item, index: nodeIndex, time: time)
+                ForEach(Array(officeBubbleMessages.enumerated()), id: \.element.stableId) { item in
+                    if let agentId = item.element.from,
+                       let placement = placements[agentId] {
+                        officeSpeechBubble(
+                            item.element,
+                            placement: placement,
+                            index: item.offset,
+                            canvasSize: size
+                        )
+                    }
                 }
             }
-            .padding(.top, 62)
-            .frame(minHeight: 164, alignment: .top)
+            .contentShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+            .onTapGesture {
+                selectedAgentIds.removeAll()
+                summarizerId = ""
+            }
+            .overlay(
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    .stroke(V2Theme.cyan.opacity(0.16), lineWidth: 1)
+            )
+            .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
         }
-        .padding(12)
-        .background(Color(.secondarySystemBackground).opacity(0.7))
-        .overlay(
-            RoundedRectangle(cornerRadius: 8, style: .continuous)
-                .stroke(tint.opacity(0.24 + sweep * 0.16), lineWidth: 1)
-        )
-        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
-    }
-
-    private func officeAgentNode(_ agent: AgentSummary, index: Int, time: TimeInterval) -> some View {
-        let tint = statusColor(agent)
-        let wave = (sin(time * 2.1 + Double(index) * 0.74) + 1) / 2
-        let activePulse = agent.isOnline ? wave : 0.12
-
-        return HStack(spacing: 8) {
-            ZStack {
-                Circle()
-                    .stroke(tint.opacity(0.16 + activePulse * 0.34), lineWidth: 1.4)
-                    .frame(width: 34, height: 34)
-                Circle()
-                    .fill(tint.opacity(0.12 + activePulse * 0.08))
-                    .frame(width: 26, height: 26)
-                Text(agent.displayIcon)
-                    .font(.system(size: 11))
-            }
-            .shadow(color: tint.opacity(agent.isOnline ? 0.18 + activePulse * 0.26 : 0.08), radius: 6)
-
-            VStack(alignment: .leading, spacing: 2) {
-                Text(agent.name)
-                    .font(.system(size: 11, weight: .semibold))
-                    .lineLimit(1)
-                Text(agent.description.isEmpty ? agent.statusText : agent.description)
-                    .font(.system(size: 9))
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
-            }
-
-            Spacer(minLength: 6)
-
-            if agent.isOnline {
-                Capsule()
-                    .fill(tint.opacity(0.85))
-                    .frame(width: 8 + activePulse * 8, height: 5)
-            } else if agent.isChecking {
-                Capsule()
-                    .fill(Color.orange.opacity(0.75))
-                    .frame(width: 10, height: 5)
-            } else {
-                Circle()
-                    .fill(Color.red.opacity(0.7))
-                    .frame(width: 6, height: 6)
-            }
-        }
-        .padding(.horizontal, 10)
-        .padding(.vertical, 8)
-        .background(Color.white.opacity(0.04))
-        .overlay(
-            RoundedRectangle(cornerRadius: 8, style: .continuous)
-                .stroke(tint.opacity(0.14 + activePulse * 0.18), lineWidth: 1)
-        )
-        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
-        .offset(y: CGFloat(sin(time * 1.4 + Double(index)) * (agent.isOnline ? 1.6 : 0.5)))
-        .opacity(agent.disabled ? 0.42 : 1)
+        .frame(height: 520)
     }
 
     private var liveMessageWall: some View {
@@ -990,16 +931,566 @@ struct NativeBigScreenView: View {
         }
     }
 
-    private var groupedAgents: [(String, [AgentSummary])] {
-        Dictionary(grouping: store.agents, by: \.hostGroup)
-            .map { ($0.key, $0.value.sorted { $0.name.localizedCompare($1.name) == .orderedAscending }) }
-            .sorted { $0.0.localizedCompare($1.0) == .orderedAscending }
+    private var officeVisibleAgents: [AgentSummary] {
+        store.agents
+            .filter { !$0.disabled }
+            .sorted { lhs, rhs in
+                if lhs.isOnline != rhs.isOnline { return lhs.isOnline && !rhs.isOnline }
+                return lhs.name.localizedCompare(rhs.name) == .orderedAscending
+            }
+            .prefix(14)
+            .map { $0 }
+    }
+
+    private var officeBubbleMessages: [ChatMessage] {
+        recentLiveMessages
+            .filter { message in
+                guard let from = message.from, !from.isEmpty else { return false }
+                return store.agents.contains(where: { $0.id == from })
+            }
+            .suffix(4)
+            .map { $0 }
+    }
+
+    private var officeMeetingTopic: String? {
+        if let topic = latestGomokuMessage?.topic, !topic.isEmpty {
+            return topic
+        }
+        if let topic = latestDoudizhuMessage?.topic, !topic.isEmpty {
+            return topic
+        }
+        if !topic.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            return topic.trimmingCharacters(in: .whitespacesAndNewlines)
+        }
+        return recentLiveMessages.reversed().compactMap { message in
+            guard let topic = message.topic?.trimmingCharacters(in: .whitespacesAndNewlines), !topic.isEmpty else {
+                return nil
+            }
+            return topic
+        }.first
     }
 
     private func statusColor(_ agent: AgentSummary) -> Color {
         if agent.isOnline { return .green }
         if agent.isChecking { return .orange }
         return .red
+    }
+
+    private func officePlacements(in size: CGSize) -> [String: OfficePlacement] {
+        let allAgents = officeVisibleAgents
+        let meetingIDs = orderedMeetingAgentIDs()
+        let meetingSet = Set(meetingIDs)
+
+        let meetingAnchors: [(CGPoint, OfficeRoomID)] = latestGomokuMessage?.gomoku == nil
+            ? [
+                (CGPoint(x: 0.50, y: 0.46), .meeting),
+                (CGPoint(x: 0.62, y: 0.44), .meeting),
+                (CGPoint(x: 0.68, y: 0.56), .meeting),
+                (CGPoint(x: 0.57, y: 0.67), .meeting),
+                (CGPoint(x: 0.43, y: 0.67), .meeting),
+                (CGPoint(x: 0.32, y: 0.56), .meeting)
+            ]
+            : [
+                (CGPoint(x: 0.38, y: 0.53), .meeting),
+                (CGPoint(x: 0.62, y: 0.53), .meeting),
+                (CGPoint(x: 0.50, y: 0.42), .meeting),
+                (CGPoint(x: 0.50, y: 0.66), .meeting)
+            ]
+
+        let workAnchors: [(CGPoint, OfficeRoomID)] = [
+            (CGPoint(x: 0.16, y: 0.22), .dev),
+            (CGPoint(x: 0.30, y: 0.22), .dev),
+            (CGPoint(x: 0.16, y: 0.37), .dev),
+            (CGPoint(x: 0.30, y: 0.37), .dev),
+            (CGPoint(x: 0.48, y: 0.20), .ops),
+            (CGPoint(x: 0.60, y: 0.20), .ops),
+            (CGPoint(x: 0.76, y: 0.20), .archive),
+            (CGPoint(x: 0.86, y: 0.20), .archive),
+            (CGPoint(x: 0.76, y: 0.32), .archive),
+            (CGPoint(x: 0.14, y: 0.73), .lounge),
+            (CGPoint(x: 0.28, y: 0.73), .lounge),
+            (CGPoint(x: 0.20, y: 0.84), .lounge),
+            (CGPoint(x: 0.54, y: 0.24), .ops),
+            (CGPoint(x: 0.82, y: 0.30), .archive)
+        ]
+
+        var placements: [String: OfficePlacement] = [:]
+        for (index, agentID) in meetingIDs.enumerated() where index < meetingAnchors.count {
+            let anchor = meetingAnchors[index]
+            placements[agentID] = OfficePlacement(
+                point: CGPoint(x: anchor.0.x * size.width, y: anchor.0.y * size.height),
+                room: anchor.1
+            )
+        }
+
+        let remainder = allAgents.filter { !meetingSet.contains($0.id) }
+        for (index, agent) in remainder.enumerated() where index < workAnchors.count {
+            let anchor = workAnchors[index]
+            placements[agent.id] = OfficePlacement(
+                point: CGPoint(x: anchor.0.x * size.width, y: anchor.0.y * size.height),
+                room: anchor.1
+            )
+        }
+
+        return placements
+    }
+
+    private func orderedMeetingAgentIDs() -> [String] {
+        var ids: [String] = []
+        if let game = latestGomokuMessage?.gomoku {
+            if let id = game.blackAgentId, !id.isEmpty { ids.append(id) }
+            if let id = game.whiteAgentId, !id.isEmpty, !ids.contains(id) { ids.append(id) }
+        }
+        if let game = latestDoudizhuMessage?.doudizhu {
+            for player in game.displayPlayers {
+                if let id = player.agentId, !id.isEmpty, !ids.contains(id) {
+                    ids.append(id)
+                }
+            }
+        }
+        for id in selectedAgentIds where !ids.contains(id) {
+            ids.append(id)
+        }
+        return ids
+    }
+
+    private func officeActivity(for agent: AgentSummary, index: Int) -> OfficeAgentActivity {
+        if let game = latestGomokuMessage?.gomoku {
+            if agent.id == game.blackAgentId { return .gomokuBlack }
+            if agent.id == game.whiteAgentId { return .gomokuWhite }
+        }
+        if let game = latestDoudizhuMessage?.doudizhu,
+           game.displayPlayers.contains(where: { $0.agentId == agent.id }),
+           game.status != "finished" {
+            return .meetingSeated
+        }
+        if selectedAgentIds.contains(agent.id) {
+            return .meetingSeated
+        }
+        if officeBubbleMessages.contains(where: { $0.from == agent.id }) {
+            return .standing
+        }
+        if agent.isOnline && index % 5 == 4 {
+            return .waterBreak
+        }
+        if agent.isOnline {
+            return .working
+        }
+        return .idle
+    }
+
+    private func officeRoom(_ room: OfficeRoomLayout, in size: CGSize) -> some View {
+        let frame = CGRect(
+            x: room.frame.origin.x * size.width,
+            y: room.frame.origin.y * size.height,
+            width: room.frame.width * size.width,
+            height: room.frame.height * size.height
+        )
+
+        return ZStack(alignment: .topLeading) {
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .fill(
+                    LinearGradient(
+                        colors: room.colors,
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .stroke(Color.white.opacity(0.08), lineWidth: 1)
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text(room.title)
+                    .font(.caption.weight(.bold))
+                    .foregroundStyle(.white)
+                Text(room.subtitle)
+                    .font(.caption2)
+                    .foregroundStyle(Color.white.opacity(0.76))
+            }
+            .padding(10)
+
+            roomDecoration(room, frame: frame)
+        }
+        .frame(width: frame.width, height: frame.height)
+        .position(x: frame.midX, y: frame.midY)
+    }
+
+    @ViewBuilder
+    private func roomDecoration(_ room: OfficeRoomLayout, frame: CGRect) -> some View {
+        switch room.roomID {
+        case .dev:
+            ForEach(0 ..< 4, id: \.self) { index in
+                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    .fill(Color.black.opacity(0.18))
+                    .frame(width: 56, height: 34)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 8, style: .continuous)
+                            .stroke(Color.white.opacity(0.08), lineWidth: 1)
+                    )
+                    .overlay(alignment: .top) {
+                        RoundedRectangle(cornerRadius: 4, style: .continuous)
+                            .fill(V2Theme.cyan.opacity(0.18))
+                            .frame(width: 22, height: 10)
+                            .offset(y: 6)
+                    }
+                    .position(
+                        x: [frame.width * 0.22, frame.width * 0.56, frame.width * 0.22, frame.width * 0.56][index],
+                        y: [frame.height * 0.32, frame.height * 0.32, frame.height * 0.68, frame.height * 0.68][index]
+                    )
+            }
+        case .meeting:
+            EmptyView()
+        case .ops:
+            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                .fill(Color.black.opacity(0.22))
+                .frame(width: 86, height: 58)
+                .overlay(alignment: .topLeading) {
+                    VStack(alignment: .leading, spacing: 4) {
+                        RoundedRectangle(cornerRadius: 2, style: .continuous).fill(V2Theme.mint).frame(width: 46, height: 4)
+                        RoundedRectangle(cornerRadius: 2, style: .continuous).fill(V2Theme.cyan).frame(width: 56, height: 4)
+                        RoundedRectangle(cornerRadius: 2, style: .continuous).fill(V2Theme.amber).frame(width: 30, height: 4)
+                    }
+                    .padding(10)
+                }
+                .position(x: frame.width * 0.56, y: frame.height * 0.62)
+        case .archive:
+            HStack(spacing: 10) {
+                ForEach(0 ..< 3, id: \.self) { _ in
+                    RoundedRectangle(cornerRadius: 5, style: .continuous)
+                        .fill(Color.black.opacity(0.18))
+                        .frame(width: 22, height: 72)
+                        .overlay(
+                            VStack(spacing: 3) {
+                                ForEach(0 ..< 6, id: \.self) { row in
+                                    RoundedRectangle(cornerRadius: 2, style: .continuous)
+                                        .fill(row.isMultiple(of: 2) ? Color.white.opacity(0.66) : V2Theme.amber.opacity(0.7))
+                                        .frame(width: 12, height: 4)
+                                    }
+                            }
+                        )
+                }
+            }
+            .position(x: frame.width * 0.48, y: frame.height * 0.45)
+        case .lounge:
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .fill(V2Theme.violet.opacity(0.46))
+                .frame(width: 96, height: 38)
+                .position(x: frame.width * 0.32, y: frame.height * 0.72)
+            Circle()
+                .fill(Color.white.opacity(0.16))
+                .frame(width: 40, height: 40)
+                .position(x: frame.width * 0.62, y: frame.height * 0.70)
+            Circle()
+                .fill(V2Theme.mint.opacity(0.52))
+                .frame(width: 18, height: 18)
+                .position(x: frame.width * 0.18, y: frame.height * 0.28)
+        }
+    }
+
+    private func officeMeetingTable(in size: CGSize) -> some View {
+        let frame = CGRect(x: size.width * 0.39, y: size.height * 0.38, width: size.width * 0.48, height: size.height * 0.40)
+        return ZStack {
+            Ellipse()
+                .fill(
+                    RadialGradient(
+                        colors: [
+                            Color(red: 0.98, green: 0.90, blue: 0.66),
+                            Color(red: 0.79, green: 0.57, blue: 0.23),
+                            Color(red: 0.44, green: 0.28, blue: 0.08)
+                        ],
+                        center: .topLeading,
+                        startRadius: 8,
+                        endRadius: 180
+                    )
+                )
+                .overlay(Ellipse().stroke(Color.white.opacity(0.1), lineWidth: 2))
+            ForEach(0 ..< 8, id: \.self) { index in
+                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    .fill(Color.black.opacity(0.22))
+                    .frame(width: 28, height: 14)
+                    .rotationEffect(.degrees(Double(index) * 45))
+                    .offset(
+                        x: CGFloat(cos(Double(index) * .pi / 4)) * frame.width * 0.26,
+                        y: CGFloat(sin(Double(index) * .pi / 4)) * frame.height * 0.26
+                    )
+            }
+        }
+        .frame(width: frame.width, height: frame.height * 0.46)
+        .position(x: frame.midX, y: frame.midY)
+        .shadow(color: Color.black.opacity(0.32), radius: 16, y: 10)
+    }
+
+    private func officeMiniGomokuBoard(_ game: GomokuGameState, in size: CGSize) -> some View {
+        let moves = (game.moves ?? game.move.map { [$0] } ?? [])
+            .filter { ($0.row ?? 0) > 0 && ($0.col ?? 0) > 0 }
+            .sorted { ($0.moveNo ?? 0) < ($1.moveNo ?? 0) }
+        let lastMoveNo = moves.last?.moveNo
+
+        return ZStack {
+            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                .fill(Color(red: 0.90, green: 0.72, blue: 0.40))
+            Canvas { context, canvasSize in
+                let step = canvasSize.width / 8
+                var path = Path()
+                for index in 1 ..< 8 {
+                    let offset = CGFloat(index) * step
+                    path.move(to: CGPoint(x: offset, y: step))
+                    path.addLine(to: CGPoint(x: offset, y: canvasSize.height - step))
+                    path.move(to: CGPoint(x: step, y: offset))
+                    path.addLine(to: CGPoint(x: canvasSize.width - step, y: offset))
+                }
+                context.stroke(path, with: .color(Color.black.opacity(0.45)), lineWidth: 0.9)
+
+                for move in moves.suffix(12) {
+                    guard let row = move.row, let col = move.col else { continue }
+                    let point = CGPoint(
+                        x: step * CGFloat(max(1, min(7, col))),
+                        y: step * CGFloat(max(1, min(7, row)))
+                    )
+                    let stoneRect = CGRect(x: point.x - 4, y: point.y - 4, width: 8, height: 8)
+                    context.fill(Path(ellipseIn: stoneRect), with: .color(move.stone == "W" ? .white : .black))
+                    if move.moveNo == lastMoveNo {
+                        context.stroke(Path(ellipseIn: stoneRect.insetBy(dx: -2, dy: -2)), with: .color(.yellow), lineWidth: 1.5)
+                    }
+                }
+            }
+        }
+        .frame(width: 88, height: 88)
+        .position(x: size.width * 0.63, y: size.height * 0.54)
+        .shadow(color: Color.black.opacity(0.24), radius: 8, y: 4)
+    }
+
+    private func officeMeetingBanner(topic: String, in size: CGSize, time: TimeInterval) -> some View {
+        let pulse = (sin(time * 1.8) + 1) / 2
+        return HStack(spacing: 8) {
+            Circle()
+                .fill(V2Theme.mint)
+                .frame(width: 9, height: 9)
+                .shadow(color: V2Theme.mint.opacity(0.8), radius: 6)
+            Text(topic)
+                .font(.caption.weight(.bold))
+                .lineLimit(1)
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
+        .background(Color.black.opacity(0.72))
+        .overlay(
+            Capsule()
+                .stroke(V2Theme.cyan.opacity(0.35 + pulse * 0.3), lineWidth: 1)
+        )
+        .clipShape(Capsule())
+        .position(x: size.width * 0.63, y: size.height * 0.38)
+    }
+
+    private func officeAgentAvatar(
+        _ agent: AgentSummary,
+        placement: OfficePlacement,
+        index: Int,
+        time: TimeInterval,
+        canvasSize: CGSize
+    ) -> some View {
+        let activity = officeActivity(for: agent, index: index)
+        let selected = selectedAgentIds.contains(agent.id)
+        let statusTint = V2Theme.statusColor(agent)
+        let roomTint = officeRoomTint(placement.room)
+        let wave = sin(time * 1.2 + Double(index) * 0.6)
+        let verticalBob = CGFloat(wave) * (activity == .working ? 1.6 : 2.8)
+        let horizontalDrift: CGFloat = activity == .idle
+            ? CGFloat(cos(time * 0.75 + Double(index))) * 4
+            : CGFloat(activity == .waterBreak ? 8 : 0)
+        let tilt = activity == .standing ? wave * 5 : (activity == .waterBreak ? 6 : 0)
+        let scale = selected ? 1.08 : 1.0
+
+        return Button {
+            if selected {
+                selectedAgentIds.remove(agent.id)
+                if summarizerId == agent.id { summarizerId = "" }
+            } else {
+                selectedAgentIds.insert(agent.id)
+            }
+        } label: {
+            ZStack(alignment: .bottom) {
+                Ellipse()
+                    .fill(roomTint.opacity(selected ? 0.30 : 0.18))
+                    .frame(width: 50, height: 14)
+                    .blur(radius: 5)
+                    .offset(y: 18)
+
+                if activity.showsDesk {
+                    RoundedRectangle(cornerRadius: 6, style: .continuous)
+                        .fill(Color.black.opacity(0.22))
+                        .frame(width: 42, height: 16)
+                        .offset(y: 6)
+                }
+
+                if activity.showsChair {
+                    RoundedRectangle(cornerRadius: 8, style: .continuous)
+                        .fill(Color(red: 0.38, green: 0.25, blue: 0.12))
+                        .frame(width: 24, height: 10)
+                        .offset(y: 12)
+                }
+
+                VStack(spacing: 0) {
+                    ZStack {
+                        Circle()
+                            .fill(Color(red: 0.09, green: 0.12, blue: 0.18))
+                            .frame(width: 28, height: 28)
+                            .overlay(
+                                Circle()
+                                    .stroke(selected ? V2Theme.cyan : statusTint.opacity(0.84), lineWidth: selected ? 2.2 : 1.4)
+                            )
+                            .shadow(color: statusTint.opacity(agent.isOnline ? 0.3 : 0.14), radius: 10)
+                        Text(agent.displayIcon)
+                            .font(.system(size: 12))
+                    }
+
+                    RoundedRectangle(cornerRadius: 6, style: .continuous)
+                        .fill(
+                            LinearGradient(
+                                colors: [Color(red: 0.23, green: 0.27, blue: 0.38), Color(red: 0.10, green: 0.12, blue: 0.20)],
+                                startPoint: .top,
+                                endPoint: .bottom
+                            )
+                        )
+                        .frame(width: 16, height: activity.compactBody ? 14 : 19)
+                        .overlay(alignment: .center) {
+                            if activity == .working {
+                                RoundedRectangle(cornerRadius: 2, style: .continuous)
+                                    .fill(Color.white.opacity(0.18))
+                                    .frame(width: 24, height: 2)
+                                    .rotationEffect(.degrees(wave * 5))
+                            }
+                        }
+                        .rotationEffect(.degrees(tilt))
+
+                    if !activity.hidesLegs {
+                        HStack(spacing: 4) {
+                            Capsule().fill(Color(red: 0.12, green: 0.14, blue: 0.20)).frame(width: 4, height: 10)
+                            Capsule().fill(Color(red: 0.12, green: 0.14, blue: 0.20)).frame(width: 4, height: 10)
+                        }
+                    }
+
+                    Ellipse()
+                        .fill(Color.black.opacity(0.22))
+                        .frame(width: 24, height: 6)
+                        .padding(.top, 2)
+                }
+
+                officeActivityAccessory(activity)
+                    .offset(x: 20, y: -18)
+
+                Text(agent.name)
+                    .font(.system(size: 9, weight: .semibold))
+                    .lineLimit(1)
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 3)
+                    .background(selected ? V2Theme.cyan.opacity(0.24) : Color.black.opacity(0.62))
+                    .overlay(
+                        Capsule().stroke(selected ? V2Theme.cyan.opacity(0.55) : Color.white.opacity(0.08), lineWidth: 1)
+                    )
+                    .clipShape(Capsule())
+                    .offset(y: 28)
+            }
+            .scaleEffect(scale)
+            .offset(x: horizontalDrift, y: verticalBob)
+            .frame(width: 92, height: 94)
+            .position(
+                x: min(max(placement.point.x, 48), canvasSize.width - 48),
+                y: min(max(placement.point.y, 58), canvasSize.height - 70)
+            )
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func officeSpeechBubble(
+        _ message: ChatMessage,
+        placement: OfficePlacement,
+        index: Int,
+        canvasSize: CGSize
+    ) -> some View {
+        let x = min(max(placement.point.x + (index.isMultiple(of: 2) ? 38 : -38), 76), canvasSize.width - 76)
+        let y = max(42, placement.point.y - 58)
+
+        return VStack(alignment: .leading, spacing: 4) {
+            Text(message.senderTitle)
+                .font(.caption2.weight(.bold))
+                .foregroundStyle(V2Theme.cyan)
+            Text(message.content ?? "")
+                .font(.caption2)
+                .foregroundStyle(.primary)
+                .lineLimit(3)
+                .multilineTextAlignment(.leading)
+        }
+        .padding(.horizontal, 9)
+        .padding(.vertical, 7)
+        .frame(width: 150, alignment: .leading)
+        .background(Color.black.opacity(0.76))
+        .overlay(
+            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                .stroke(V2Theme.cyan.opacity(0.28), lineWidth: 1)
+        )
+        .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+        .position(x: x, y: y)
+    }
+
+    private func officeRoomTint(_ room: OfficeRoomID) -> Color {
+        switch room {
+        case .dev:
+            return V2Theme.cyan
+        case .meeting:
+            return V2Theme.amber
+        case .ops:
+            return V2Theme.mint
+        case .archive:
+            return Color.white
+        case .lounge:
+            return V2Theme.violet
+        }
+    }
+
+    @ViewBuilder
+    private func officeActivityAccessory(_ activity: OfficeAgentActivity) -> some View {
+        switch activity {
+        case .waterBreak:
+            Image(systemName: "cup.and.saucer.fill")
+                .font(.system(size: 10, weight: .bold))
+                .foregroundStyle(V2Theme.amber)
+                .padding(5)
+                .background(Color.black.opacity(0.72))
+                .clipShape(Circle())
+        case .gomokuBlack:
+            Circle()
+                .fill(Color.black)
+                .frame(width: 12, height: 12)
+                .overlay(Circle().stroke(Color.white.opacity(0.18), lineWidth: 1))
+                .padding(4)
+                .background(Color.black.opacity(0.72))
+                .clipShape(Circle())
+        case .gomokuWhite:
+            Circle()
+                .fill(Color.white)
+                .frame(width: 12, height: 12)
+                .overlay(Circle().stroke(Color.black.opacity(0.18), lineWidth: 1))
+                .padding(4)
+                .background(Color.black.opacity(0.72))
+                .clipShape(Circle())
+        case .meetingSeated:
+            Image(systemName: "person.2.fill")
+                .font(.system(size: 10, weight: .bold))
+                .foregroundStyle(V2Theme.cyan)
+                .padding(5)
+                .background(Color.black.opacity(0.72))
+                .clipShape(Circle())
+        case .standing:
+            Image(systemName: "bubble.left.fill")
+                .font(.system(size: 9, weight: .bold))
+                .foregroundStyle(V2Theme.mint)
+                .padding(5)
+                .background(Color.black.opacity(0.72))
+                .clipShape(Circle())
+        case .idle, .working:
+            EmptyView()
+        }
     }
 
 
@@ -1239,3 +1730,102 @@ private func formatTime(_ iso: String?) -> String {
     guard let iso, let date = iso.asIsoDate else { return "" }
     return date.formatted(date: .omitted, time: .shortened)
 }
+
+private enum OfficeRoomID: String {
+    case dev
+    case meeting
+    case ops
+    case archive
+    case lounge
+}
+
+private struct OfficeRoomLayout: Identifiable {
+    let roomID: OfficeRoomID
+    let title: String
+    let subtitle: String
+    let frame: CGRect
+    let colors: [Color]
+
+    var id: String { roomID.rawValue }
+}
+
+private struct OfficePlacement {
+    let point: CGPoint
+    let room: OfficeRoomID
+}
+
+private enum OfficeAgentActivity: Equatable {
+    case idle
+    case working
+    case standing
+    case waterBreak
+    case meetingSeated
+    case gomokuBlack
+    case gomokuWhite
+
+    var showsDesk: Bool {
+        switch self {
+        case .working, .idle: return true
+        default: return false
+        }
+    }
+
+    var showsChair: Bool {
+        switch self {
+        case .meetingSeated, .gomokuBlack, .gomokuWhite: return true
+        default: return false
+        }
+    }
+
+    var hidesLegs: Bool {
+        switch self {
+        case .meetingSeated, .gomokuBlack, .gomokuWhite: return true
+        default: return false
+        }
+    }
+
+    var compactBody: Bool {
+        switch self {
+        case .meetingSeated, .gomokuBlack, .gomokuWhite: return true
+        default: return false
+        }
+    }
+}
+
+private let officeRooms: [OfficeRoomLayout] = [
+    OfficeRoomLayout(
+        roomID: .dev,
+        title: "Dev Pods",
+        subtitle: "coding / build",
+        frame: CGRect(x: 0.04, y: 0.08, width: 0.34, height: 0.34),
+        colors: [Color(red: 0.82, green: 0.73, blue: 0.55), Color(red: 0.62, green: 0.46, blue: 0.24)]
+    ),
+    OfficeRoomLayout(
+        roomID: .meeting,
+        title: "Command Room",
+        subtitle: "roundtable / live ops",
+        frame: CGRect(x: 0.40, y: 0.38, width: 0.56, height: 0.52),
+        colors: [Color(red: 0.88, green: 0.63, blue: 0.42), Color(red: 0.60, green: 0.31, blue: 0.16)]
+    ),
+    OfficeRoomLayout(
+        roomID: .ops,
+        title: "Ops",
+        subtitle: "infra / status",
+        frame: CGRect(x: 0.40, y: 0.08, width: 0.24, height: 0.24),
+        colors: [Color(red: 0.47, green: 0.62, blue: 0.73), Color(red: 0.28, green: 0.41, blue: 0.56)]
+    ),
+    OfficeRoomLayout(
+        roomID: .archive,
+        title: "Archive",
+        subtitle: "history / reports",
+        frame: CGRect(x: 0.68, y: 0.08, width: 0.26, height: 0.24),
+        colors: [Color(red: 0.91, green: 0.89, blue: 0.82), Color(red: 0.74, green: 0.68, blue: 0.60)]
+    ),
+    OfficeRoomLayout(
+        roomID: .lounge,
+        title: "Lounge",
+        subtitle: "rest / side chat",
+        frame: CGRect(x: 0.04, y: 0.50, width: 0.34, height: 0.34),
+        colors: [Color(red: 0.57, green: 0.63, blue: 0.85), Color(red: 0.36, green: 0.40, blue: 0.72)]
+    )
+]
