@@ -386,10 +386,10 @@ struct NativeBigScreenView: View {
                 TimelineView(.animation) { timeline in
                     let time = timeline.date.timeIntervalSinceReferenceDate
                     VStack(spacing: 10) {
-                        ForEach(Array(recentLiveMessages.enumerated()), id: \.element.stableId) { index, message in
-                            liveMessageBubble(message, index: index, time: time)
+                        ForEach(Array(recentLiveMessages.enumerated()), id: \.element.stableId) { item in
+                            liveMessageBubble(item.element, index: item.offset, time: time)
                                 .transition(.asymmetric(insertion: .move(edge: .bottom).combined(with: .opacity), removal: .opacity))
-                                .zIndex(Double(index))
+                                .zIndex(Double(item.offset))
                         }
                     }
                 }
@@ -1674,9 +1674,8 @@ struct NativeBigScreenView: View {
             .map { $0 }
 
         do {
-            officeHistoryPrivateMessages = try await store.loadPrivateChatHistory(agentId: agent.id)
-                .suffix(16)
-                .map { $0 }
+            let privateHistory = try await store.loadPrivateChatHistory(agentId: agent.id)
+            officeHistoryPrivateMessages = Array(privateHistory.suffix(16))
         } catch {
             officeHistoryPrivateMessages = []
         }
@@ -1754,38 +1753,48 @@ private struct GomokuBoardView: View {
                     .stroke(Color.black.opacity(0.42), lineWidth: 0.8)
                 }
 
-                ForEach(Array(starPoints(size: boardSize).enumerated()), id: \.offset) { _, point in
+                ForEach(Array(starPoints(size: boardSize).enumerated()), id: \.offset) { item in
                     Circle()
                         .fill(Color.black.opacity(0.55))
                         .frame(width: 5, height: 5)
-                        .position(x: padding + CGFloat(point.1 - 1) * cell, y: padding + CGFloat(point.0 - 1) * cell)
+                        .position(x: padding + CGFloat(item.element.1 - 1) * cell, y: padding + CGFloat(item.element.0 - 1) * cell)
                 }
 
                 ForEach(moves) { move in
-                    let row = max(1, min(boardSize, move.row ?? 1))
-                    let col = max(1, min(boardSize, move.col ?? 1))
-                    let isWhite = move.stone == "W"
-                    let isLast = move.moveNo == lastMoveNo
-
-                    ZStack {
-                        Circle()
-                            .fill(isWhite ? Color.white : Color.black)
-                            .shadow(color: Color.black.opacity(0.28), radius: 3, x: 0, y: 2)
-                            .overlay(
-                                Circle()
-                                    .stroke(isLast ? Color.yellow : Color.clear, lineWidth: 3)
-                            )
-                        Text(move.moveNo.map(String.init) ?? "")
-                            .font(.system(size: 9, weight: .bold))
-                            .foregroundStyle(isWhite ? Color.black : Color.white)
-                    }
-                    .frame(width: max(18, cell * 0.72), height: max(18, cell * 0.72))
-                    .position(x: padding + CGFloat(col - 1) * cell, y: padding + CGFloat(row - 1) * cell)
+                    gomokuStoneView(move, boardSize: boardSize, padding: padding, cell: cell, lastMoveNo: lastMoveNo)
                 }
             }
             .frame(width: side, height: side)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
+    }
+
+    private func gomokuStoneView(
+        _ move: GomokuMove,
+        boardSize: Int,
+        padding: CGFloat,
+        cell: CGFloat,
+        lastMoveNo: Int?
+    ) -> some View {
+        let row = max(1, min(boardSize, move.row ?? 1))
+        let col = max(1, min(boardSize, move.col ?? 1))
+        let isWhite = move.stone == "W"
+        let isLast = move.moveNo == lastMoveNo
+
+        return ZStack {
+            Circle()
+                .fill(isWhite ? Color.white : Color.black)
+                .shadow(color: Color.black.opacity(0.28), radius: 3, x: 0, y: 2)
+                .overlay(
+                    Circle()
+                        .stroke(isLast ? Color.yellow : Color.clear, lineWidth: 3)
+                )
+            Text(move.moveNo.map(String.init) ?? "")
+                .font(.system(size: 9, weight: .bold))
+                .foregroundStyle(isWhite ? Color.black : Color.white)
+        }
+        .frame(width: max(18, cell * 0.72), height: max(18, cell * 0.72))
+        .position(x: padding + CGFloat(col - 1) * cell, y: padding + CGFloat(row - 1) * cell)
     }
 
     private func starPoints(size: Int) -> [(Int, Int)] {
@@ -1807,8 +1816,8 @@ private struct CardRow: View {
                 .foregroundStyle(.secondary)
         } else {
             HStack(spacing: 5) {
-                ForEach(Array(cards.enumerated()), id: \.offset) { _, card in
-                    PlayingCardView(card: card)
+                ForEach(Array(cards.enumerated()), id: \.offset) { item in
+                    PlayingCardView(card: item.element)
                 }
             }
         }
