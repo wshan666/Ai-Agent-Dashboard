@@ -558,6 +558,7 @@ struct NativeChatView: View {
         let isLong = bodyText.count > 360 || lineCount > 10
         let isExpanded = expandedMessageIds.contains(message.stableId)
         let canReply = canReply(to: message)
+        let imageLinks = imageUrls(in: message.content)
         let audioLinks = audioUrls(in: message.content)
 
         return HStack(alignment: .bottom, spacing: 10) {
@@ -610,10 +611,9 @@ struct NativeChatView: View {
                     .foregroundStyle(V2Theme.cyan)
                 }
 
-                let urls = imageUrls(in: message.content)
-                if !urls.isEmpty {
+                if !imageLinks.isEmpty {
                     VStack(alignment: message.isUser ? .trailing : .leading, spacing: 8) {
-                        ForEach(urls, id: \.absoluteString) { url in
+                        ForEach(imageLinks, id: \.absoluteString) { url in
                             AsyncImage(url: url) { phase in
                                 switch phase {
                                 case .empty:
@@ -898,7 +898,7 @@ struct NativeChatView: View {
             timestamp: message.timestamp
         )
         if mode == .group, let from = message.from, !from.isEmpty {
-            selectedAgentIds = [from]
+            selectedAgentIds = Set([from])
         } else if mode == .direct, let from = message.from, !from.isEmpty {
             privateAgentId = from
         }
@@ -1158,6 +1158,7 @@ struct NativeChatView: View {
     }
 }
 
+@MainActor
 private final class SpeechInputController: ObservableObject {
     @Published var transcript = ""
     @Published var statusText = ""
@@ -1255,6 +1256,7 @@ private struct VoiceRecording {
     let mimeType: String
 }
 
+@MainActor
 private final class VoiceMessageRecorder: NSObject, ObservableObject, AVAudioRecorderDelegate {
     @Published var isRecording = false
     @Published var statusText = ""
