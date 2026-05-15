@@ -37,13 +37,19 @@ jobs:
       - name: Read Version
         id: version
         run: |
-          VER=$(python3 -c "
+          VERSION_INFO=$(python3 -c "
           import plistlib
           with open('AgentApp/Resources/Info.plist', 'rb') as f:
               pl = plistlib.load(f)
           print(pl['CFBundleShortVersionString'])
+          print(pl['CFBundleVersion'])
           ")
+          VER=$(echo "$VERSION_INFO" | sed -n '1p')
+          BUILD=$(echo "$VERSION_INFO" | sed -n '2p')
+          DISPLAY_VER="$VER ($BUILD)"
           echo "version=$VER" >> $GITHUB_OUTPUT
+          echo "build=$BUILD" >> $GITHUB_OUTPUT
+          echo "display_version=$DISPLAY_VER" >> $GITHUB_OUTPUT
 
       - name: Mark OTA Build Started
         if: vars.OTA_HOST != ''
@@ -60,7 +66,8 @@ jobs:
           remote_dir = "/opt/phonefinder-server/ota"
           status = {
               "status": "started",
-              "version": os.environ.get("VERSION", ""),
+              "version": os.environ.get("DISPLAY_VERSION", ""),
+              "build": os.environ.get("BUILD_VERSION", ""),
               "sha": os.environ.get("GITHUB_SHA", ""),
               "ref": os.environ.get("GITHUB_REF_NAME", ""),
               "workflow": os.environ.get("GITHUB_WORKFLOW", ""),
@@ -81,7 +88,8 @@ jobs:
           OTA_PORT: ${{ vars.OTA_PORT }}
           OTA_USER: ${{ vars.OTA_USER }}
           OTA_PASSWORD: ${{ secrets.OTA_PASSWORD }}
-          VERSION: ${{ steps.version.outputs.version }}
+          DISPLAY_VERSION: ${{ steps.version.outputs.display_version }}
+          BUILD_VERSION: ${{ steps.version.outputs.build }}
 
       - name: Build App
         run: |
@@ -133,7 +141,7 @@ jobs:
       - name: Deploy to OTA Server
         if: vars.OTA_HOST != ''
         run: |
-          echo "Deploying v${{ steps.version.outputs.version }} to OTA..."
+          echo "Deploying v${{ steps.version.outputs.display_version }} to OTA..."
           pip3 install --break-system-packages paramiko
           python3 << 'PYEOF'
           import paramiko, os, json, plistlib, datetime
@@ -143,7 +151,9 @@ jobs:
           port = int(os.environ.get("OTA_PORT", "22"))
           user = os.environ.get("OTA_USER", "root")
           password = os.environ["OTA_PASSWORD"]
-          version = os.environ["VERSION"]
+          short_version = os.environ["SHORT_VERSION"]
+          build_version = os.environ["BUILD_VERSION"]
+          display_version = os.environ["DISPLAY_VERSION"]
           ipa_file = "agent_db.ipa"
           remote_dir = "/opt/phonefinder-server/ota"
           http_base = f"http://{host}:{os.environ.get('OTA_HTTP_PORT','8000')}/ota"
@@ -180,9 +190,9 @@ jobs:
                   ],
                   "metadata": {
                       "bundle-identifier": "com.agent.dashboard",
-                      "bundle-version": version,
+                      "bundle-version": build_version,
                       "kind": "software",
-                      "title": f"AI Agent v{version}"
+                      "title": f"AI Agent v{display_version}"
                   }
               }]
           }
@@ -191,8 +201,10 @@ jobs:
 
           # Generate agent_sign.json
           sign = {
-              "name": f"AI Agent v{version}",
-              "version": version,
+              "name": f"AI Agent v{display_version}",
+              "version": display_version,
+              "shortVersion": short_version,
+              "build": build_version,
               "ipa": f"{http_base}/agent_db.ipa",
               "plist": f"{http_base}/agent_install.plist",
               "icon": f"{http_base}/icon-57.png",
@@ -213,12 +225,12 @@ jobs:
           repo["apps"].append({
               "name": "AI Agent",
               "bundleIdentifier": "com.agent.dashboard",
-              "version": version,
+              "version": display_version,
               "versionDate": datetime.datetime.now().strftime("%Y-%m-%d"),
               "size": os.path.getsize(ipa_file),
               "downloadURL": f"{http_base}/agent_db.ipa",
               "iconURL": f"{http_base}/icon-57.png",
-              "localizedDescription": f"AI Agent Dashboard v{version}",
+              "localizedDescription": f"AI Agent Dashboard v{display_version}",
               "screenshotURLs": []
           })
           sftp.putfo(BytesIO(json.dumps(repo, indent=2, ensure_ascii=False).encode()), f"{remote_dir}/repo.json")
@@ -235,14 +247,14 @@ jobs:
           apps["items"].append({
               "name": "AI Agent",
               "bundleID": "com.agent.dashboard",
-              "version": version,
+              "version": display_version,
               "url": f"{http_base}/agent_db.ipa"
           })
           sftp.putfo(BytesIO(plistlib.dumps(apps)), f"{remote_dir}/apps.plist")
           print(f"apps.plist now has {len(apps['items'])} app(s)")
 
           sftp.close(); ssh.close()
-          print(f"v{version} deployed to OTA")
+          print(f"v{display_version} deployed to OTA")
           PYEOF
         env:
           OTA_HOST: ${{ vars.OTA_HOST }}
@@ -250,7 +262,9 @@ jobs:
           OTA_USER: ${{ vars.OTA_USER }}
           OTA_HTTP_PORT: ${{ vars.OTA_HTTP_PORT }}
           OTA_PASSWORD: ${{ secrets.OTA_PASSWORD }}
-          VERSION: ${{ steps.version.outputs.version }}
+          SHORT_VERSION: ${{ steps.version.outputs.version }}
+          BUILD_VERSION: ${{ steps.version.outputs.build }}
+          DISPLAY_VERSION: ${{ steps.version.outputs.display_version }}
 
       - name: Publish OTA Build Diagnostics
         if: always() && vars.OTA_HOST != ''
@@ -273,7 +287,8 @@ jobs:
           ipa = pathlib.Path("agent_db.ipa")
           status = {
               "status": os.environ.get("JOB_STATUS", ""),
-              "version": os.environ.get("VERSION", ""),
+              "version": os.environ.get("DISPLAY_VERSION", ""),
+              "build": os.environ.get("BUILD_VERSION", ""),
               "sha": os.environ.get("GITHUB_SHA", ""),
               "ref": os.environ.get("GITHUB_REF_NAME", ""),
               "workflow": os.environ.get("GITHUB_WORKFLOW", ""),
@@ -299,5 +314,6 @@ jobs:
           OTA_PORT: ${{ vars.OTA_PORT }}
           OTA_USER: ${{ vars.OTA_USER }}
           OTA_PASSWORD: ${{ secrets.OTA_PASSWORD }}
-          VERSION: ${{ steps.version.outputs.version }}
+          DISPLAY_VERSION: ${{ steps.version.outputs.display_version }}
+          BUILD_VERSION: ${{ steps.version.outputs.build }}
           JOB_STATUS: ${{ job.status }}
