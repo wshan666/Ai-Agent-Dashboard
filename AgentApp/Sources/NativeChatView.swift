@@ -6,15 +6,19 @@ import AVFoundation
 struct NativeChatView: View {
     @EnvironmentObject private var store: AppStore
     @StateObject private var speechInput = SpeechInputController()
+    @StateObject private var voiceRecorder = VoiceMessageRecorder()
 
     @State private var selectedAgentIds: Set<String> = []
     @State private var privateAgentId = ""
     @State private var topic = ""
     @State private var draft = ""
+    @State private var messageSearchText = ""
+    @State private var replyTarget: ChatReplyContext?
     @State private var selectedPhotoItem: PhotosPickerItem?
     @State private var attachedImageData: Data?
     @State private var attachedImagePreview: UIImage?
     @State private var isSending = false
+    @State private var isSendingVoice = false
     @State private var isAutoRefreshing = false
     @State private var showAgentPicker = false
     @State private var showPrivatePicker = false
@@ -70,8 +74,8 @@ struct NativeChatView: View {
             .map { $0 }
     }
 
-    private var visibleMessages: [ChatMessage] {
-        let base = Array(store.messages.suffix(300))
+    private var baseVisibleMessages: [ChatMessage] {
+        let base = Array(store.messages.suffix(800))
         if mode == .group {
             return base.filter { ($0.room ?? "").isEmpty }
         }
@@ -80,6 +84,25 @@ struct NativeChatView: View {
             if message.room == agent.id { return true }
             if message.from == agent.id { return true }
             return false
+        }
+    }
+
+    private var visibleMessages: [ChatMessage] {
+        let search = messageSearchText.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        guard !search.isEmpty else { return baseVisibleMessages }
+        return baseVisibleMessages.filter { message in
+            [
+                message.content,
+                message.fromName,
+                message.from,
+                message.topic,
+                message.room,
+                message.replyTo?.content,
+                message.replyTo?.fromName,
+                message.replyTo?.from
+            ]
+            .compactMap { $0?.lowercased() }
+            .contains { $0.contains(search) }
         }
     }
 
@@ -104,6 +127,8 @@ struct NativeChatView: View {
         )
         .onDisappear {
             focusedField = nil
+            speechInput.stop()
+            voiceRecorder.cancel()
             UIApplication.dismissKeyboard()
         }
         .task {
@@ -120,10 +145,12 @@ struct NativeChatView: View {
             Task { await syncCurrentChatSilently() }
         }
         .onChange(of: mode) { _ in
+            clearReplyTarget()
             Task { await syncCurrentChat() }
         }
         .onChange(of: privateAgentId) { _ in
             guard mode == .direct else { return }
+            clearReplyTarget()
             Task { await syncCurrentChat() }
         }
         .onChange(of: selectedPhotoItem) { item in
@@ -226,7 +253,25 @@ struct NativeChatView: View {
                 .textFieldStyle(.roundedBorder)
                 .focused($focusedField, equals: .topic)
 
-            if !store.topics.isEmpty {
+            TextField("\u{641c}\u{7d22}\u{6d88}\u{606f}\u{3001}\u{53d1}\u{4ef6}\u{4eba}\u{6216}\u{8bdd}\u{9898}", text: $messageSearchText)
+                .textFieldStyle(.roundedBorder)
+
+            if !messageSearchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                HStack(spacing: 10) {
+                    Text("\u{7b5b}\u{51fa} \(visibleMessages.count) / \(baseVisibleMessages.count) \u{6761}\u{6d88}\u{606f}")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    Spacer()
+                    Button("\u{6e05}\u{9664}\u{641c}\u{7d22}") {
+                        messageSearchText = ""
+                    }
+                    .font(.caption.weight(.semibold))
+                    .buttonStyle(.plain)
+                    .foregroundStyle(V2Theme.cyan)
+                }
+            }
+
+            if mode == .group, !store.topics.isEmpty {
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 8) {
                         ForEach(store.topics.prefix(10), id: \.self) { item in
@@ -281,6 +326,7 @@ struct NativeChatView: View {
     private var composer: some View {
         VStack(spacing: 12) {
             mentionSuggestionBar
+            replyPreview
             attachmentPreview
 
             HStack(alignment: .bottom, spacing: 10) {
@@ -324,6 +370,20 @@ struct NativeChatView: View {
                 .buttonStyle(.plain)
                 .disabled(isSending)
 
+                Button {
+                    Task { await toggleVoiceMessageRecording() }
+                } label: {
+                    Image(systemName: voiceRecorder.isRecording ? "stop.circle.fill" : "waveform.circle")
+                        .font(.headline)
+                        .frame(width: 38, height: 38)
+                        .foregroundStyle(voiceRecorder.isRecording ? Color.white : V2Theme.mint)
+                        .background(voiceRecorder.isRecording ? V2Theme.red : V2Theme.mint.opacity(0.15))
+                        .overlay(Circle().stroke((voiceRecorder.isRecording ? V2Theme.red : V2Theme.mint).opacity(0.34), lineWidth: 1))
+                        .clipShape(Circle())
+                }
+                .buttonStyle(.plain)
+                .disabled(isSending || speechInput.isRecording || isSendingVoice)
+
                 TextField(mode == .group ? "\u{8f93}\u{5165}\u{7fa4}\u{804a}\u{6d88}\u{606f}" : "\u{8f93}\u{5165}\u{79c1}\u{804a}\u{6d88}\u{606f}", text: $draft, axis: .vertical)
                     .textFieldStyle(.roundedBorder)
                     .lineLimit(2 ... 6)
@@ -365,6 +425,33 @@ struct NativeChatView: View {
     }
 
     @ViewBuilder
+    private var replyPreview: some View {
+        if let replyTarget {
+            HStack(alignment: .top, spacing: 10) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("\u{56de}\u{590d} \(replyTarget.senderTitle)")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(V2Theme.cyan)
+                    Text(compactReplyText(replyTarget.content))
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(2)
+                }
+                Spacer()
+                Button {
+                    clearReplyTarget()
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .foregroundStyle(.secondary)
+                }
+                .buttonStyle(.plain)
+            }
+            .padding(10)
+            .v2Card(tint: V2Theme.cyan)
+        }
+    }
+
+    @ViewBuilder
     private var attachmentPreview: some View {
         if let attachedImagePreview {
             HStack(spacing: 10) {
@@ -391,6 +478,19 @@ struct NativeChatView: View {
                 .buttonStyle(.plain)
             }
             .v2Card(tint: V2Theme.cyan)
+        }
+
+        if voiceRecorder.isRecording || isSendingVoice || !voiceRecorder.statusText.isEmpty {
+            HStack(spacing: 8) {
+                Image(systemName: voiceRecorder.isRecording ? "waveform.circle.fill" : "waveform")
+                    .foregroundStyle(voiceRecorder.isRecording ? V2Theme.red : (isSendingVoice ? V2Theme.cyan : Color.secondary))
+                Text(isSendingVoice ? "\u{6b63}\u{5728}\u{53d1}\u{9001}\u{8bed}\u{97f3}..." : voiceRecorder.statusText)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                Spacer()
+            }
+            .padding(10)
+            .v2Card(tint: V2Theme.mint)
         }
 
         if speechInput.isRecording || !speechInput.statusText.isEmpty {
@@ -457,6 +557,8 @@ struct NativeChatView: View {
         let lineCount = bodyText.components(separatedBy: .newlines).count
         let isLong = bodyText.count > 360 || lineCount > 10
         let isExpanded = expandedMessageIds.contains(message.stableId)
+        let canReply = canReply(to: message)
+        let audioLinks = audioUrls(in: message.content)
 
         return HStack(alignment: .bottom, spacing: 10) {
             if message.isUser { Spacer(minLength: 44) } else { avatarView(for: avatarTitle(for: message)) }
@@ -466,6 +568,17 @@ struct NativeChatView: View {
                     if message.isUser { Spacer() }
                     Text(displaySenderTitle(for: message)).font(.caption.weight(.semibold)).foregroundStyle(.secondary)
                     Text(formatTime(message.timestamp)).font(.caption2).foregroundStyle(.tertiary)
+                    if canReply {
+                        Button("\u{56de}\u{590d}") {
+                            setReplyTarget(message)
+                        }
+                        .font(.caption2.weight(.semibold))
+                        .buttonStyle(.plain)
+                        .foregroundStyle(V2Theme.cyan)
+                    }
+                }
+                if let reply = message.replyTo {
+                    replyQuoteCard(reply, isUser: message.isUser)
                 }
                 Text(bodyText)
                     .font(.subheadline)
@@ -497,7 +610,7 @@ struct NativeChatView: View {
                     .foregroundStyle(V2Theme.cyan)
                 }
 
-                let urls = imageUrls(in: bodyText)
+                let urls = imageUrls(in: message.content)
                 if !urls.isEmpty {
                     VStack(alignment: message.isUser ? .trailing : .leading, spacing: 8) {
                         ForEach(urls, id: \.absoluteString) { url in
@@ -528,12 +641,54 @@ struct NativeChatView: View {
                     }
                     .frame(maxWidth: UIScreen.main.bounds.width * 0.72, alignment: message.isUser ? .trailing : .leading)
                 }
+
+                if !audioLinks.isEmpty {
+                    VStack(alignment: message.isUser ? .trailing : .leading, spacing: 8) {
+                        ForEach(audioLinks, id: \.absoluteString) { url in
+                            Link(destination: url) {
+                                Label("\u{6253}\u{5f00}\u{8bed}\u{97f3}", systemImage: "waveform")
+                                    .font(.caption.weight(.semibold))
+                                    .padding(.horizontal, 12)
+                                    .padding(.vertical, 9)
+                                    .background(message.isUser ? Color.white.opacity(0.16) : V2Theme.mint.opacity(0.12))
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 8, style: .continuous)
+                                            .stroke((message.isUser ? Color.white : V2Theme.mint).opacity(0.24), lineWidth: 1)
+                                    )
+                                    .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                            }
+                        }
+                    }
+                    .frame(maxWidth: UIScreen.main.bounds.width * 0.72, alignment: message.isUser ? .trailing : .leading)
+                }
             }
 
             if message.isUser { avatarView(for: "\u{4f60}") } else { Spacer(minLength: 44) }
         }
         .frame(maxWidth: .infinity, alignment: message.isUser ? .trailing : .leading)
     }
+
+    private func replyQuoteCard(_ reply: ChatReplyContext, isUser: Bool) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text("\u{56de}\u{590d} \(reply.senderTitle)")
+                .font(.caption2.weight(.semibold))
+                .foregroundStyle(isUser ? Color.white.opacity(0.9) : V2Theme.cyan)
+            Text(compactReplyText(reply.content))
+                .font(.caption2)
+                .foregroundStyle(isUser ? Color.white.opacity(0.76) : .secondary)
+                .lineLimit(3)
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 8)
+        .background(isUser ? Color.white.opacity(0.12) : Color(.tertiarySystemBackground))
+        .overlay(
+            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                .stroke((isUser ? Color.white : V2Theme.cyan).opacity(0.18), lineWidth: 1)
+        )
+        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+        .frame(maxWidth: UIScreen.main.bounds.width * 0.72, alignment: isUser ? .trailing : .leading)
+    }
+
     private var groupAgentPicker: some View {
         NavigationStack {
             List(store.agents) { agent in
@@ -603,6 +758,11 @@ struct NativeChatView: View {
         return mode == .group ? (hasContent && !selectedAgentIds.isEmpty) : (hasContent && !privateAgentId.isEmpty)
     }
 
+    private func canReply(to message: ChatMessage) -> Bool {
+        guard let from = message.from, !from.isEmpty else { return false }
+        return !message.isUser && from != "system"
+    }
+
     private func avatarView(for title: String) -> some View {
         let symbol = avatarInitial(title)
         return Text(symbol.isEmpty ? "A" : symbol)
@@ -633,6 +793,10 @@ struct NativeChatView: View {
 
     private func displayContent(for message: ChatMessage) -> String {
         guard let thinking = thinkingDisplay(for: message) else {
+            let cleaned = cleanAttachmentMarkup(message.content ?? "")
+            if !cleaned.isEmpty { return cleaned }
+            if !audioUrls(in: message.content).isEmpty { return "\u{8bed}\u{97f3}\u{6d88}\u{606f}" }
+            if !imageUrls(in: message.content).isEmpty { return "\u{56fe}\u{7247}\u{6d88}\u{606f}" }
             return message.content ?? ""
         }
         return "\(thinking) \u{6b63}\u{5728}\u{601d}\u{8003}..."
@@ -672,6 +836,31 @@ struct NativeChatView: View {
         return "A"
     }
 
+    private func compactReplyText(_ content: String?) -> String {
+        let cleaned = cleanAttachmentMarkup(content ?? "")
+        let source = cleaned.isEmpty ? (content ?? "") : cleaned
+        return source
+            .replacingOccurrences(of: "\n", with: " ")
+            .replacingOccurrences(of: "\r", with: " ")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .prefix(120)
+            .description
+    }
+
+    private func cleanAttachmentMarkup(_ value: String) -> String {
+        value
+            .components(separatedBy: .newlines)
+            .filter { line in
+                let trimmed = line.trimmingCharacters(in: .whitespacesAndNewlines)
+                if trimmed.hasPrefix("![") { return false }
+                if trimmed.hasPrefix("[\u{56fe}\u{7247}URL]") { return false }
+                if trimmed.hasPrefix("[\u{97f3}\u{9891}URL]") { return false }
+                return true
+            }
+            .joined(separator: "\n")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
     private func showMentionCandidates() {
         focusedField = .draft
         if draft.isEmpty || draft.last?.isWhitespace == true {
@@ -699,12 +888,34 @@ struct NativeChatView: View {
         draft += "@\(agent.name) "
     }
 
+    private func setReplyTarget(_ message: ChatMessage) {
+        guard canReply(to: message) else { return }
+        replyTarget = ChatReplyContext(
+            id: message.id,
+            from: message.from,
+            fromName: message.fromName ?? message.senderTitle,
+            content: message.content,
+            timestamp: message.timestamp
+        )
+        if mode == .group, let from = message.from, !from.isEmpty {
+            selectedAgentIds = [from]
+        } else if mode == .direct, let from = message.from, !from.isEmpty {
+            privateAgentId = from
+        }
+        focusedField = .draft
+    }
+
+    private func clearReplyTarget() {
+        replyTarget = nil
+    }
+
     private func send() async {
         let text = draft.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !text.isEmpty || attachedImageData != nil else { return }
 
         let trimmedTopic = topic.trimmingCharacters(in: .whitespacesAndNewlines)
         let roomId = mode == .direct ? privateAgentId : nil
+        let currentReplyTarget = replyTarget
         let optimisticContent = text.isEmpty ? "\u{56fe}\u{7247}\u{6d88}\u{606f}\u{ff0c}\u{6b63}\u{5728}\u{4e0a}\u{4f20}..." : text
         let optimisticMessage = ChatMessage(
             id: UUID().uuidString,
@@ -714,7 +925,8 @@ struct NativeChatView: View {
             timestamp: ISO8601DateFormatter().string(from: Date()),
             type: "chat",
             topic: trimmedTopic.isEmpty ? nil : trimmedTopic,
-            room: roomId
+            room: roomId,
+            replyTo: currentReplyTarget
         )
 
         isSending = true
@@ -728,12 +940,19 @@ struct NativeChatView: View {
         let imageData = attachedImageData
         draft = ""
         clearAttachment()
+        clearReplyTarget()
         focusedField = nil
         UIApplication.dismissKeyboard()
 
         do {
             let finalText = try await messageWithUploadedImage(text: text, imageData: imageData)
-            try await store.sendChat(agentIds: targetIds, message: finalText, topic: trimmedTopic, room: roomId)
+            try await store.sendChat(
+                agentIds: targetIds,
+                message: finalText,
+                topic: trimmedTopic,
+                room: roomId,
+                replyTo: currentReplyTarget
+            )
             await syncCurrentChat()
             Task { await followUpRefreshBurst() }
         } catch {
@@ -746,6 +965,7 @@ struct NativeChatView: View {
                 }
             } else {
                 store.messages.removeAll { $0.id == optimisticMessage.id }
+                replyTarget = currentReplyTarget
                 store.lastError = error.localizedDescription
             }
         }
@@ -790,10 +1010,23 @@ struct NativeChatView: View {
         let pattern = #"https?://[^\s\])]+/uploads/[^\s\])]+\.(?:jpg|jpeg|png|gif|webp|bmp)"#
         guard let regex = try? NSRegularExpression(pattern: pattern, options: [.caseInsensitive]) else { return [] }
         let range = NSRange(text.startIndex ..< text.endIndex, in: text)
-        return regex.matches(in: text, range: range).compactMap { match in
+        let urls = regex.matches(in: text, range: range).compactMap { match in
             guard let swiftRange = Range(match.range, in: text) else { return nil }
             return store.downloadURL(for: String(text[swiftRange]))
         }
+        return Array(Set(urls)).sorted { $0.absoluteString < $1.absoluteString }
+    }
+
+    private func audioUrls(in content: String?) -> [URL] {
+        let text = content ?? ""
+        let pattern = #"https?://[^\s\])]+/uploads/[^\s\])]+\.(?:m4a|mp3|wav|webm|aac|ogg|caf|mp4)"#
+        guard let regex = try? NSRegularExpression(pattern: pattern, options: [.caseInsensitive]) else { return [] }
+        let range = NSRange(text.startIndex ..< text.endIndex, in: text)
+        let urls = regex.matches(in: text, range: range).compactMap { match in
+            guard let swiftRange = Range(match.range, in: text) else { return nil }
+            return store.downloadURL(for: String(text[swiftRange]))
+        }
+        return Array(Set(urls)).sorted { $0.absoluteString < $1.absoluteString }
     }
 
     private func loadSelectedImage(_ item: PhotosPickerItem?) async {
@@ -838,6 +1071,77 @@ struct NativeChatView: View {
                 speechInput.seedTranscript(draft)
             }
             speechInput.start(localeIdentifier: "zh-CN")
+        }
+    }
+
+    private func toggleVoiceMessageRecording() async {
+        if voiceRecorder.isRecording {
+            guard let recording = voiceRecorder.stop() else { return }
+            await sendVoiceMessage(recording)
+        } else {
+            speechInput.stop()
+            voiceRecorder.start()
+        }
+    }
+
+    private func sendVoiceMessage(_ recording: VoiceRecording) async {
+        isSendingVoice = true
+        defer { isSendingVoice = false }
+
+        do {
+            let data = try Data(contentsOf: recording.fileURL)
+            let uploadURL = try await store.uploadAttachment(data: data, mime: recording.mimeType)
+            let currentReplyTarget = replyTarget
+            let voiceBody = [
+                "[\u{8bed}\u{97f3}\u{6d88}\u{606f}]",
+                "![audio](\(uploadURL))",
+                "[\u{97f3}\u{9891}URL] \(uploadURL)"
+            ].joined(separator: "\n")
+
+            let targetIds = mode == .group ? Array(selectedAgentIds) : [privateAgentId]
+            let hasTargets = !targetIds.isEmpty && !targetIds.contains { $0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+            guard hasTargets else {
+                if !draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                    draft += "\n"
+                }
+                draft += voiceBody
+                voiceRecorder.statusText = ""
+                store.lastError = "\u{8bed}\u{97f3}\u{5df2}\u{9644}\u{52a0}\u{5230}\u{8f93}\u{5165}\u{6846}\u{ff0c}\u{8bf7}\u{5148}\u{9009}\u{62e9}\u{63a5}\u{6536}\u{7684} Agent \u{518d}\u{53d1}\u{9001}\u{3002}"
+                return
+            }
+
+            let trimmedTopic = topic.trimmingCharacters(in: .whitespacesAndNewlines)
+            let roomId = mode == .direct ? privateAgentId : nil
+            let optimisticMessage = ChatMessage(
+                id: UUID().uuidString,
+                from: "user",
+                fromName: "\u{4f60}",
+                content: "[\u{8bed}\u{97f3}\u{6d88}\u{606f}]",
+                timestamp: ISO8601DateFormatter().string(from: Date()),
+                type: "chat",
+                topic: trimmedTopic.isEmpty ? nil : trimmedTopic,
+                room: roomId,
+                replyTo: currentReplyTarget
+            )
+
+            store.messages.append(optimisticMessage)
+            store.messages.sort { ($0.timestamp?.asIsoDate ?? .distantPast) < ($1.timestamp?.asIsoDate ?? .distantPast) }
+            clearReplyTarget()
+            try await store.sendChat(
+                agentIds: targetIds,
+                message: voiceBody,
+                topic: trimmedTopic,
+                room: roomId,
+                replyTo: currentReplyTarget
+            )
+            voiceRecorder.statusText = ""
+            await syncCurrentChat()
+            Task { await followUpRefreshBurst() }
+        } catch {
+            if let optimistic = store.messages.last, optimistic.content == "[\u{8bed}\u{97f3}\u{6d88}\u{606f}]", optimistic.from == "user" {
+                store.messages.removeAll { $0.stableId == optimistic.stableId }
+            }
+            store.lastError = "\u{8bed}\u{97f3}\u{53d1}\u{9001}\u{5931}\u{8d25}\u{ff1a}\(error.localizedDescription)"
         }
     }
 
@@ -942,6 +1246,83 @@ private final class SpeechInputController: ObservableObject {
         } catch {
             statusText = "\u{8bed}\u{97f3}\u{542f}\u{52a8}\u{5931}\u{8d25}\u{ff1a}\(error.localizedDescription)"
             stop()
+        }
+    }
+}
+
+private struct VoiceRecording {
+    let fileURL: URL
+    let mimeType: String
+}
+
+private final class VoiceMessageRecorder: NSObject, ObservableObject, AVAudioRecorderDelegate {
+    @Published var isRecording = false
+    @Published var statusText = ""
+
+    private var recorder: AVAudioRecorder?
+    private var currentFileURL: URL?
+
+    func start() {
+        guard !isRecording else { return }
+        AVAudioSession.sharedInstance().requestRecordPermission { [weak self] granted in
+            Task { @MainActor in
+                guard let self else { return }
+                guard granted else {
+                    self.statusText = "\u{8bf7}\u{5728} iOS \u{8bbe}\u{7f6e}\u{91cc}\u{5141}\u{8bb8}\u{9ea6}\u{514b}\u{98ce}"
+                    return
+                }
+                self.beginRecording()
+            }
+        }
+    }
+
+    func stop() -> VoiceRecording? {
+        guard isRecording, let fileURL = currentFileURL else { return nil }
+        recorder?.stop()
+        recorder = nil
+        isRecording = false
+        statusText = "\u{8bed}\u{97f3}\u{5df2}\u{5f55}\u{5236}\u{ff0c}\u{6b63}\u{5728}\u{53d1}\u{9001}..."
+        try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
+        currentFileURL = nil
+        return VoiceRecording(fileURL: fileURL, mimeType: "audio/m4a")
+    }
+
+    func cancel() {
+        recorder?.stop()
+        recorder = nil
+        isRecording = false
+        currentFileURL = nil
+        statusText = ""
+        try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
+    }
+
+    private func beginRecording() {
+        do {
+            let session = AVAudioSession.sharedInstance()
+            try session.setCategory(.playAndRecord, mode: .default, options: [.defaultToSpeaker, .duckOthers])
+            try session.setActive(true, options: .notifyOthersOnDeactivation)
+
+            let url = FileManager.default.temporaryDirectory
+                .appendingPathComponent("agent-voice-\(UUID().uuidString)")
+                .appendingPathExtension("m4a")
+            let settings: [String: Any] = [
+                AVFormatIDKey: kAudioFormatMPEG4AAC,
+                AVSampleRateKey: 44_100,
+                AVNumberOfChannelsKey: 1,
+                AVEncoderAudioQualityKey: AVAudioQuality.high.rawValue
+            ]
+            let recorder = try AVAudioRecorder(url: url, settings: settings)
+            recorder.delegate = self
+            recorder.prepareToRecord()
+            recorder.record()
+
+            self.recorder = recorder
+            currentFileURL = url
+            isRecording = true
+            statusText = "\u{6b63}\u{5728}\u{5f55}\u{97f3}\u{ff0c}\u{518d}\u{70b9}\u{4e00}\u{6b21}\u{5373}\u{53ef}\u{76f4}\u{63a5}\u{53d1}\u{9001}"
+        } catch {
+            cancel()
+            statusText = "\u{8bed}\u{97f3}\u{542f}\u{52a8}\u{5931}\u{8d25}\u{ff1a}\(error.localizedDescription)"
         }
     }
 }

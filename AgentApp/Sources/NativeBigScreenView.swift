@@ -11,6 +11,10 @@ struct NativeBigScreenView: View {
     @State private var isRunning = false
     @State private var isContinuingDoudizhu = false
     @State private var activeRun: CollaborationRun?
+    @State private var officeHistoryAgent: AgentSummary?
+    @State private var officeHistoryMessages: [ChatMessage] = []
+    @State private var officeHistoryPrivateMessages: [ChatMessage] = []
+    @State private var isLoadingOfficeHistory = false
     @FocusState private var focusedField: Field?
 
     private enum Field { case topic, prompt }
@@ -92,6 +96,9 @@ struct NativeBigScreenView: View {
             }
         }
         .refreshable { await store.refreshDashboard() }
+        .sheet(item: $officeHistoryAgent) { agent in
+            officeHistorySheet(for: agent)
+        }
         .dismissKeyboardOnTap()
         .task {
             if store.agents.isEmpty || store.messages.isEmpty { await store.refreshDashboard() }
@@ -176,7 +183,7 @@ struct NativeBigScreenView: View {
                 VStack(alignment: .leading, spacing: 12) {
                     officeCommandPulse(time: time)
                     HStack {
-                        Text("\u{8f7b}\u{70b9}\u{529e}\u{516c}\u{5ba4}\u{91cc}\u{7684} agent \u{5373}\u{53ef}\u{52a0}\u{5165}\u{534f}\u{540c}\u{4efb}\u{52a1}")
+                        Text("\u{8f7b}\u{70b9}\u{529e}\u{516c}\u{5ba4}\u{91cc}\u{7684} agent \u{5373}\u{53ef}\u{52a0}\u{5165}\u{534f}\u{540c}\u{4efb}\u{52a1}\u{ff0c}\u{53cc}\u{51fb}\u{5934}\u{50cf}\u{53ef}\u{770b}\u{5386}\u{53f2}")
                             .font(.caption)
                             .foregroundStyle(.secondary)
                         Spacer()
@@ -1292,7 +1299,10 @@ struct NativeBigScreenView: View {
         let activity = officeActivity(for: agent, index: index)
         let selected = selectedAgentIds.contains(agent.id)
         let statusTint = V2Theme.statusColor(agent)
+        let accent = officeAgentAccent(agent)
+        let secondary = officeAgentSecondary(agent)
         let roomTint = officeRoomTint(placement.room)
+        let headCorner = CGFloat(8 + (officeAgentSeed(agent.id) % 4) * 3)
         let wave = sin(time * 1.2 + Double(index) * 0.6)
         let verticalBob = CGFloat(wave) * (activity == .working ? 1.6 : 2.8)
         let horizontalDrift: CGFloat = activity == .idle
@@ -1301,105 +1311,115 @@ struct NativeBigScreenView: View {
         let tilt = activity == .standing ? wave * 5 : (activity == .waterBreak ? 6 : 0)
         let scale = selected ? 1.08 : 1.0
 
-        return Button {
-            if selected {
-                selectedAgentIds.remove(agent.id)
-                if summarizerId == agent.id { summarizerId = "" }
-            } else {
-                selectedAgentIds.insert(agent.id)
+        return ZStack(alignment: .bottom) {
+            Ellipse()
+                .fill(roomTint.opacity(selected ? 0.30 : 0.18))
+                .frame(width: 50, height: 14)
+                .blur(radius: 5)
+                .offset(y: 18)
+
+            if activity.showsDesk {
+                RoundedRectangle(cornerRadius: 6, style: .continuous)
+                    .fill(Color.black.opacity(0.22))
+                    .frame(width: 42, height: 16)
+                    .offset(y: 6)
             }
-        } label: {
-            ZStack(alignment: .bottom) {
-                Ellipse()
-                    .fill(roomTint.opacity(selected ? 0.30 : 0.18))
-                    .frame(width: 50, height: 14)
-                    .blur(radius: 5)
-                    .offset(y: 18)
 
-                if activity.showsDesk {
-                    RoundedRectangle(cornerRadius: 6, style: .continuous)
-                        .fill(Color.black.opacity(0.22))
-                        .frame(width: 42, height: 16)
-                        .offset(y: 6)
-                }
+            if activity.showsChair {
+                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    .fill(Color(red: 0.38, green: 0.25, blue: 0.12))
+                    .frame(width: 24, height: 10)
+                    .offset(y: 12)
+            }
 
-                if activity.showsChair {
-                    RoundedRectangle(cornerRadius: 8, style: .continuous)
-                        .fill(Color(red: 0.38, green: 0.25, blue: 0.12))
-                        .frame(width: 24, height: 10)
-                        .offset(y: 12)
-                }
-
-                VStack(spacing: 0) {
-                    ZStack {
-                        Circle()
-                            .fill(Color(red: 0.09, green: 0.12, blue: 0.18))
-                            .frame(width: 28, height: 28)
-                            .overlay(
-                                Circle()
-                                    .stroke(selected ? V2Theme.cyan : statusTint.opacity(0.84), lineWidth: selected ? 2.2 : 1.4)
-                            )
-                            .shadow(color: statusTint.opacity(agent.isOnline ? 0.3 : 0.14), radius: 10)
-                        Text(agent.displayIcon)
-                            .font(.system(size: 12))
-                    }
-
-                    RoundedRectangle(cornerRadius: 6, style: .continuous)
+            VStack(spacing: 0) {
+                ZStack(alignment: .topTrailing) {
+                    RoundedRectangle(cornerRadius: headCorner, style: .continuous)
                         .fill(
                             LinearGradient(
-                                colors: [Color(red: 0.23, green: 0.27, blue: 0.38), Color(red: 0.10, green: 0.12, blue: 0.20)],
-                                startPoint: .top,
-                                endPoint: .bottom
+                                colors: [accent.opacity(0.95), secondary.opacity(0.82)],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
                             )
                         )
-                        .frame(width: 16, height: activity.compactBody ? 14 : 19)
-                        .overlay(alignment: .center) {
-                            if activity == .working {
-                                RoundedRectangle(cornerRadius: 2, style: .continuous)
-                                    .fill(Color.white.opacity(0.18))
-                                    .frame(width: 24, height: 2)
-                                    .rotationEffect(.degrees(wave * 5))
-                            }
-                        }
-                        .rotationEffect(.degrees(tilt))
-
-                    if !activity.hidesLegs {
-                        HStack(spacing: 4) {
-                            Capsule().fill(Color(red: 0.12, green: 0.14, blue: 0.20)).frame(width: 4, height: 10)
-                            Capsule().fill(Color(red: 0.12, green: 0.14, blue: 0.20)).frame(width: 4, height: 10)
-                        }
-                    }
-
-                    Ellipse()
-                        .fill(Color.black.opacity(0.22))
-                        .frame(width: 24, height: 6)
-                        .padding(.top, 2)
+                        .frame(width: 30, height: 30)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: headCorner, style: .continuous)
+                                .stroke(selected ? V2Theme.cyan : statusTint.opacity(0.84), lineWidth: selected ? 2.2 : 1.4)
+                        )
+                        .shadow(color: accent.opacity(agent.isOnline ? 0.34 : 0.16), radius: 10)
+                    Text(officeAvatarMonogram(agent))
+                        .font(.system(size: 11, weight: .black, design: .rounded))
+                        .foregroundStyle(.white)
+                    Text(agent.displayIcon)
+                        .font(.system(size: 7, weight: .bold))
+                        .padding(3)
+                        .background(Color.black.opacity(0.55))
+                        .clipShape(Circle())
+                        .offset(x: 5, y: -5)
                 }
 
-                officeActivityAccessory(activity)
-                    .offset(x: 20, y: -18)
-
-                Text(agent.name)
-                    .font(.system(size: 9, weight: .semibold))
-                    .lineLimit(1)
-                    .padding(.horizontal, 6)
-                    .padding(.vertical, 3)
-                    .background(selected ? V2Theme.cyan.opacity(0.24) : Color.black.opacity(0.62))
-                    .overlay(
-                        Capsule().stroke(selected ? V2Theme.cyan.opacity(0.55) : Color.white.opacity(0.08), lineWidth: 1)
+                RoundedRectangle(cornerRadius: 6, style: .continuous)
+                    .fill(
+                        LinearGradient(
+                            colors: [accent.opacity(0.72), secondary.opacity(0.88)],
+                            startPoint: .top,
+                            endPoint: .bottom
+                        )
                     )
-                    .clipShape(Capsule())
-                    .offset(y: 28)
+                    .frame(width: 16, height: activity.compactBody ? 14 : 19)
+                    .overlay(alignment: .center) {
+                        if activity == .working {
+                            RoundedRectangle(cornerRadius: 2, style: .continuous)
+                                .fill(Color.white.opacity(0.22))
+                                .frame(width: 24, height: 2)
+                                .rotationEffect(.degrees(wave * 5))
+                        }
+                    }
+                    .rotationEffect(.degrees(tilt))
+
+                if !activity.hidesLegs {
+                    HStack(spacing: 4) {
+                        Capsule().fill(Color(red: 0.12, green: 0.14, blue: 0.20)).frame(width: 4, height: 10)
+                        Capsule().fill(Color(red: 0.12, green: 0.14, blue: 0.20)).frame(width: 4, height: 10)
+                    }
+                }
+
+                Ellipse()
+                    .fill(Color.black.opacity(0.22))
+                    .frame(width: 24, height: 6)
+                    .padding(.top, 2)
             }
-            .scaleEffect(scale)
-            .offset(x: horizontalDrift, y: verticalBob)
-            .frame(width: 92, height: 94)
-            .position(
-                x: min(max(placement.point.x, 48), canvasSize.width - 48),
-                y: min(max(placement.point.y, 58), canvasSize.height - 70)
-            )
+
+            officeActivityAccessory(activity)
+                .offset(x: 20, y: -18)
+
+            Text(agent.name)
+                .font(.system(size: 9, weight: .semibold))
+                .lineLimit(1)
+                .padding(.horizontal, 6)
+                .padding(.vertical, 3)
+                .background(selected ? accent.opacity(0.28) : Color.black.opacity(0.62))
+                .overlay(
+                    Capsule().stroke(selected ? accent.opacity(0.7) : Color.white.opacity(0.08), lineWidth: 1)
+                )
+                .clipShape(Capsule())
+                .offset(y: 28)
         }
-        .buttonStyle(.plain)
+        .contentShape(Rectangle())
+        .scaleEffect(scale)
+        .offset(x: horizontalDrift, y: verticalBob)
+        .frame(width: 92, height: 94)
+        .position(
+            x: min(max(placement.point.x, 48), canvasSize.width - 48),
+            y: min(max(placement.point.y, 58), canvasSize.height - 70)
+        )
+        .onTapGesture(count: 2) {
+            openOfficeHistory(for: agent)
+        }
+        .onTapGesture {
+            toggleOfficeSelection(for: agent)
+        }
     }
 
     private func officeSpeechBubble(
@@ -1431,6 +1451,67 @@ struct NativeBigScreenView: View {
         )
         .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
         .position(x: x, y: y)
+    }
+
+    private func officeAgentSeed(_ value: String) -> Int {
+        max(0, value.unicodeScalars.reduce(0) { partial, scalar in
+            (partial * 31 + Int(scalar.value)) % 10_000
+        })
+    }
+
+    private func officeAgentAccent(_ agent: AgentSummary) -> Color {
+        let palette: [Color] = [
+            V2Theme.cyan,
+            V2Theme.mint,
+            V2Theme.amber,
+            V2Theme.violet,
+            Color(red: 0.96, green: 0.41, blue: 0.55),
+            Color(red: 0.30, green: 0.66, blue: 0.98)
+        ]
+        return palette[officeAgentSeed(agent.id) % palette.count]
+    }
+
+    private func officeAgentSecondary(_ agent: AgentSummary) -> Color {
+        let palette: [Color] = [
+            Color(red: 0.09, green: 0.16, blue: 0.30),
+            Color(red: 0.12, green: 0.26, blue: 0.20),
+            Color(red: 0.33, green: 0.20, blue: 0.06),
+            Color(red: 0.20, green: 0.18, blue: 0.36),
+            Color(red: 0.34, green: 0.12, blue: 0.22),
+            Color(red: 0.12, green: 0.22, blue: 0.34)
+        ]
+        return palette[officeAgentSeed(agent.id + agent.name) % palette.count]
+    }
+
+    private func officeAvatarMonogram(_ agent: AgentSummary) -> String {
+        let trimmed = agent.name.trimmingCharacters(in: .whitespacesAndNewlines)
+        if let last = trimmed.last {
+            return String(last).uppercased()
+        }
+        return avatarFallback(agent.displayIcon)
+    }
+
+    private func avatarFallback(_ icon: String) -> String {
+        let cleaned = icon.replacingOccurrences(of: "\u{fe0f}", with: "")
+        if let char = cleaned.first(where: { $0.isLetter || $0.isNumber }) {
+            return String(char).uppercased()
+        }
+        return "A"
+    }
+
+    private func toggleOfficeSelection(for agent: AgentSummary) {
+        if selectedAgentIds.contains(agent.id) {
+            selectedAgentIds.remove(agent.id)
+            if summarizerId == agent.id { summarizerId = "" }
+        } else {
+            selectedAgentIds.insert(agent.id)
+        }
+    }
+
+    private func openOfficeHistory(for agent: AgentSummary) {
+        officeHistoryMessages = []
+        officeHistoryPrivateMessages = []
+        officeHistoryAgent = agent
     }
 
     private func officeRoomTint(_ room: OfficeRoomID) -> Color {
@@ -1490,6 +1571,114 @@ struct NativeBigScreenView: View {
                 .clipShape(Circle())
         case .idle, .working:
             EmptyView()
+        }
+    }
+
+    private func officeHistorySheet(for agent: AgentSummary) -> some View {
+        NavigationStack {
+            List {
+                Section {
+                    HStack(spacing: 12) {
+                        Text(agent.displayIcon)
+                            .font(.title2)
+                            .frame(width: 42, height: 42)
+                            .background(officeAgentAccent(agent).opacity(0.16))
+                            .clipShape(Circle())
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text(agent.name)
+                                .font(.headline)
+                            Text("\(agent.hostGroup) / \(agent.primaryModelText)")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                        Spacer()
+                        V2StatusBadge(text: agent.statusText, tint: V2Theme.statusColor(agent))
+                    }
+                }
+
+                if isLoadingOfficeHistory {
+                    Section {
+                        HStack {
+                            ProgressView()
+                            Text("\u{6b63}\u{5728}\u{52a0}\u{8f7d}\u{5386}\u{53f2}...")
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                }
+
+                if !officeHistoryMessages.isEmpty {
+                    Section("\u{516c}\u{5f00}\u{6d88}\u{606f}") {
+                        ForEach(officeHistoryMessages, id: \.stableId) { message in
+                            officeHistoryRow(message)
+                        }
+                    }
+                }
+
+                if !officeHistoryPrivateMessages.isEmpty {
+                    Section("\u{79c1}\u{804a}\u{8bb0}\u{5f55}") {
+                        ForEach(officeHistoryPrivateMessages, id: \.stableId) { message in
+                            officeHistoryRow(message)
+                        }
+                    }
+                }
+
+                if officeHistoryMessages.isEmpty && officeHistoryPrivateMessages.isEmpty && !isLoadingOfficeHistory {
+                    Section {
+                        Text("\u{6682}\u{65f6}\u{6ca1}\u{6709}\u{53ef}\u{5c55}\u{793a}\u{7684}\u{5386}\u{53f2}\u{6d88}\u{606f}\u{3002}")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+            }
+            .navigationTitle(agent.name)
+            .navigationBarTitleDisplayMode(.inline)
+            .task {
+                await loadOfficeHistory(for: agent)
+            }
+        }
+    }
+
+    private func officeHistoryRow(_ message: ChatMessage) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack {
+                Text(message.senderTitle)
+                    .font(.caption.weight(.semibold))
+                Spacer()
+                Text(formatTime(message.timestamp))
+                    .font(.caption2)
+                    .foregroundStyle(.tertiary)
+            }
+            if let topic = message.topic, !topic.isEmpty {
+                Text(topic)
+                    .font(.caption2)
+                    .foregroundStyle(V2Theme.cyan)
+            }
+            Text((message.content ?? "").trimmingCharacters(in: .whitespacesAndNewlines))
+                .font(.subheadline)
+                .lineLimit(5)
+                .textSelection(.enabled)
+        }
+        .padding(.vertical, 2)
+    }
+
+    @MainActor
+    private func loadOfficeHistory(for agent: AgentSummary) async {
+        isLoadingOfficeHistory = true
+        defer { isLoadingOfficeHistory = false }
+
+        officeHistoryMessages = store.messages
+            .filter { message in
+                message.from == agent.id && (message.room ?? "").isEmpty
+            }
+            .suffix(12)
+            .map { $0 }
+
+        do {
+            officeHistoryPrivateMessages = try await store.loadPrivateChatHistory(agentId: agent.id)
+                .suffix(16)
+                .map { $0 }
+        } catch {
+            officeHistoryPrivateMessages = []
         }
     }
 

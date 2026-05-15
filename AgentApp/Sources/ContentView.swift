@@ -22,7 +22,7 @@ struct ContentView: View {
                 .tabItem { Label("\u{6307}\u{6325}", systemImage: "display.2") }
                 .tag(RootTab.bigscreen)
 
-            ProfileView()
+            NavigationStack { ProfileView() }
                 .tabItem { Label("\u{6211}\u{7684}", systemImage: "person.crop.circle") }
                 .tag(RootTab.profile)
         }
@@ -47,6 +47,7 @@ struct ContentView: View {
 private enum RootTab { case home, chat, workflow, bigscreen, profile }
 
 private struct ProfileView: View {
+    @EnvironmentObject private var store: AppStore
     @EnvironmentObject private var settings: ServerSettings
     @State private var draftURL: String = ""
     @State private var draftToken: String = ""
@@ -56,84 +57,91 @@ private struct ProfileView: View {
     @FocusState private var tokenFocused: Bool
 
     var body: some View {
-        NavigationStack {
-            Form {
-                Section("\u{670d}\u{52a1}\u{5668}\u{5730}\u{5740}") {
-                    TextField("http://192.168.1.100:3456", text: $draftURL)
-                        .textInputAutocapitalization(.never)
-                        .keyboardType(.URL)
-                        .autocorrectionDisabled()
-                        .focused($urlFocused)
+        Form {
+            Section("\u{670d}\u{52a1}\u{5668}\u{5730}\u{5740}") {
+                TextField("http://192.168.1.100:3456", text: $draftURL)
+                    .textInputAutocapitalization(.never)
+                    .keyboardType(.URL)
+                    .autocorrectionDisabled()
+                    .focused($urlFocused)
 
-                    Button("\u{4fdd}\u{5b58}\u{5e76}\u{4f7f}\u{7528}") {
-                        urlFocused = false
-                        tokenFocused = false
-                        UIApplication.dismissKeyboard()
-                        settings.baseURLString = draftURL.trimmingCharacters(in: .whitespacesAndNewlines)
-                        settings.apiToken = draftToken.trimmingCharacters(in: .whitespacesAndNewlines)
-                    }
-
-                    Button(isTesting ? "\u{6d4b}\u{8bd5}\u{4e2d}..." : "\u{6d4b}\u{8bd5}\u{8fde}\u{63a5}") {
-                        urlFocused = false
-                        UIApplication.dismissKeyboard()
-                        testConnection()
-                    }
-                    .disabled(isTesting)
-
-                    Text(testStatus)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                Button("\u{4fdd}\u{5b58}\u{5e76}\u{4f7f}\u{7528}") {
+                    saveSettings()
                 }
 
-                Section("API Token") {
-                    SecureField("\u{79c1}\u{6709}\u{90e8}\u{7f72}\u{7684} DASHBOARD_API_TOKEN", text: $draftToken)
-                        .textInputAutocapitalization(.never)
-                        .autocorrectionDisabled()
-                        .focused($tokenFocused)
+                Button(isTesting ? "\u{6d4b}\u{8bd5}\u{4e2d}..." : "\u{6d4b}\u{8bd5}\u{8fde}\u{63a5}") {
+                    urlFocused = false
+                    UIApplication.dismissKeyboard()
+                    testConnection()
+                }
+                .disabled(isTesting)
 
-                    Text("\u{4e0a}\u{4e91}\u{540e}\u{5efa}\u{8bae}\u{5f00}\u{542f} DASHBOARD_REQUIRE_AUTH\u{ff0c}App \u{4f1a}\u{81ea}\u{52a8}\u{4f7f}\u{7528} Bearer Token \u{8bf7}\u{6c42}\u{63a5}\u{53e3}\u{3002}")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                Text(testStatus)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            Section("API Token") {
+                SecureField("\u{79c1}\u{6709}\u{90e8}\u{7f72}\u{7684} DASHBOARD_API_TOKEN", text: $draftToken)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+                    .focused($tokenFocused)
+
+                Text("\u{4e0a}\u{4e91}\u{540e}\u{5efa}\u{8bae}\u{5f00}\u{542f} DASHBOARD_REQUIRE_AUTH\u{ff0c}App \u{4f1a}\u{81ea}\u{52a8}\u{4f7f}\u{7528} Bearer Token \u{8bf7}\u{6c42}\u{63a5}\u{53e3}\u{3002}")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            Section("\u{539f}\u{751f}\u{80fd}\u{529b}") {
+                NavigationLink {
+                    NativeDashboardView()
+                } label: {
+                    Label("\u{539f}\u{751f}\u{4eea}\u{8868}\u{76d8}", systemImage: "rectangle.grid.2x2")
                 }
 
-                Section("\u{539f}\u{751f}\u{80fd}\u{529b}") {
-                    NavigationLink {
-                        NativeDashboardView()
-                    } label: {
-                        Label("\u{539f}\u{751f}\u{4eea}\u{8868}\u{76d8}", systemImage: "rectangle.grid.2x2")
-                    }
+                NavigationLink {
+                    NativeBigScreenView()
+                } label: {
+                    Label("\u{539f}\u{751f}\u{6307}\u{6325}\u{5ba4}", systemImage: "display.2")
+                }
 
-                    NavigationLink {
-                        NativeBigScreenView()
-                    } label: {
-                        Label("\u{539f}\u{751f}\u{6307}\u{6325}\u{5ba4}", systemImage: "display.2")
-                    }
+                NavigationLink {
+                    NativeWorkflowView()
+                } label: {
+                    Label("\u{539f}\u{751f}\u{5de5}\u{4f5c}\u{6d41}", systemImage: "point.3.connected.trianglepath.dotted")
+                }
 
-                    NavigationLink {
-                        NativeWorkflowView()
-                    } label: {
-                        Label("\u{539f}\u{751f}\u{5de5}\u{4f5c}\u{6d41}", systemImage: "point.3.connected.trianglepath.dotted")
-                    }
-
-                    NavigationLink {
-                        NativeRunsView()
-                    } label: {
-                        Label("\u{8fd0}\u{884c}\u{8bb0}\u{5f55}", systemImage: "list.bullet.rectangle")
-                    }
+                NavigationLink {
+                    NativeRunsView()
+                } label: {
+                    Label("\u{8fd0}\u{884c}\u{8bb0}\u{5f55}", systemImage: "list.bullet.rectangle")
                 }
             }
-            .navigationTitle("\u{6211}\u{7684}")
-            .scrollDismissesKeyboard(.interactively)
-            .dismissKeyboardOnTap()
-            .onDisappear {
-                urlFocused = false
-                tokenFocused = false
-                UIApplication.dismissKeyboard()
-            }
-            .onAppear {
-                draftURL = settings.baseURLString
-                draftToken = settings.apiToken
-            }
+        }
+        .navigationTitle("\u{6211}\u{7684}")
+        .scrollDismissesKeyboard(.interactively)
+        .dismissKeyboardOnTap()
+        .onDisappear {
+            urlFocused = false
+            tokenFocused = false
+            UIApplication.dismissKeyboard()
+        }
+        .onAppear {
+            draftURL = settings.baseURLString
+            draftToken = settings.apiToken
+        }
+    }
+
+    private func saveSettings() {
+        urlFocused = false
+        tokenFocused = false
+        UIApplication.dismissKeyboard()
+        settings.baseURLString = draftURL.trimmingCharacters(in: .whitespacesAndNewlines)
+        settings.apiToken = draftToken.trimmingCharacters(in: .whitespacesAndNewlines)
+        testStatus = "\u{5df2}\u{4fdd}\u{5b58}\u{8bbe}\u{7f6e}\u{ff0c}\u{6b63}\u{5728}\u{91cd}\u{65b0}\u{52a0}\u{8f7d}..."
+        Task {
+            await store.refreshDashboard()
+            testStatus = store.lastError == nil ? "\u{5df2}\u{4fdd}\u{5b58}\u{5e76}\u{91cd}\u{65b0}\u{5237}\u{65b0}" : (store.lastError ?? "\u{5df2}\u{4fdd}\u{5b58}")
         }
     }
 

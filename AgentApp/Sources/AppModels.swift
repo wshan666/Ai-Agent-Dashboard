@@ -44,6 +44,18 @@ struct ChatTopic: Codable, Hashable {
     let setAt: String?
 }
 
+struct ChatReplyContext: Codable, Hashable {
+    let id: String?
+    let from: String?
+    let fromName: String?
+    let content: String?
+    let timestamp: String?
+
+    var senderTitle: String {
+        fromName ?? from ?? "\u{4e0a}\u{4e00}\u{6761}\u{6d88}\u{606f}"
+    }
+}
+
 struct ChatMessage: Codable, Identifiable, Hashable {
     let id: String?
     let from: String?
@@ -53,6 +65,7 @@ struct ChatMessage: Codable, Identifiable, Hashable {
     let type: String?
     let topic: String?
     let room: String?
+    let replyTo: ChatReplyContext?
     let gomoku: GomokuGameState?
     let doudizhu: DoudizhuGameState?
 
@@ -65,6 +78,7 @@ struct ChatMessage: Codable, Identifiable, Hashable {
         type: String?,
         topic: String?,
         room: String?,
+        replyTo: ChatReplyContext? = nil,
         gomoku: GomokuGameState? = nil,
         doudizhu: DoudizhuGameState? = nil
     ) {
@@ -76,6 +90,7 @@ struct ChatMessage: Codable, Identifiable, Hashable {
         self.type = type
         self.topic = topic
         self.room = room
+        self.replyTo = replyTo
         self.gomoku = gomoku
         self.doudizhu = doudizhu
     }

@@ -96,7 +96,13 @@ final class AppStore: ObservableObject {
         }
     }
 
-    func sendChat(agentIds: [String], message: String, topic: String, room: String? = nil) async throws {
+    func sendChat(
+        agentIds: [String],
+        message: String,
+        topic: String,
+        room: String? = nil,
+        replyTo: ChatReplyContext? = nil
+    ) async throws {
         var payload: [String: Any] = [
             "agentIds": agentIds,
             "message": message,
@@ -105,6 +111,17 @@ final class AppStore: ObservableObject {
         ]
         if let room, !room.isEmpty {
             payload["room"] = room
+        }
+        if let replyTo {
+            var replyPayload: [String: Any] = [:]
+            if let id = replyTo.id, !id.isEmpty { replyPayload["id"] = id }
+            if let from = replyTo.from, !from.isEmpty { replyPayload["from"] = from }
+            if let fromName = replyTo.fromName, !fromName.isEmpty { replyPayload["fromName"] = fromName }
+            if let content = replyTo.content, !content.isEmpty { replyPayload["content"] = content }
+            if let timestamp = replyTo.timestamp, !timestamp.isEmpty { replyPayload["timestamp"] = timestamp }
+            if !replyPayload.isEmpty {
+                payload["replyTo"] = replyPayload
+            }
         }
 
         let response: ChatSendResponse = try await postJSON(path: "/api/chat/send", payload: payload, timeout: 180)
@@ -135,7 +152,7 @@ final class AppStore: ObservableObject {
         markRespondingAgentsAvailable(from: messages)
     }
 
-    func uploadImage(data: Data, mime: String = "image/jpeg") async throws -> String {
+    func uploadAttachment(data: Data, mime: String) async throws -> String {
         let response: UploadResponse = try await postJSON(
             path: "/api/upload",
             payload: [
@@ -148,10 +165,22 @@ final class AppStore: ObservableObject {
             throw NSError(
                 domain: "AppStore",
                 code: -1,
-                userInfo: [NSLocalizedDescriptionKey: response.error ?? "\u{56fe}\u{7247}\u{4e0a}\u{4f20}\u{5931}\u{8d25}"]
+                userInfo: [NSLocalizedDescriptionKey: response.error ?? "\u{9644}\u{4ef6}\u{4e0a}\u{4f20}\u{5931}\u{8d25}"]
             )
         }
         return normalizedUploadURL(url)
+    }
+
+    func uploadImage(data: Data, mime: String = "image/jpeg") async throws -> String {
+        try await uploadAttachment(data: data, mime: mime)
+    }
+
+    func loadPrivateChatHistory(agentId: String) async throws -> [ChatMessage] {
+        let trimmed = agentId.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return [] }
+        let encoded = trimmed.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? trimmed
+        let history: PrivateChatHistoryResponse = try await getJSON(path: "/api/chat/private/\(encoded)")
+        return sortedMessages(history.messages)
     }
 
     func refreshMessagesSilently(limit: Int = 800) async {
