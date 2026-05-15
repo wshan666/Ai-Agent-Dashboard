@@ -3359,6 +3359,8 @@ function tabFromHash() {
   return normalizeTabRoute((location.hash || '').replace(/^#/, ''));
 }
 function initialTabRoute() {
+  const embedded = window.__AGENT_APP_CONFIG && window.__AGENT_APP_CONFIG.initialTab;
+  if (VALID_TABS.includes(embedded)) return embedded;
   const hashTab = (location.hash || '').replace(/^#/, '');
   if (VALID_TABS.includes(hashTab)) return hashTab;
   const saved = localStorage.getItem('agentDashboard.activeTab');
@@ -5355,6 +5357,22 @@ function appendAttachmentText(source,text){
   ta.focus();
 }
 
+function sendMessageForSource(source){
+  if(source==='priv'){
+    if(!privateChatAgentId)return false;
+    sendPrivateMessage();
+    return true;
+  }
+  if(source==='bs'){
+    if(selectedAgents.size===0)return false;
+    sendBsMessage();
+    return true;
+  }
+  if(selectedAgents.size===0)return false;
+  sendMessage();
+  return true;
+}
+
 function startSpeechToText(){
   const SpeechRecognition=window.SpeechRecognition||window.webkitSpeechRecognition;
   speechTranscript='';
@@ -5412,10 +5430,14 @@ async function toggleVoiceRecord(source){
           const d=await res.json();
           if(!d.ok){alert('语音上传失败');return}
           const parts=[];
+          parts.push('[语音消息]');
           if(speechTranscript.trim())parts.push(`[语音转文字]\n${speechTranscript.trim()}`);
           parts.push(`![audio](${d.url})`);
           parts.push(`[音频URL] ${d.url}`);
           appendAttachmentText(recordingSource,parts.join('\n'));
+          if(!sendMessageForSource(recordingSource)){
+            alert('语音已经附加到输入框，请先选中接收的 Agent 再发送。');
+          }
         }catch(e){alert('语音上传失败: '+e.message)}
       };
       reader.readAsDataURL(blob);
