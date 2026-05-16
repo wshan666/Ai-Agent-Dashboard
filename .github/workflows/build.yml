@@ -92,6 +92,8 @@ jobs:
           BUILD_VERSION: ${{ steps.version.outputs.build }}
 
       - name: Build App
+        id: build_app
+        continue-on-error: true
         run: |
           set -o pipefail
           cd AgentApp
@@ -106,6 +108,69 @@ jobs:
             CODE_SIGNING_ALLOWED=NO \
             PROVISIONING_PROFILE="" \
             ONLY_ACTIVE_ARCH=NO 2>&1 | tee ../build.log
+          EXIT_CODE=${PIPESTATUS[0]}
+          echo "exit_code=$EXIT_CODE" >> $GITHUB_OUTPUT
+          exit 0
+
+      - name: Summarize Build Failure
+        if: always()
+        run: |
+          python3 << 'PYEOF'
+          import os, pathlib, re
+
+          build_log = pathlib.Path("build.log")
+          exit_code = os.environ.get("BUILD_EXIT_CODE", "")
+          summary_path = os.environ.get("GITHUB_STEP_SUMMARY")
+
+          if not build_log.exists():
+              if exit_code and exit_code != "0":
+                  print("::error::xcodebuild failed, but build.log was not found.")
+              raise SystemExit(0)
+
+          text = build_log.read_text(errors="replace")
+          lines = text.splitlines()
+
+          error_lines = []
+          for idx, line in enumerate(lines):
+              if " error: " in line or line.strip().startswith("error:"):
+                  error_lines.append((idx + 1, line))
+
+          if summary_path:
+              with open(summary_path, "a", encoding="utf-8") as fh:
+                  fh.write("## iOS Build Diagnostics\n")
+                  fh.write(f"- xcodebuild exit code: `{exit_code or 'unknown'}`\n")
+                  if error_lines:
+                      fh.write("- first compiler errors:\n")
+                      for _, line in error_lines[:5]:
+                          fh.write(f"  - `{line}`\n")
+                  else:
+                      fh.write("- no `error:` lines were detected in the captured build log tail.\n")
+
+          if error_lines:
+              first_line = error_lines[0][1]
+              match = re.match(r"^(?P<file>.+?):(?P<line>\d+):(?:(?P<col>\d+):)?\s*error:\s*(?P<msg>.+)$", first_line)
+              if match:
+                  file = match.group("file")
+                  line = match.group("line")
+                  col = match.group("col")
+                  msg = match.group("msg")
+                  if col:
+                      print(f"::error file={file},line={line},col={col}::{msg}")
+                  else:
+                      print(f"::error file={file},line={line}::{msg}")
+              else:
+                  print(f"::error::{first_line}")
+          elif exit_code and exit_code != "0":
+              print("::error::xcodebuild failed with exit code " + exit_code + ", but no compiler-style error line was found in build.log.")
+          PYEOF
+        env:
+          BUILD_EXIT_CODE: ${{ steps.build_app.outputs.exit_code }}
+
+      - name: Fail If Build Failed
+        if: always() && steps.build_app.outputs.exit_code != '0'
+        run: |
+          echo "xcodebuild failed with exit code ${{ steps.build_app.outputs.exit_code }}"
+          exit 1
 
       - name: Package IPA
         run: |
