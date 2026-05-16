@@ -1010,7 +1010,7 @@ struct NativeChatView: View {
         let pattern = #"https?://[^\s\])]+/uploads/[^\s\])]+\.(?:jpg|jpeg|png|gif|webp|bmp)"#
         guard let regex = try? NSRegularExpression(pattern: pattern, options: [.caseInsensitive]) else { return [] }
         let range = NSRange(text.startIndex ..< text.endIndex, in: text)
-        let urls = regex.matches(in: text, range: range).compactMap { match in
+        let urls: [URL] = regex.matches(in: text, range: range).compactMap { match -> URL? in
             guard let swiftRange = Range(match.range, in: text) else { return nil }
             return store.downloadURL(for: String(text[swiftRange]))
         }
@@ -1022,7 +1022,7 @@ struct NativeChatView: View {
         let pattern = #"https?://[^\s\])]+/uploads/[^\s\])]+\.(?:m4a|mp3|wav|webm|aac|ogg|caf|mp4)"#
         guard let regex = try? NSRegularExpression(pattern: pattern, options: [.caseInsensitive]) else { return [] }
         let range = NSRange(text.startIndex ..< text.endIndex, in: text)
-        let urls = regex.matches(in: text, range: range).compactMap { match in
+        let urls: [URL] = regex.matches(in: text, range: range).compactMap { match -> URL? in
             guard let swiftRange = Range(match.range, in: text) else { return nil }
             return store.downloadURL(for: String(text[swiftRange]))
         }
