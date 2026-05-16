@@ -645,18 +645,7 @@ struct NativeChatView: View {
                 if !audioLinks.isEmpty {
                     VStack(alignment: message.isUser ? .trailing : .leading, spacing: 8) {
                         ForEach(audioLinks, id: \.absoluteString) { url in
-                            Link(destination: url) {
-                                Label("\u{6253}\u{5f00}\u{8bed}\u{97f3}", systemImage: "waveform")
-                                    .font(.caption.weight(.semibold))
-                                    .padding(.horizontal, 12)
-                                    .padding(.vertical, 9)
-                                    .background(message.isUser ? Color.white.opacity(0.16) : V2Theme.mint.opacity(0.12))
-                                    .overlay(
-                                        RoundedRectangle(cornerRadius: 8, style: .continuous)
-                                            .stroke((message.isUser ? Color.white : V2Theme.mint).opacity(0.24), lineWidth: 1)
-                                    )
-                                    .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
-                            }
+                            audioAttachmentCard(url: url, message: message)
                         }
                     }
                     .frame(maxWidth: UIScreen.main.bounds.width * 0.72, alignment: message.isUser ? .trailing : .leading)
@@ -687,6 +676,65 @@ struct NativeChatView: View {
         )
         .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
         .frame(maxWidth: UIScreen.main.bounds.width * 0.72, alignment: isUser ? .trailing : .leading)
+    }
+
+    private func audioAttachmentCard(url: URL, message: ChatMessage) -> some View {
+        let track = audioTrack(for: url, message: message)
+        let isCurrentTrack = store.currentMusicTrack?.stableKey == track.stableKey
+        let isPlaying = isCurrentTrack && store.isMusicPlaying
+
+        return VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 10) {
+                Button {
+                    toggleAudioPlayback(track)
+                } label: {
+                    Label(isPlaying ? "\u{6682}\u{505c}\u{8bed}\u{97f3}" : "\u{64ad}\u{653e}\u{8bed}\u{97f3}", systemImage: isPlaying ? "pause.fill" : "play.fill")
+                        .font(.caption.weight(.semibold))
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 9)
+                        .background(message.isUser ? Color.white.opacity(0.16) : V2Theme.mint.opacity(0.12))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                                .stroke((message.isUser ? Color.white : V2Theme.mint).opacity(0.24), lineWidth: 1)
+                        )
+                        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                }
+                .buttonStyle(.plain)
+
+                Link(destination: url) {
+                    Image(systemName: "arrow.up.right.square")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(message.isUser ? Color.white.opacity(0.9) : V2Theme.cyan)
+                        .frame(width: 30, height: 30)
+                        .background(message.isUser ? Color.white.opacity(0.12) : V2Theme.cyan.opacity(0.10))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                                .stroke((message.isUser ? Color.white : V2Theme.cyan).opacity(0.18), lineWidth: 1)
+                        )
+                        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                }
+            }
+
+            if isCurrentTrack {
+                VStack(spacing: 6) {
+                    Slider(value: Binding(
+                        get: { store.musicCurrentTime },
+                        set: { store.seekMusic(to: $0) }
+                    ), in: 0 ... max(store.musicDuration, 1))
+
+                    HStack {
+                        Text(formatPlaybackTime(store.musicCurrentTime))
+                        Spacer()
+                        Text(formatPlaybackTime(store.musicDuration))
+                    }
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                }
+                .padding(10)
+                .background(message.isUser ? Color.white.opacity(0.08) : Color(.tertiarySystemBackground))
+                .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+            }
+        }
     }
 
     private var groupAgentPicker: some View {
@@ -1027,6 +1075,41 @@ struct NativeChatView: View {
             return store.downloadURL(for: String(text[swiftRange]))
         }
         return Array(Set(urls)).sorted { $0.absoluteString < $1.absoluteString }
+    }
+
+    private func audioTrack(for url: URL, message: ChatMessage) -> MusicTrack {
+        let sender = displaySenderTitle(for: message)
+        let timestamp = message.timestamp ?? url.absoluteString
+        return MusicTrack(
+            id: url.absoluteString,
+            title: "\u{8bed}\u{97f3}\u{6d88}\u{606f}",
+            channel: sender,
+            duration: "",
+            source: "chat-audio",
+            sourceLabel: sender,
+            previewUrl: url.absoluteString,
+            url: url.absoluteString,
+            rawId: timestamp,
+            artwork: "",
+            lyrics: "",
+            local: false
+        )
+    }
+
+    private func toggleAudioPlayback(_ track: MusicTrack) {
+        if store.currentMusicTrack?.stableKey == track.stableKey {
+            store.toggleMusicPlayback()
+        } else {
+            store.playMusic(track: track, queue: [track])
+        }
+    }
+
+    private func formatPlaybackTime(_ value: Double) -> String {
+        guard value.isFinite, value > 0 else { return "0:00" }
+        let total = Int(value.rounded(.down))
+        let minute = total / 60
+        let second = total % 60
+        return String(format: "%d:%02d", minute, second)
     }
 
     private func loadSelectedImage(_ item: PhotosPickerItem?) async {
