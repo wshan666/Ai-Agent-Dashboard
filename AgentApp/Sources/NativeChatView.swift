@@ -13,6 +13,11 @@ struct NativeChatView: View {
     @State private var topic = ""
     @State private var draft = ""
     @State private var messageSearchText = ""
+    @State private var remoteSearchMessages: [ChatMessage]? = nil
+    @State private var remoteSearchSummary = ""
+    @State private var isSearchingMessages = false
+    @State private var isStartingDiscussion = false
+    @State private var searchTask: Task<Void, Never>?
     @State private var replyTarget: ChatReplyContext?
     @State private var selectedPhotoItem: PhotosPickerItem?
     @State private var attachedImageData: Data?
@@ -90,6 +95,9 @@ struct NativeChatView: View {
     private var visibleMessages: [ChatMessage] {
         let search = messageSearchText.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
         guard !search.isEmpty else { return baseVisibleMessages }
+        if let remoteSearchMessages {
+            return remoteSearchMessages
+        }
         return baseVisibleMessages.filter { message in
             [
                 message.content,
@@ -129,6 +137,7 @@ struct NativeChatView: View {
             focusedField = nil
             speechInput.stop()
             voiceRecorder.cancel()
+            searchTask?.cancel()
             UIApplication.dismissKeyboard()
         }
         .task {
@@ -146,12 +155,17 @@ struct NativeChatView: View {
         }
         .onChange(of: mode) { _ in
             clearReplyTarget()
+            scheduleMessageSearch()
             Task { await syncCurrentChat() }
         }
         .onChange(of: privateAgentId) { _ in
             guard mode == .direct else { return }
             clearReplyTarget()
+            scheduleMessageSearch()
             Task { await syncCurrentChat() }
+        }
+        .onChange(of: messageSearchText) { _ in
+            scheduleMessageSearch()
         }
         .onChange(of: selectedPhotoItem) { item in
             Task { await loadSelectedImage(item) }
@@ -258,17 +272,50 @@ struct NativeChatView: View {
 
             if !messageSearchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                 HStack(spacing: 10) {
-                    Text("\u{7b5b}\u{51fa} \(visibleMessages.count) / \(baseVisibleMessages.count) \u{6761}\u{6d88}\u{606f}")
+                    Text(searchSummaryText)
                         .font(.caption)
                         .foregroundStyle(.secondary)
                     Spacer()
+                    if isSearchingMessages {
+                        ProgressView()
+                            .controlSize(.small)
+                    }
                     Button("\u{6e05}\u{9664}\u{641c}\u{7d22}") {
                         messageSearchText = ""
+                        remoteSearchMessages = nil
+                        remoteSearchSummary = ""
                     }
                     .font(.caption.weight(.semibold))
                     .buttonStyle(.plain)
                     .foregroundStyle(V2Theme.cyan)
                 }
+            }
+
+            if mode == .group, selectedAgentIds.count >= 2 {
+                HStack(spacing: 10) {
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text("\u{591a} agent \u{8ba8}\u{8bba}")
+                            .font(.caption.weight(.semibold))
+                        Text("\u{76f4}\u{63a5}\u{4ece}\u{804a}\u{5929}\u{9875}\u{53d1}\u{8d77}\u{4e92}\u{76f8}\u{63a5}\u{8bdd}\u{7684}\u{5706}\u{684c}\u{8ba8}\u{8bba}\u{3002}")
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                    }
+                    Spacer()
+                    Button {
+                        Task { await startDiscussionFromChat() }
+                    } label: {
+                        if isStartingDiscussion {
+                            ProgressView().tint(.white)
+                        } else {
+                            Label("\u{8ba9}\u{4ed6}\u{4eec}\u{8ba8}\u{8bba}", systemImage: "person.3.sequence.fill")
+                        }
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .tint(V2Theme.cyan)
+                    .disabled(isStartingDiscussion || discussionSeedText.isEmpty)
+                }
+                .padding(12)
+                .v2Card(tint: V2Theme.cyan)
             }
 
             if mode == .group, !store.topics.isEmpty {
@@ -1025,6 +1072,7 @@ struct NativeChatView: View {
         } else {
             await store.refreshChat()
         }
+        scheduleMessageSearch()
     }
 
     private func syncCurrentChatSilently() async {
@@ -1035,6 +1083,95 @@ struct NativeChatView: View {
             await store.refreshPrivateChatSilently(agentId: privateAgentId)
         } else {
             await store.refreshMessagesSilently(limit: 800)
+        }
+        if !messageSearchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            scheduleMessageSearch()
+        }
+    }
+
+    private var searchSummaryText: String {
+        if !remoteSearchSummary.isEmpty {
+            return remoteSearchSummary
+        }
+        return "\u{7b5b}\u{51fa} \(visibleMessages.count) / \(baseVisibleMessages.count) \u{6761}\u{6d88}\u{606f}"
+    }
+
+    private var discussionSeedText: String {
+        let trimmedTopic = topic.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !trimmedTopic.isEmpty { return trimmedTopic }
+        return draft.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private func scheduleMessageSearch() {
+        searchTask?.cancel()
+        let query = messageSearchText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !query.isEmpty else {
+            remoteSearchMessages = nil
+            remoteSearchSummary = ""
+            isSearchingMessages = false
+            return
+        }
+        if query.count < 2 {
+            remoteSearchMessages = nil
+            remoteSearchSummary = "\u{7ee7}\u{7eed}\u{8f93}\u{5165}\u{81f3}\u{5c11} 2 \u{4e2a}\u{5b57}\u{6765}\u{68c0}\u{7d22}\u{66f4}\u{65e9}\u{7684}\u{5386}\u{53f2}\u{6d88}\u{606f}"
+            isSearchingMessages = false
+            return
+        }
+
+        let currentMode = mode
+        let currentPrivateAgentId = privateAgentId
+        remoteSearchSummary = "\u{6b63}\u{5728}\u{68c0}\u{7d22}\u{5386}\u{53f2}\u{6d88}\u{606f}..."
+        isSearchingMessages = true
+
+        searchTask = Task {
+            try? await Task.sleep(nanoseconds: 300_000_000)
+            guard !Task.isCancelled else { return }
+            do {
+                let response = try await store.searchChatMessages(
+                    query: query,
+                    mode: currentMode == .direct ? "direct" : "group",
+                    agentId: currentMode == .direct ? currentPrivateAgentId : nil,
+                    limit: 160
+                )
+                guard !Task.isCancelled else { return }
+                let messages = response.messages ?? []
+                let total = response.total ?? messages.count
+                await MainActor.run {
+                    remoteSearchMessages = messages
+                    remoteSearchSummary = "\u{670d}\u{52a1}\u{5668}\u{68c0}\u{7d22}\u{5230} \(messages.count) \u{6761}\u{5339}\u{914d}\u{ff08}\u{5386}\u{53f2}\u{603b}\u{8ba1} \(total) \u{6761}\u{ff09}"
+                }
+            } catch {
+                guard !Task.isCancelled else { return }
+                await MainActor.run {
+                    remoteSearchMessages = nil
+                    remoteSearchSummary = "\u{670d}\u{52a1}\u{5668}\u{68c0}\u{7d22}\u{5931}\u{8d25}\u{ff0c}\u{5df2}\u{5207}\u{56de}\u{672c}\u{5730}\u{5df2}\u{52a0}\u{8f7d}\u{6d88}\u{606f}"
+                }
+            }
+            await MainActor.run {
+                isSearchingMessages = false
+            }
+        }
+    }
+
+    private func startDiscussionFromChat() async {
+        let subject = discussionSeedText
+        guard !subject.isEmpty else { return }
+        isStartingDiscussion = true
+        defer { isStartingDiscussion = false }
+        focusedField = nil
+        UIApplication.dismissKeyboard()
+        do {
+            try await store.startRoundtable(
+                agentIds: Array(selectedAgentIds),
+                topic: subject,
+                rounds: 1,
+                mode: "roundtable",
+                summarizerId: nil,
+                interactive: true
+            )
+            await store.refreshMessagesSilently(limit: 800)
+        } catch {
+            store.lastError = error.localizedDescription
         }
     }
 

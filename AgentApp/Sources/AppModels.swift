@@ -216,6 +216,15 @@ struct PrivateChatHistoryResponse: Codable {
     let messages: [ChatMessage]
 }
 
+struct ChatSearchResponse: Codable {
+    let ok: Bool?
+    let query: String?
+    let count: Int?
+    let total: Int?
+    let messages: [ChatMessage]?
+    let error: String?
+}
+
 struct DevProgressItem: Codable, Identifiable, Hashable {
     let id: String
     let title: String?

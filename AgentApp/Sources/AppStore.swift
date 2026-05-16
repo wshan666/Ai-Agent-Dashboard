@@ -183,6 +183,24 @@ final class AppStore: ObservableObject {
         return sortedMessages(history.messages)
     }
 
+    func searchChatMessages(query: String, mode: String, agentId: String? = nil, limit: Int = 120) async throws -> ChatSearchResponse {
+        let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else {
+            return ChatSearchResponse(ok: true, query: "", count: 0, total: 0, messages: [], error: nil)
+        }
+
+        var parts: [String] = [
+            "q=\(trimmed.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? trimmed)",
+            "scope=\((mode == "direct" ? "direct" : "group"))",
+            "limit=\(max(10, min(300, limit)))"
+        ]
+        if let agentId, !agentId.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            let encoded = agentId.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? agentId
+            parts.append("agentId=\(encoded)")
+        }
+        return try await getJSON(path: "/api/chat/search?\(parts.joined(separator: "&"))")
+    }
+
     func refreshMessagesSilently(limit: Int = 800) async {
         guard let history = try? await fetchChatHistory(limit: limit) else { return }
         messages = sortedMessages(history.messages)
