@@ -517,11 +517,11 @@ struct NativeWorkflowView: View {
         return ScrollViewReader { proxy in
             ScrollView {
                 VStack(alignment: .leading, spacing: 6) {
-                    ForEach(Array(lines.enumerated()), id: \.offset) { index, line in
-                        Text(line)
-                            .font(index == active ? .caption.weight(.bold) : .caption)
-                            .foregroundStyle(index == active ? V2Theme.cyan : Color.secondary)
-                            .id(index)
+                    ForEach(Array(lines.enumerated()), id: \.offset) { item in
+                        Text(item.element)
+                            .font(item.offset == active ? .caption.weight(.bold) : .caption)
+                            .foregroundStyle(item.offset == active ? V2Theme.cyan : Color.secondary)
+                            .id(item.offset)
                             .frame(maxWidth: .infinity, alignment: .leading)
                     }
                 }
