@@ -111,17 +111,11 @@ struct NativeWorkflowView: View {
             VStack(spacing: 12) {
                 ForEach($codeCoders) { $coder in
                     VStack(alignment: .leading, spacing: 8) {
-                        Picker("\u{6267}\u{884c}\u{667a}\u{80fd}\u{4f53}", selection: $coder.agentId) {
-                            Text("\u{8bf7}\u{9009}\u{62e9}").tag("")
-                            ForEach(onlineAgents) { agent in
-                                Text(agentMenuTitle(agent)).tag(agent.id)
-                            }
-                        }
-                        if let agent = agentById(coder.agentId) {
-                            Text(agentRoleDescription(agent))
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                        }
+                        explainedPickerRow(
+                            "\u{6267}\u{884c}\u{667a}\u{80fd}\u{4f53}",
+                            "\u{8d1f}\u{8d23}\u{5b9e}\u{9645}\u{5b8c}\u{6210}\u{5b50}\u{4efb}\u{52a1}\u{3001}\u{7f16}\u{7801}\u{3001}\u{4fee}\u{590d}\u{6216}\u{8f93}\u{51fa}\u{65b9}\u{6848}\u{3002}",
+                            selection: $coder.agentId
+                        )
                         TextField("\u{5b50}\u{4efb}\u{52a1}", text: $coder.task, axis: .vertical)
                             .textFieldStyle(.roundedBorder)
                             .lineLimit(2 ... 4)
@@ -132,16 +126,15 @@ struct NativeWorkflowView: View {
                 }
             }
 
-            HStack {
-                Button("\u{65b0}\u{589e}\u{6267}\u{884c}\u{4f4d}") { codeCoders.append(WorkflowCoderDraft()) }
-                    .buttonStyle(.bordered)
-                Spacer()
-                Picker("\u{603b}\u{7ed3}\u{4eba}", selection: $codeSummarizerId) {
-                    Text("\u{65e0}").tag("")
-                    ForEach(onlineAgents) { agent in Text(agent.name).tag(agent.id) }
-                }
-                .pickerStyle(.menu)
-            }
+            Button("\u{65b0}\u{589e}\u{6267}\u{884c}\u{4f4d}") { codeCoders.append(WorkflowCoderDraft()) }
+                .buttonStyle(.bordered)
+
+            explainedPickerRow(
+                "\u{603b}\u{7ed3}\u{4eba}",
+                "\u{53ef}\u{9009}\u{3002}\u{8d1f}\u{8d23}\u{6c47}\u{603b}\u{591a}\u{4f4d}\u{6267}\u{884c} agent \u{7684}\u{7ed3}\u{679c}\u{ff0c}\u{8f93}\u{51fa}\u{6700}\u{7ec8}\u{7ed3}\u{8bba}\u{6216}\u{4ea4}\u{4ed8}\u{8bf4}\u{660e}\u{3002}",
+                selection: $codeSummarizerId,
+                allowEmpty: true
+            )
 
             Button(codeReviewerIds.isEmpty ? "\u{9009}\u{62e9}\u{8bc4}\u{5ba1}" : "\u{5df2}\u{9009} \(codeReviewerIds.count) \u{4f4d}\u{8bc4}\u{5ba1}") {
                 reviewerSheetMode = .codeReviewers
@@ -164,8 +157,17 @@ struct NativeWorkflowView: View {
             headerBlock("\u{9879}\u{76ee}\u{6539}\u{9020}\u{5de5}\u{4f5c}\u{6d41}", "\u{9002}\u{5408}\u{771f}\u{5b9e}\u{76ee}\u{5f55}\u{6539}\u{9020}\u{ff0c}\u{5305}\u{542b}\u{6267}\u{884c}\u{8005}\u{3001}\u{8bc4}\u{5ba1}\u{8005}\u{548c}\u{6d4b}\u{8bd5}\u{547d}\u{4ee4}\u{3002}")
             TextField("\u{9879}\u{76ee}\u{76ee}\u{5f55}", text: $projectDraft.projectDir).textFieldStyle(.roundedBorder).focused($focusedField, equals: .projectDir)
             TextField("\u{6539}\u{9020}\u{9700}\u{6c42}", text: $projectDraft.task, axis: .vertical).textFieldStyle(.roundedBorder).lineLimit(3 ... 6).focused($focusedField, equals: .projectTask)
-            pickerRow("\u{9879}\u{76ee}\u{7ecf}\u{7406}", selection: $projectDraft.pmId, allowEmpty: true)
-            pickerRow("\u{6267}\u{884c}\u{8005}", selection: $projectDraft.executorId)
+            explainedPickerRow(
+                "\u{9879}\u{76ee}\u{7ecf}\u{7406}",
+                "\u{53ef}\u{9009}\u{3002}\u{8d1f}\u{8d23}\u{62c6}\u{89e3}\u{76ee}\u{6807}\u{3001}\u{5b89}\u{6392}\u{6b65}\u{9aa4}\u{3001}\u{534f}\u{8c03}\u{4e0b}\u{6e38}\u{6267}\u{884c}\u{8282}\u{594f}\u{3002}",
+                selection: $projectDraft.pmId,
+                allowEmpty: true
+            )
+            explainedPickerRow(
+                "\u{6267}\u{884c}\u{8005}",
+                "\u{8d1f}\u{8d23}\u{5728}\u{6307}\u{5b9a}\u{9879}\u{76ee}\u{76ee}\u{5f55}\u{91cc}\u{5b9e}\u{9645}\u{5b8c}\u{6210}\u{6539}\u{9020}\u{3001}\u{63d0}\u{4ea4}\u{7ed3}\u{679c}\u{5e76}\u{914d}\u{5408}\u{6d4b}\u{8bd5}\u{3002}",
+                selection: $projectDraft.executorId
+            )
             Button(projectDraft.reviewerIds.isEmpty ? "\u{9009}\u{62e9}\u{8bc4}\u{5ba1}" : "\u{5df2}\u{9009} \(projectDraft.reviewerIds.count) \u{4f4d}\u{8bc4}\u{5ba1}") { reviewerSheetMode = .projectReviewers }.buttonStyle(.bordered)
             TextField("\u{6d4b}\u{8bd5}\u{547d}\u{4ee4}", text: $projectDraft.testCommand).textFieldStyle(.roundedBorder).focused($focusedField, equals: .projectTest)
             stepperRow("\u{901a}\u{8fc7}\u{5206}\u{6570}", $projectDraft.passScore, 60 ... 100)
@@ -188,10 +190,27 @@ struct NativeWorkflowView: View {
                 Text("\u{901a}\u{7528}").tag("generic")
             }.pickerStyle(.segmented)
             TextField("\u{53d1}\u{5e03}\u{4e3b}\u{9898}", text: $contentDraft.topic, axis: .vertical).textFieldStyle(.roundedBorder).lineLimit(3 ... 6).focused($focusedField, equals: .contentTopic)
-            pickerRow("\u{6587}\u{6848}\u{667a}\u{80fd}\u{4f53}", selection: $contentDraft.copyAgentId)
-            pickerRow("\u{56fe}\u{7247}\u{667a}\u{80fd}\u{4f53}", selection: $contentDraft.imageAgentId)
-            pickerRow("\u{6574}\u{5408}\u{667a}\u{80fd}\u{4f53}", selection: $contentDraft.integratorAgentId)
-            pickerRow("\u{5ba1}\u{6838}\u{667a}\u{80fd}\u{4f53}", selection: $contentDraft.reviewerAgentId, allowEmpty: true)
+            explainedPickerRow(
+                "\u{6587}\u{6848}\u{667a}\u{80fd}\u{4f53}",
+                "\u{8d1f}\u{8d23}\u{5199}\u{6807}\u{9898}\u{3001}\u{6b63}\u{6587}\u{3001}\u{4eae}\u{70b9}\u{548c}\u{53d1}\u{5e03}\u{8bdd}\u{672f}\u{3002}",
+                selection: $contentDraft.copyAgentId
+            )
+            explainedPickerRow(
+                "\u{56fe}\u{7247}\u{667a}\u{80fd}\u{4f53}",
+                "\u{8d1f}\u{8d23}\u{51fa}\u{914d}\u{56fe}\u{65b9}\u{5411}\u{3001}\u{7ed8}\u{56fe}\u{63d0}\u{793a}\u{8bcd}\u{6216}\u{89c6}\u{89c9}\u{7d20}\u{6750}\u{5efa}\u{8bae}\u{3002}",
+                selection: $contentDraft.imageAgentId
+            )
+            explainedPickerRow(
+                "\u{6574}\u{5408}\u{667a}\u{80fd}\u{4f53}",
+                "\u{8d1f}\u{8d23}\u{628a}\u{6587}\u{6848}\u{3001}\u{914d}\u{56fe}\u{548c}\u{53d1}\u{5e03}\u{7ed3}\u{6784}\u{7ec4}\u{5408}\u{6210}\u{6700}\u{7ec8}\u{7a3f}\u{4ef6}\u{3002}",
+                selection: $contentDraft.integratorAgentId
+            )
+            explainedPickerRow(
+                "\u{5ba1}\u{6838}\u{667a}\u{80fd}\u{4f53}",
+                "\u{53ef}\u{9009}\u{3002}\u{8d1f}\u{8d23}\u{68c0}\u{67e5}\u{98ce}\u{683c}\u{3001}\u{4e8b}\u{5b9e}\u{3001}\u{98ce}\u{9669}\u{70b9}\u{548c}\u{5e73}\u{53f0}\u{9002}\u{914d}\u{5ea6}\u{3002}",
+                selection: $contentDraft.reviewerAgentId,
+                allowEmpty: true
+            )
             Picker("\u{53d1}\u{5e03}\u{6a21}\u{5f0f}", selection: $contentDraft.publishMode) {
                 Text("\u{8349}\u{7a3f}").tag("draft")
                 Text("\u{4eba}\u{5de5}").tag("manual")
@@ -265,7 +284,12 @@ struct NativeWorkflowView: View {
             TextField("\u{6b4c}\u{66f2}\u{540d}\u{79f0}", text: $musicDraft.song).textFieldStyle(.roundedBorder).focused($focusedField, equals: .musicSong)
             TextField("\u{53c2}\u{8003}\u{6b4c}\u{624b}\u{6216}\u{98ce}\u{683c}", text: $musicDraft.artist).textFieldStyle(.roundedBorder).focused($focusedField, equals: .musicArtist)
             TextField("\u{6b4c}\u{8bcd}\u{98ce}\u{683c}", text: $musicDraft.lyricsStyle).textFieldStyle(.roundedBorder).focused($focusedField, equals: .musicStyle)
-            pickerRow("\u{6b4c}\u{8bcd}\u{667a}\u{80fd}\u{4f53}", selection: $musicDraft.agentId, allowEmpty: true)
+            explainedPickerRow(
+                "\u{6b4c}\u{8bcd}\u{667a}\u{80fd}\u{4f53}",
+                "\u{53ef}\u{9009}\u{3002}\u{8d1f}\u{8d23}\u{751f}\u{6210}\u{6b4c}\u{8bcd}\u{8349}\u{7a3f}\u{3001}\u{6f14}\u{5531}\u{53e3}\u{543b}\u{548c}\u{8bd5}\u{542c}\u{7ed3}\u{6784}\u{5efa}\u{8bae}\u{3002}",
+                selection: $musicDraft.agentId,
+                allowEmpty: true
+            )
             Toggle("\u{751f}\u{6210}\u{540e}\u{81ea}\u{52a8}\u{64ad}\u{653e}", isOn: $musicDraft.autoPlay)
             submitButton("\u{542f}\u{52a8}\u{97f3}\u{4e50}\u{5de5}\u{4f5c}\u{6d41}", !musicDraft.song.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty) {
                 musicResult = try await store.startMusicWorkflow(musicDraft)
@@ -387,20 +411,26 @@ struct NativeWorkflowView: View {
         !pptDraft.reviewerAgentId.isEmpty
     }
 
-    private func pickerRow(_ title: String, selection: Binding<String>, allowEmpty: Bool = false) -> some View {
+    private func explainedPickerRow(_ title: String, _ description: String, selection: Binding<String>, allowEmpty: Bool = false) -> some View {
         VStack(alignment: .leading, spacing: 6) {
+            Text(title).font(.subheadline.weight(.semibold))
+            Text(description).font(.caption).foregroundStyle(.secondary)
             Picker(title, selection: selection) {
                 Text(allowEmpty ? "\u{53ef}\u{9009}" : "\u{8bf7}\u{9009}\u{62e9}").tag("")
                 ForEach(onlineAgents) { agent in
                     Text(agentMenuTitle(agent)).tag(agent.id)
                 }
             }
+            .labelsHidden()
             if let agent = agentById(selection.wrappedValue) {
                 Text(agentRoleDescription(agent))
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
         }
+        .padding(12)
+        .background(Color(.tertiarySystemBackground))
+        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
     }
 
     private func pptRolePicker(_ title: String, _ description: String, selection: Binding<String>, allowEmpty: Bool = false) -> some View {
