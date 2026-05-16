@@ -712,10 +712,10 @@ struct NativeChatView: View {
             }
             .navigationTitle("\u{9009}\u{62e9}\u{7fa4}\u{804a}\u{667a}\u{80fd}\u{4f53}")
             .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
+                ToolbarItem(placement: .navigationBarLeading) {
                     Button("\u{6e05}\u{7a7a}") { selectedAgentIds.removeAll() }
                 }
-                ToolbarItem(placement: .topBarTrailing) {
+                ToolbarItem(placement: .navigationBarTrailing) {
                     Button("\u{5b8c}\u{6210}") { showAgentPicker = false }
                 }
             }
@@ -745,7 +745,7 @@ struct NativeChatView: View {
             }
             .navigationTitle("\u{9009}\u{62e9}\u{79c1}\u{804a}\u{5bf9}\u{8c61}")
             .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
+                ToolbarItem(placement: .navigationBarTrailing) {
                     Button("\u{5b8c}\u{6210}") { showPrivatePicker = false }
                 }
             }

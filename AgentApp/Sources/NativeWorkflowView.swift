@@ -765,7 +765,7 @@ struct NativeWorkflowView: View {
             }
             .navigationTitle(mode.title)
             .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
+                ToolbarItem(placement: .navigationBarTrailing) {
                     Button("\u{5b8c}\u{6210}") { reviewerSheetMode = nil }
                 }
             }

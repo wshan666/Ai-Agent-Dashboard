@@ -87,7 +87,7 @@ struct NativeBigScreenView: View {
         .navigationTitle("\u{6307}\u{6325}\u{5927}\u{5c4f}")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
-            ToolbarItem(placement: .topBarTrailing) {
+            ToolbarItem(placement: .navigationBarTrailing) {
                 NavigationLink {
                     NativeRunsView()
                 } label: {

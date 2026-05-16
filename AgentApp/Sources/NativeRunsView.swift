@@ -162,7 +162,7 @@ struct NativeRunDetailView: View {
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             if run.isActive {
-                ToolbarItem(placement: .topBarTrailing) {
+                ToolbarItem(placement: .navigationBarTrailing) {
                     Button("\u{53d6}\u{6d88}") {
                         Task { await cancel() }
                     }
