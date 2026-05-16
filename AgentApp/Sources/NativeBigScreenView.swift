@@ -7,6 +7,7 @@ struct NativeBigScreenView: View {
     @State private var topic = ""
     @State private var prompt = ""
     @State private var mode = "parallel"
+    @State private var interactiveDiscussion = true
     @State private var summarizerId = ""
     @State private var isRunning = false
     @State private var isContinuingDoudizhu = false
@@ -528,6 +529,19 @@ struct NativeBigScreenView: View {
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
 
+            if mode == "roundtable" || mode == "debate" {
+                Toggle(isOn: $interactiveDiscussion) {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("互相接话")
+                            .font(.subheadline.weight(.semibold))
+                        Text("开启后，每位 agent 会先回应上一位成员，再继续表达自己的观点，更像真实讨论。")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                .toggleStyle(.switch)
+            }
+
             TextField("\u{8bdd}\u{9898}\u{ff0c}\u{4f8b}\u{5982}\u{ff1a}\u{5ba2}\u{6237}\u{4e0a}\u{7ebf}\u{65b9}\u{6848}", text: $topic)
                 .textFieldStyle(.roundedBorder)
                 .focused($focusedField, equals: .topic)
@@ -920,7 +934,8 @@ struct NativeBigScreenView: View {
                     topic: trimmedTopic.isEmpty ? task : trimmedTopic,
                     rounds: 1,
                     mode: mode,
-                    summarizerId: summarizerId
+                    summarizerId: summarizerId,
+                    interactive: interactiveDiscussion && (mode == "roundtable" || mode == "debate")
                 )
                 await store.refreshMessagesSilently(limit: 800)
             } else {
@@ -1689,9 +1704,13 @@ struct NativeBigScreenView: View {
         case "sequential":
             return "\u{987a}\u{5e8f}\u{ff1a}\u{4e0a}\u{4e00}\u{4e2a} agent \u{7684}\u{8f93}\u{51fa}\u{4f1a}\u{4f20}\u{7ed9}\u{4e0b}\u{4e00}\u{4e2a}\u{ff0c}\u{9002}\u{5408}\u{7b56}\u{5212}\u{2192}\u{6267}\u{884c}\u{2192}\u{5ba1}\u{6838}\u{8fd9}\u{79cd}\u{6d41}\u{6c34}\u{7ebf}\u{3002}"
         case "roundtable":
-            return "\u{5706}\u{684c}\u{ff1a}\u{6309}\u{4f1a}\u{8bae}\u{8f6e}\u{6d41}\u{53d1}\u{8a00}\u{ff0c}\u{9002}\u{5408}\u{5f00}\u{4f1a}\u{3001}\u{590d}\u{76d8}\u{3001}\u{96c6}\u{4f53}\u{8ba8}\u{8bba}\u{ff0c}\u{4e0d}\u{662f}\u{666e}\u{901a}\u{7fa4}\u{804a}\u{6a21}\u{5f0f}\u{3002}"
+            return interactiveDiscussion
+                ? "\u{5706}\u{684c}\u{ff1a}\u{6309}\u{4f1a}\u{8bae}\u{8f6e}\u{6d41}\u{53d1}\u{8a00}\u{ff0c}\u{5e76}\u{4e14}\u{5148}\u{56de}\u{5e94}\u{4e0a}\u{4e00}\u{4f4d} agent \u{7684}\u{89c2}\u{70b9}\u{ff0c}\u{66f4}\u{63a5}\u{8fd1}\u{771f}\u{5b9e}\u{4f1a}\u{8bae}\u{8ba8}\u{8bba}\u{3002}"
+                : "\u{5706}\u{684c}\u{ff1a}\u{6309}\u{4f1a}\u{8bae}\u{8f6e}\u{6d41}\u{53d1}\u{8a00}\u{ff0c}\u{9002}\u{5408}\u{5f00}\u{4f1a}\u{3001}\u{590d}\u{76d8}\u{3001}\u{96c6}\u{4f53}\u{8ba8}\u{8bba}\u{ff0c}\u{4e0d}\u{662f}\u{666e}\u{901a}\u{7fa4}\u{804a}\u{6a21}\u{5f0f}\u{3002}"
         case "debate":
-            return "\u{8fa9}\u{8bba}\u{ff1a}\u{5f3a}\u{5236}\u{5f15}\u{5165}\u{4e0d}\u{540c}\u{89c2}\u{70b9}\u{5bf9}\u{6297}\u{8f93}\u{51fa}\u{ff0c}\u{9002}\u{5408}\u{98ce}\u{9669}\u{8bc4}\u{4f30}\u{6216}\u{65b9}\u{6848}\u{8d28}\u{7591}\u{3002}"
+            return interactiveDiscussion
+                ? "\u{8fa9}\u{8bba}\u{ff1a}\u{6bcf}\u{4f4d} agent \u{8981}\u{5148}\u{56de}\u{5e94}\u{4e0a}\u{4e00}\u{4f4d}\u{7684}\u{89c2}\u{70b9}\u{518d}\u{53cd}\u{9a73}\u{6216}\u{8865}\u{5145}\u{ff0c}\u{5bf9}\u{6297}\u{6027}\u{4f1a}\u{66f4}\u{5f3a}\u{3002}"
+                : "\u{8fa9}\u{8bba}\u{ff1a}\u{5f3a}\u{5236}\u{5f15}\u{5165}\u{4e0d}\u{540c}\u{89c2}\u{70b9}\u{5bf9}\u{6297}\u{8f93}\u{51fa}\u{ff0c}\u{9002}\u{5408}\u{98ce}\u{9669}\u{8bc4}\u{4f30}\u{6216}\u{65b9}\u{6848}\u{8d28}\u{7591}\u{3002}"
         default:
             return ""
         }

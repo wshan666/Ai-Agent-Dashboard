@@ -266,7 +266,7 @@ final class AppStore: ObservableObject {
         return run
     }
 
-    func startRoundtable(agentIds: [String], topic: String, rounds: Int = 1, mode: String = "roundtable", summarizerId: String? = nil) async throws {
+    func startRoundtable(agentIds: [String], topic: String, rounds: Int = 1, mode: String = "roundtable", summarizerId: String? = nil, interactive: Bool = false) async throws {
         var payload: [String: Any] = [
             "agentIds": agentIds,
             "topic": topic.isEmpty ? "圆桌会议" : topic,
@@ -275,6 +275,9 @@ final class AppStore: ObservableObject {
         ]
         if let summarizerId, !summarizerId.isEmpty {
             payload["summarizerId"] = summarizerId
+        }
+        if interactive {
+            payload["interactive"] = true
         }
         let response: BasicAPIResponse = try await postJSON(path: "/api/chat/roundtable", payload: payload, timeout: 600)
         if response.ok == false {
