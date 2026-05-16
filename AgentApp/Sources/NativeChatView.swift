@@ -1158,7 +1158,6 @@ struct NativeChatView: View {
     }
 }
 
-@MainActor
 private final class SpeechInputController: ObservableObject {
     @Published var transcript = ""
     @Published var statusText = ""
@@ -1183,7 +1182,7 @@ private final class SpeechInputController: ObservableObject {
 
         SFSpeechRecognizer.requestAuthorization { [weak self] speechStatus in
             AVAudioSession.sharedInstance().requestRecordPermission { micGranted in
-                Task { @MainActor in
+                DispatchQueue.main.async {
                     guard let self else { return }
                     guard speechStatus == .authorized, micGranted else {
                         self.statusText = "\u{8bf7}\u{5728} iOS \u{8bbe}\u{7f6e}\u{91cc}\u{5141}\u{8bb8}\u{9ea6}\u{514b}\u{98ce}\u{548c}\u{8bed}\u{97f3}\u{8bc6}\u{522b}"
@@ -1234,7 +1233,7 @@ private final class SpeechInputController: ObservableObject {
             isRecording = true
             statusText = "\u{6b63}\u{5728}\u{542c}\u{5199}..."
             task = recognizer?.recognitionTask(with: request) { [weak self] result, error in
-                Task { @MainActor in
+                DispatchQueue.main.async {
                     guard let self else { return }
                     if let text = result?.bestTranscription.formattedString, !text.isEmpty {
                         self.transcript = text
@@ -1256,7 +1255,6 @@ private struct VoiceRecording {
     let mimeType: String
 }
 
-@MainActor
 private final class VoiceMessageRecorder: NSObject, ObservableObject, AVAudioRecorderDelegate {
     @Published var isRecording = false
     @Published var statusText = ""
@@ -1267,7 +1265,7 @@ private final class VoiceMessageRecorder: NSObject, ObservableObject, AVAudioRec
     func start() {
         guard !isRecording else { return }
         AVAudioSession.sharedInstance().requestRecordPermission { [weak self] granted in
-            Task { @MainActor in
+            DispatchQueue.main.async {
                 guard let self else { return }
                 guard granted else {
                     self.statusText = "\u{8bf7}\u{5728} iOS \u{8bbe}\u{7f6e}\u{91cc}\u{5141}\u{8bb8}\u{9ea6}\u{514b}\u{98ce}"
